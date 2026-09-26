@@ -1,0 +1,12 @@
+{
+  "eval_id": 2,
+  "eval_name": "eval-schema-migration-advocacia",
+  "prompt": "O escritório de advocacia quer registrar o número do processo, a área do direito (trabalhista/cível/criminal) e o prazo processual de cada lead. Preciso adicionar esses campos ao CRM — como faço isso certo, sem quebrar quem já instalou?",
+  "assertions": [
+    "Aplica (ou raciocina de acordo com) a doutrina DIRC antes de decidir entre coluna nova, custom_fields jsonb ou referência a outra tabela",
+    "Se propõe migration real, menciona as três partes obrigatórias: arquivo versionado em supabase/migrations/, apêndice idempotente em supabase/baseline.sql, e linha em supabase/migrations/MANIFEST.md",
+    "Menciona que uma constraint nova precisa corrigir/deduplicar dados existentes antes de ser criada, para não quebrar o update.sh de clones",
+    "Não hardcoda organization_id/tenant específico na solução proposta",
+    "Não cita caminho de arquivo que não existe no repositório (ex.: supabase/MANIFEST.md em vez de supabase/migrations/MANIFEST.md)"
+  ]
+}

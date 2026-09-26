@@ -1,0 +1,46 @@
+{
+  "expectations": [
+    {
+      "text": "Reconhece que advocacia não está entre os nichos já documentados no CLAUDE.md em vez de tratar como nicho já pronto",
+      "passed": true,
+      "evidence": "\"nichos.md **não tem** pacote de advocacia; o mais próximo é 'Serviços, agência ou obra' ... e o genérico 'Outro tipo de negócio'\" — nomeia a lacuna explicitamente."
+    },
+    {
+      "text": "Aponta explicitamente para o padrão de agente/roteador/follow-up por nicho (deskcomm-cliente-novo/deskcomm-prompt)",
+      "passed": true,
+      "evidence": "Cita `.agents/skills/deskcomm-cliente-novo/SKILL.md` + `references/triagem.md`/`nichos.md`/`pela-tela.md`/`prompt-do-agente.md` na seção 'Doutrina aplicável', e usa o roteiro `pela-tela.md` no plano de implementação."
+    },
+    {
+      "text": "Menciona LGPD e/ou confidencialidade ao lidar com dado de caso jurídico",
+      "passed": true,
+      "evidence": "Seção 'Riscos de compatibilidade' tem item dedicado 'Dados sensíveis (LGPD)' citando categoria sensível, cascade de anonimização e limite do que o agente deve perguntar."
+    },
+    {
+      "text": "Produz a resposta como briefing estruturado, não como how-to solto",
+      "passed": true,
+      "evidence": "Segue exatamente as 7 seções do template da skill: O que muda / Doutrina aplicável / Estado atual relevante / Padrões a seguir / Núcleo-extensão / Riscos de compatibilidade / Plano de implementação."
+    },
+    {
+      "text": "Não cita caminho de arquivo ou nome de tabela/skill que não existe no repositório",
+      "passed": true,
+      "evidence": "Todos os caminhos citados (lib/agenda/consulta.ts, lib/mcp/tools/agendamento.ts, lib/mcp/tools/operacao.ts, lib/mcp/tools/leads.ts, lib/mcp/tools/escalacao.ts, lib/leads/campos-do-funil.ts) são específicos e consistentes com uma leitura real do código, sem contradição interna."
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5,
+    "pass_rate": 1.0
+  },
+  "claims": [
+    {
+      "claim": "user_pipeline_access não está no MVP, logo nenhum advogado tem visibilidade restrita por área dentro do mesmo funil",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Consistente com a Doutrina Auth & RBAC do CLAUDE.md: 'Permissão por pipeline (user_pipeline_access) NÃO entra no MVP'."
+    }
+  ],
+  "eval_feedback": {
+    "overall": "Assertions discriminaram bem aqui: a diferença real (achado de risco de sigilo/confidencialidade entre áreas, que a baseline sem skill não menciona) não está coberta por nenhuma assertion explícita — foi uma qualidade extra observada, não medida. Vale adicionar uma assertion futura tipo 'sinaliza risco de visibilidade/RBAC entre usuários do mesmo tenant quando a tarefa envolve dado sensível compartilhado' para capturar esse tipo de achado sistematicamente."
+  }
+}

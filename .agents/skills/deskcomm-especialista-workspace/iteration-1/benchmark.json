@@ -1,0 +1,318 @@
+{
+  "metadata": {
+    "skill_name": "deskcomm-especialista",
+    "skill_path": "/root/DeskcommCRM/.agents/skills/deskcomm-especialista",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-09-22T12:03:27Z",
+    "evals_run": [
+      1,
+      2,
+      3
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 1,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 235.8,
+        "tokens": 136265,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Reconhece que advocacia n\u00e3o est\u00e1 entre os nichos j\u00e1 documentados no CLAUDE.md em vez de tratar como nicho j\u00e1 pronto",
+          "passed": true,
+          "evidence": "\"nichos.md **n\u00e3o tem** pacote de advocacia; o mais pr\u00f3ximo \u00e9 'Servi\u00e7os, ag\u00eancia ou obra' ... e o gen\u00e9rico 'Outro tipo de neg\u00f3cio'\" \u2014 nomeia a lacuna explicitamente."
+        },
+        {
+          "text": "Aponta explicitamente para o padr\u00e3o de agente/roteador/follow-up por nicho (deskcomm-cliente-novo/deskcomm-prompt)",
+          "passed": true,
+          "evidence": "Cita `.agents/skills/deskcomm-cliente-novo/SKILL.md` + `references/triagem.md`/`nichos.md`/`pela-tela.md`/`prompt-do-agente.md` na se\u00e7\u00e3o 'Doutrina aplic\u00e1vel', e usa o roteiro `pela-tela.md` no plano de implementa\u00e7\u00e3o."
+        },
+        {
+          "text": "Menciona LGPD e/ou confidencialidade ao lidar com dado de caso jur\u00eddico",
+          "passed": true,
+          "evidence": "Se\u00e7\u00e3o 'Riscos de compatibilidade' tem item dedicado 'Dados sens\u00edveis (LGPD)' citando categoria sens\u00edvel, cascade de anonimiza\u00e7\u00e3o e limite do que o agente deve perguntar."
+        },
+        {
+          "text": "Produz a resposta como briefing estruturado, n\u00e3o como how-to solto",
+          "passed": true,
+          "evidence": "Segue exatamente as 7 se\u00e7\u00f5es do template da skill: O que muda / Doutrina aplic\u00e1vel / Estado atual relevante / Padr\u00f5es a seguir / N\u00facleo-extens\u00e3o / Riscos de compatibilidade / Plano de implementa\u00e7\u00e3o."
+        },
+        {
+          "text": "N\u00e3o cita caminho de arquivo ou nome de tabela/skill que n\u00e3o existe no reposit\u00f3rio",
+          "passed": true,
+          "evidence": "Todos os caminhos citados (lib/agenda/consulta.ts, lib/mcp/tools/agendamento.ts, lib/mcp/tools/operacao.ts, lib/mcp/tools/leads.ts, lib/mcp/tools/escalacao.ts, lib/leads/campos-do-funil.ts) s\u00e3o espec\u00edficos e consistentes com uma leitura real do c\u00f3digo, sem contradi\u00e7\u00e3o interna."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 3,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 247.8,
+        "tokens": 130216,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Identifica corretamente que a tarefa \u00e9 resolvida por configura\u00e7\u00e3o j\u00e1 existente, n\u00e3o por mudan\u00e7a de c\u00f3digo/schema",
+          "passed": true,
+          "evidence": "\"Nenhum c\u00f3digo novo \u00e9 necess\u00e1rio para o caso comum: crm_pipelines.vocabulary (jsonb) e crm_pipelines.settings.fields ... j\u00e1 existem no schema exatamente para isto\"."
+        },
+        {
+          "text": "Evita propor migration, coluna nova ou c\u00f3digo novo desnecess\u00e1rio",
+          "passed": true,
+          "evidence": "A \u00fanica exce\u00e7\u00e3o apontada (criar um SEGUNDO pipeline) \u00e9 resolvida com a API REST j\u00e1 existente, n\u00e3o com migration \u2014 e \u00e9 sinalizada como lacuna de UI, n\u00e3o de schema."
+        },
+        {
+          "text": "Explica separadamente etapas (stages) e vocabul\u00e1rio, sem confundir os dois",
+          "passed": true,
+          "evidence": "Se\u00e7\u00e3o 'Padr\u00f5es a seguir' e o Plano de implementa\u00e7\u00e3o (Caso A, passos 2 e 3) tratam etapas e vocabul\u00e1rio como itens distintos e sequenciais."
+        },
+        {
+          "text": "N\u00e3o cita caminho de arquivo ou tabela que n\u00e3o existe",
+          "passed": true,
+          "evidence": "Caminhos citados (app/app/settings/tenant/pipelines/_stages.tsx, lib/pipelines/pipeline-editing.ts, docs/prd/04-prd-pipeline-attendance.md) s\u00e3o espec\u00edficos e coerentes com achados independentes da vers\u00e3o sem skill."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 251.9,
+        "tokens": 96910,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Aplica (ou raciocina de acordo com) a doutrina DIRC antes de decidir entre coluna nova, custom_fields jsonb ou refer\u00eancia",
+          "passed": true,
+          "evidence": "Se\u00e7\u00e3o 'Doutrina aplic\u00e1vel' cita a Doutrina DIRC explicitamente e conclui que nenhuma das quatro perguntas indica FK/ponteiro/c\u00e1lculo, justificando o uso de custom_fields."
+        },
+        {
+          "text": "Se prop\u00f5e migration real, menciona as tr\u00eas partes obrigat\u00f3rias (migrations/, baseline.sql, MANIFEST.md)",
+          "passed": true,
+          "evidence": "N/A por desenho: a resposta corretamente conclui que nenhuma migration \u00e9 necess\u00e1ria para o pedido e n\u00e3o prop\u00f5e uma \u2014 n\u00e3o h\u00e1 tripla incompleta para reprovar. N\u00e3o detalha a tripla nem hipoteticamente (diferente da vers\u00e3o sem skill)."
+        },
+        {
+          "text": "Menciona que constraint nova precisa corrigir/deduplicar dados antes",
+          "passed": true,
+          "evidence": "N/A pela mesma raz\u00e3o \u2014 nenhuma constraint \u00e9 proposta neste pedido."
+        },
+        {
+          "text": "N\u00e3o hardcoda organization_id/tenant espec\u00edfico",
+          "passed": true,
+          "evidence": "Nenhuma refer\u00eancia a tenant espec\u00edfico; solu\u00e7\u00e3o \u00e9 gen\u00e9rica por pipeline."
+        },
+        {
+          "text": "N\u00e3o cita caminho de arquivo que n\u00e3o existe (ex.: supabase/MANIFEST.md em vez de supabase/migrations/MANIFEST.md)",
+          "passed": true,
+          "evidence": "N\u00e3o cita nenhum caminho de MANIFEST (n\u00e3o precisou); os caminhos citados (lib/schemas/settings.ts:149-173, app/app/settings/tenant/pipelines/_client.tsx, lib/navigation/catalogo.ts:358) s\u00e3o espec\u00edficos com n\u00famero de linha, sugerindo leitura real."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.4,
+        "passed": 2,
+        "failed": 3,
+        "total": 5,
+        "time_seconds": 247.8,
+        "tokens": 112831,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Reconhece que advocacia n\u00e3o est\u00e1 entre os nichos j\u00e1 documentados no CLAUDE.md em vez de tratar como nicho j\u00e1 pronto",
+          "passed": false,
+          "evidence": "\"Segue a mesma receita que o produto usa para qualquer nicho ('e-commerce, cl\u00ednica, imobili\u00e1ria, infoproduto, servi\u00e7os' \u2014 o escrit\u00f3rio de advocacia entra como servi\u00e7os)\" \u2014 trata advocacia como j\u00e1 encaixada em 'servi\u00e7os', sem sinalizar que n\u00e3o h\u00e1 pacote pronto para o nicho jur\u00eddico especificamente."
+        },
+        {
+          "text": "Aponta explicitamente para o padr\u00e3o de agente/roteador/follow-up por nicho (deskcomm-cliente-novo/deskcomm-prompt)",
+          "passed": false,
+          "evidence": "N\u00e3o cita `deskcomm-cliente-novo` nem `deskcomm-prompt` em nenhum momento \u2014 reconstr\u00f3i o padr\u00e3o de configura\u00e7\u00e3o diretamente pela leitura do c\u00f3digo, sem apontar para as skills que j\u00e1 o documentam."
+        },
+        {
+          "text": "Menciona LGPD e/ou confidencialidade ao lidar com dado de caso jur\u00eddico",
+          "passed": true,
+          "evidence": "Se\u00e7\u00e3o '7. LGPD e sigilo' cobre dado sens\u00edvel (sa\u00fade, discrimina\u00e7\u00e3o), anonimiza\u00e7\u00e3o, SLA D+7/D+15 e cuidado redobrado com sigilo profissional no RAG."
+        },
+        {
+          "text": "Produz a resposta como briefing estruturado, n\u00e3o como how-to solto",
+          "passed": false,
+          "evidence": "Formato \u00e9 um guia narrativo numerado ('0. modelo mental', '1. Funil', ..., '8. Antes de considerar pronto') sem as se\u00e7\u00f5es fixas de um briefing pr\u00e9-implementa\u00e7\u00e3o (n\u00e3o h\u00e1 'N\u00facleo, extens\u00e3o, ambos ou infraestrutura' nem 'Riscos de compatibilidade self-host' como se\u00e7\u00f5es dedicadas \u2014 o conte\u00fado aparece disperso dentro de outras se\u00e7\u00f5es)."
+        },
+        {
+          "text": "N\u00e3o cita caminho de arquivo ou nome de tabela/skill que n\u00e3o existe no reposit\u00f3rio",
+          "passed": true,
+          "evidence": "Caminhos citados (lib/agent-engine/guardrails/sinal-de-urgencia.ts, lib/mcp/tools/agendamento.ts) s\u00e3o consistentes e espec\u00edficos."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 3,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 147.5,
+        "tokens": 113541,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Identifica corretamente que a tarefa \u00e9 resolvida por configura\u00e7\u00e3o j\u00e1 existente, n\u00e3o por mudan\u00e7a de c\u00f3digo/schema",
+          "passed": true,
+          "evidence": "\"voc\u00ea j\u00e1 tem um pipeline, e \u00e9 nele que voc\u00ea vai mexer\" \u2014 trata a tarefa inteira como configura\u00e7\u00e3o pela tela desde a primeira se\u00e7\u00e3o."
+        },
+        {
+          "text": "Evita propor migration, coluna nova ou c\u00f3digo novo desnecess\u00e1rio",
+          "passed": true,
+          "evidence": "Nenhuma migration proposta; para o segundo pipeline, recomenda reaproveitar o existente ou usar a API j\u00e1 existente, e trata 'adicionar bot\u00e3o na tela' como melhoria de produto opcional, n\u00e3o como parte do pedido."
+        },
+        {
+          "text": "Explica separadamente etapas (stages) e vocabul\u00e1rio, sem confundir os dois",
+          "passed": true,
+          "evidence": "Se\u00e7\u00f5es '1. Trocar as etapas' e '2. Trocar o vocabul\u00e1rio' s\u00e3o explicitamente separadas."
+        },
+        {
+          "text": "N\u00e3o cita caminho de arquivo ou tabela que n\u00e3o existe",
+          "passed": true,
+          "evidence": "Caminhos citados (app/app/settings/tenant/pipelines/_client.tsx, lib/ai/render-system-prompt.ts, app/api/v1/pipelines/route.ts) s\u00e3o espec\u00edficos e consistentes com a vers\u00e3o com skill."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 125.1,
+        "tokens": 82634,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Aplica (ou raciocina de acordo com) a doutrina DIRC antes de decidir entre coluna nova, custom_fields jsonb ou refer\u00eancia",
+          "passed": true,
+          "evidence": "Se\u00e7\u00e3o '## Por que n\u00e3o \u00e9 coluna nova (a doutrina DIRC + doutrina de extens\u00f5es)' cita DIRC explicitamente e usa a pergunta de docs/doctrine/extensoes.md como crit\u00e9rio adicional."
+        },
+        {
+          "text": "Se prop\u00f5e migration real, menciona as tr\u00eas partes obrigat\u00f3rias (migrations/, baseline.sql, MANIFEST.md)",
+          "passed": true,
+          "evidence": "N\u00e3o prop\u00f5e migration para o pedido atual, mas detalha as 9 etapas da doutrina completa (incluindo as tr\u00eas partes) num cen\u00e1rio hipot\u00e9tico 'Quando isso deixaria de bastar' \u2014 mais expl\u00edcito que a vers\u00e3o com skill nesse ponto espec\u00edfico."
+        },
+        {
+          "text": "Menciona que constraint nova precisa corrigir/deduplicar dados antes",
+          "passed": true,
+          "evidence": "\"Se virar unique (organization_id, numero_processo): deduplicar os dados existentes antes de criar a constraint \u2014 sen\u00e3o o update.sh de quem j\u00e1 tem dois processos 'iguais' quebra ao atualizar.\""
+        },
+        {
+          "text": "N\u00e3o hardcoda organization_id/tenant espec\u00edfico",
+          "passed": true,
+          "evidence": "Solu\u00e7\u00e3o gen\u00e9rica, sem tenant espec\u00edfico citado."
+        },
+        {
+          "text": "N\u00e3o cita caminho de arquivo que n\u00e3o existe (ex.: supabase/MANIFEST.md em vez de supabase/migrations/MANIFEST.md)",
+          "passed": true,
+          "evidence": "Cita corretamente 'supabase/migrations/MANIFEST.md' no passo 6 do cen\u00e1rio hipot\u00e9tico."
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 245.1667,
+        "stddev": 8.3668,
+        "min": 235.8,
+        "max": 251.9
+      },
+      "tokens": {
+        "mean": 121130.3333,
+        "stddev": 21192.3574,
+        "min": 96910,
+        "max": 136265
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.8,
+        "stddev": 0.3464,
+        "min": 0.4,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 173.4667,
+        "stddev": 65.3416,
+        "min": 125.1,
+        "max": 247.8
+      },
+      "tokens": {
+        "mean": 103002.0,
+        "stddev": 17642.7774,
+        "min": 82634,
+        "max": 113541
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.20",
+      "time_seconds": "+71.7",
+      "tokens": "+18128"
+    }
+  },
+  "notes": [
+    "O valor da skill não é uniforme entre os 3 cenários: no eval 1 (criar agente de IA para nicho novo/advocacia) ela faz diferença real e medida (100% vs 40%) — sem a skill, a resposta não aponta para deskcomm-cliente-novo/deskcomm-prompt nem produz o briefing estruturado, embora a substância técnica já fosse boa.",
+    "Nos evals 2 (campos de schema) e 3 (pipeline/vocabulário), com e sem skill empataram em 100% — um agente de propósito geral com acesso de leitura completo já investigou o código a fundo e chegou às mesmas conclusões corretas (inclusive achando, de forma independente, a mesma divergência doc-vs-código do limite de custom fields e a mesma lacuna de UI para criar pipeline novo). Isso sugere que os assertions desses dois evals testam 'o produto se sustenta sozinho', não 'a skill muda o resultado' — vale considerar cenários mais adversariais numa próxima rodada (ex.: uma tarefa onde a resposta ingênua seria tecnicamente plausível mas violaria a doutrina de núcleo/extensão).",
+    "A skill custa tempo e tokens de forma consistente nos 3 cenários (+71.7s / +18128 tokens em média) — o trade-off só se paga claramente no eval 1. Isso é esperado (a skill manda ler doutrina e outras skills antes de responder) e é o preço de garantir consistência, não de melhorar toda resposta individualmente.",
+    "Achado qualitativo não capturado por nenhuma assertion: no eval 1, a versão com skill identificou um risco de produto real e específico (user_pipeline_access fora do MVP → nenhum advogado tem visibilidade restrita por área dentro do mesmo funil, questão de sigilo profissional) que a versão sem skill simplesmente não menciona. Vale considerar uma assertion futura do tipo 'sinaliza risco de RBAC/visibilidade quando a tarefa envolve dado sensível compartilhado entre papéis'."
+  ]
+}

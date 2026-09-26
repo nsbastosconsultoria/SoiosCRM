@@ -1,0 +1,46 @@
+{
+  "expectations": [
+    {
+      "text": "Aplica (ou raciocina de acordo com) a doutrina DIRC antes de decidir entre coluna nova, custom_fields jsonb ou referência",
+      "passed": true,
+      "evidence": "Seção '## Por que não é coluna nova (a doutrina DIRC + doutrina de extensões)' cita DIRC explicitamente e usa a pergunta de docs/doctrine/extensoes.md como critério adicional."
+    },
+    {
+      "text": "Se propõe migration real, menciona as três partes obrigatórias (migrations/, baseline.sql, MANIFEST.md)",
+      "passed": true,
+      "evidence": "Não propõe migration para o pedido atual, mas detalha as 9 etapas da doutrina completa (incluindo as três partes) num cenário hipotético 'Quando isso deixaria de bastar' — mais explícito que a versão com skill nesse ponto específico."
+    },
+    {
+      "text": "Menciona que constraint nova precisa corrigir/deduplicar dados antes",
+      "passed": true,
+      "evidence": "\"Se virar unique (organization_id, numero_processo): deduplicar os dados existentes antes de criar a constraint — senão o update.sh de quem já tem dois processos 'iguais' quebra ao atualizar.\""
+    },
+    {
+      "text": "Não hardcoda organization_id/tenant específico",
+      "passed": true,
+      "evidence": "Solução genérica, sem tenant específico citado."
+    },
+    {
+      "text": "Não cita caminho de arquivo que não existe (ex.: supabase/MANIFEST.md em vez de supabase/migrations/MANIFEST.md)",
+      "passed": true,
+      "evidence": "Cita corretamente 'supabase/migrations/MANIFEST.md' no passo 6 do cenário hipotético."
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5,
+    "pass_rate": 1.0
+  },
+  "claims": [
+    {
+      "claim": "docs/prd/02-prd-customer-360.md promete 30 campos e validação 422; o código permite 50 sem enforcement de options no servidor",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Mesmo achado da versão com skill, obtido de forma independente — reforça que é um achado real do repositório, não coincidência de uma das duas execuções."
+    }
+  ],
+  "eval_feedback": {
+    "overall": "Pontuação igual à versão com skill (5/5) — este eval não discriminou. A resposta sem skill até foi mais explícita no detalhe da tripla de migration hipotética. Isso sugere que, para tarefas de schema/DB, um agente de propósito geral com boas ferramentas de leitura já segue a doutrina correta sem precisar da skill — o valor da skill aqui pode estar mais em garantir que a doutrina seja consultada de forma consistente (não depender da sorte/estilo do agente) do que em mudar o resultado desta vez."
+  }
+}

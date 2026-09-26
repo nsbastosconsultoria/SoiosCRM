@@ -62,22 +62,41 @@ Ordem definida pelo Rafael: **PRD → Regras de Negócio → Specs → Epics →
 
 ## Fase 4 — Epics
 
-- [ ] Epic E1: Plataforma Base
-- [ ] Epic E2: Conexão WhatsApp + Inbox Live
-- [ ] Epic E3: Customer 360° + Identity Resolution
-- [ ] Epic E4: Pipeline Kanban + Atendimento Humano
-- [ ] Epic E5: IA Conversacional + Handoff
-- [ ] Epic E6: Integração Nuvemshop + LGPD
-- [ ] Epic E7: Hardening + Observability + Deploy
+> **Nota de 2026-09-22:** este checklist parou no plano em cascata original. O projeto
+> não seguiu Epics→Stories→Tasks como unidade de execução — migrou pra fluxo contínuo
+> de PRs (1400+ mesclados) logo depois da Fase 3.5. Os 7 épicos abaixo **existem em
+> produção**, verificado por grep no código nesta data, não por reabertura de plano:
+
+- [x] Epic E1: Plataforma Base — auth/RBAC/audit/LGPD, doutrina completa em `CLAUDE.md`
+- [x] Epic E2: Conexão WhatsApp + Inbox Live — WAHA Plus, anti-banimento, `lib/opt-out/`
+- [x] Epic E3: Customer 360° + Identity Resolution — `app/app/contacts/`, ver `docs/business-rules/00-business-rules-catalog.md`
+- [x] Epic E4: Pipeline Kanban + Atendimento Humano — `crm_pipelines`/`crm_stages` desde a `00001_initial_schema.sql`; governança de atendimento (atribuição, fila, escopo) fechada à parte no épico G1–G6 (`plan/progress.md`, `loop/checkpoints/G6.approved`)
+- [x] Epic E5: IA Conversacional + Handoff — `ai_dispatch_mode`, MCP tools de governança, handoff v2 (mesmo épico G1–G6)
+- [x] Epic E6: Integração Nuvemshop + LGPD — `app/actions/integrations/{connect,disconnect}Nuvemshop.ts` (63 arquivos tocam Nuvemshop)
+- [x] Epic E7: Hardening + Observability + Deploy — Sentry, doutrina de packaging (`docs/doctrine/packaging.md`), CI com 5 checks obrigatórios (`verify, build-and-size, invariants, e2e, imagens-ok`)
 
 ## Fase 5 — Stories
 
-- [ ] Detalhar stories de cada epic com ACs
-- [ ] Estimativas relativas (T-shirt sizing)
-- [ ] Priorizar por Now/Next/Later
+> Superado pelo fluxo real: não há backlog de stories com AC/estimativa. O que faz esse
+> papel hoje é o PR individual (descrição + testes) e, pra escopos maiores, um HANDOFF
+> dedicado na raiz do repo (`HANDOFF-*.md`) ou um loop de fases como o gov-loop
+> (`plan/phases.md` + `plan/progress.md`, específico do épico de governança).
+
+- [x] ~~Detalhar stories de cada epic com ACs~~ — substituído por PR-a-PR
+- [x] ~~Estimativas relativas (T-shirt sizing)~~ — não adotado; sem estimativa formal
+- [x] ~~Priorizar por Now/Next/Later~~ — priorização é ad-hoc por PR/issue no GitHub
 
 ## Fase 6 — Plano de Tasks
 
-- [ ] Quebrar stories em tasks técnicas
-- [ ] Sequenciar com dependências explícitas
-- [ ] Cronograma e marcos
+> Superado: não há cronograma nem marcos fixos. O rastreamento de "o que mudou e para
+> quem importa" é feito por `.changes/*.md` (fragmentos por PR, ver
+> `docs/doctrine/versionamento.md`) e consolidado no `CHANGELOG.md` a cada corte de
+> release — não por um plano de tasks sequenciado com dependências.
+
+- [x] ~~Quebrar stories em tasks técnicas~~ — cada PR já nasce como unidade técnica
+- [x] ~~Sequenciar com dependências explícitas~~ — dependência é resolvida por review, não por plano
+- [x] ~~Cronograma e marcos~~ — não há; releases saem por corte (`release.yml`), não por data
+
+**Para saber o estado real do produto hoje**, não confie neste arquivo nem em
+`docs/current-state.md` (ele mesmo se declara desatualizado) — meça na fonte:
+`CHANGELOG.md` (topo), `git log --oneline -20`, e os 5 checks obrigatórios de CI.

@@ -1,0 +1,46 @@
+{
+  "expectations": [
+    {
+      "text": "Reconhece que advocacia não está entre os nichos já documentados no CLAUDE.md em vez de tratar como nicho já pronto",
+      "passed": false,
+      "evidence": "\"Segue a mesma receita que o produto usa para qualquer nicho ('e-commerce, clínica, imobiliária, infoproduto, serviços' — o escritório de advocacia entra como serviços)\" — trata advocacia como já encaixada em 'serviços', sem sinalizar que não há pacote pronto para o nicho jurídico especificamente."
+    },
+    {
+      "text": "Aponta explicitamente para o padrão de agente/roteador/follow-up por nicho (deskcomm-cliente-novo/deskcomm-prompt)",
+      "passed": false,
+      "evidence": "Não cita `deskcomm-cliente-novo` nem `deskcomm-prompt` em nenhum momento — reconstrói o padrão de configuração diretamente pela leitura do código, sem apontar para as skills que já o documentam."
+    },
+    {
+      "text": "Menciona LGPD e/ou confidencialidade ao lidar com dado de caso jurídico",
+      "passed": true,
+      "evidence": "Seção '7. LGPD e sigilo' cobre dado sensível (saúde, discriminação), anonimização, SLA D+7/D+15 e cuidado redobrado com sigilo profissional no RAG."
+    },
+    {
+      "text": "Produz a resposta como briefing estruturado, não como how-to solto",
+      "passed": false,
+      "evidence": "Formato é um guia narrativo numerado ('0. modelo mental', '1. Funil', ..., '8. Antes de considerar pronto') sem as seções fixas de um briefing pré-implementação (não há 'Núcleo, extensão, ambos ou infraestrutura' nem 'Riscos de compatibilidade self-host' como seções dedicadas — o conteúdo aparece disperso dentro de outras seções)."
+    },
+    {
+      "text": "Não cita caminho de arquivo ou nome de tabela/skill que não existe no repositório",
+      "passed": true,
+      "evidence": "Caminhos citados (lib/agent-engine/guardrails/sinal-de-urgencia.ts, lib/mcp/tools/agendamento.ts) são consistentes e específicos."
+    }
+  ],
+  "summary": {
+    "passed": 2,
+    "failed": 3,
+    "total": 5,
+    "pass_rate": 0.4
+  },
+  "claims": [
+    {
+      "claim": "O guardrail padrão de e-commerce escala automaticamente ao mencionar 'jurídico'/'advogado'",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Achado plausível e específico o bastante (referência a `ai_agents.guardrails` jsonb) para ser tratado como leitura real de código, não invenção — mas não pude confirmar linha exata sem acesso à árvore completa nesta sessão."
+    }
+  ],
+  "eval_feedback": {
+    "overall": "Resposta tecnicamente sólida e rica em achados de código, mas falha nas duas assertions mais 'de doutrina/produto' (apontar pra skill companion, e o formato de briefing) — que são exatamente o que a skill deskcomm-especialista existe para impor. Isso é um bom sinal de que a skill tem valor real neste cenário específico (criação de agente de nicho novo), mesmo que a substância técnica da resposta sem skill já fosse boa."
+  }
+}

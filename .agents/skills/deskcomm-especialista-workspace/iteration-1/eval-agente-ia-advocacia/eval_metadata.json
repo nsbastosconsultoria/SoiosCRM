@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "eval_name": "eval-agente-ia-advocacia",
+  "prompt": "Quero criar um agente de IA para um escritório de advocacia trabalhista, que qualifica leads buscando consulta jurídica, identifica a urgência do caso e agenda a primeira reunião com o advogado responsável pela área. Como faço isso no padrão do DeskcommCRM?",
+  "assertions": [
+    "Reconhece que advocacia não está entre os nichos já documentados no CLAUDE.md (e-commerce, clínicas, imobiliárias, infoprodutos, serviços) em vez de tratar como nicho já pronto",
+    "Aponta explicitamente para o padrão de agente/roteador/follow-up por nicho (equivalente ao que deskcomm-cliente-novo e deskcomm-prompt estabelecem), não inventa um mecanismo novo",
+    "Menciona LGPD e/ou cuidado de confidencialidade ao lidar com dado de caso jurídico do lead",
+    "Produz a resposta como um briefing estruturado (seções tipo doutrina aplicável, núcleo/extensão, riscos de compatibilidade), não como um how-to solto",
+    "Não cita caminho de arquivo ou nome de tabela/skill que não existe no repositório"
+  ]
+}

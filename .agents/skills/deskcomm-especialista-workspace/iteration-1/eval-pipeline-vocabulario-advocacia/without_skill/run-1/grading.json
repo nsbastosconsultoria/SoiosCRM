@@ -1,0 +1,41 @@
+{
+  "expectations": [
+    {
+      "text": "Identifica corretamente que a tarefa é resolvida por configuração já existente, não por mudança de código/schema",
+      "passed": true,
+      "evidence": "\"você já tem um pipeline, e é nele que você vai mexer\" — trata a tarefa inteira como configuração pela tela desde a primeira seção."
+    },
+    {
+      "text": "Evita propor migration, coluna nova ou código novo desnecessário",
+      "passed": true,
+      "evidence": "Nenhuma migration proposta; para o segundo pipeline, recomenda reaproveitar o existente ou usar a API já existente, e trata 'adicionar botão na tela' como melhoria de produto opcional, não como parte do pedido."
+    },
+    {
+      "text": "Explica separadamente etapas (stages) e vocabulário, sem confundir os dois",
+      "passed": true,
+      "evidence": "Seções '1. Trocar as etapas' e '2. Trocar o vocabulário' são explicitamente separadas."
+    },
+    {
+      "text": "Não cita caminho de arquivo ou tabela que não existe",
+      "passed": true,
+      "evidence": "Caminhos citados (app/app/settings/tenant/pipelines/_client.tsx, lib/ai/render-system-prompt.ts, app/api/v1/pipelines/route.ts) são específicos e consistentes com a versão com skill."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  },
+  "claims": [
+    {
+      "claim": "Trigger fn_seed_default_pipeline_for_org semeia todo tenant novo com um único pipeline de e-commerce",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Achado específico e plausível (nome de trigger/função no padrão do repo), usado para embasar a recomendação de reaproveitar o pipeline único em vez de criar um segundo — não verificável linha a linha nesta sessão, mas consistente com o restante do código citado."
+    }
+  ],
+  "eval_feedback": {
+    "overall": "4/4, empatado com a versão com skill. Terceiro eval seguido sem discriminar a skill de forma mensurável pelas assertions atuais — sinal de que os 3 cenários de teste, todos formulados como 'pergunta técnica que um bom agente de leitura resolve investigando o código', favorecem naturalmente qualquer execução com acesso de leitura amplo, com ou sem a skill. Vale ao usuário decidir se quer manter os cenários (para medir 'o produto se sustenta mesmo sem a skill', que é informação válida) ou trocar por cenários onde a skill best-effort de doutrina é mais decisiva — ex.: uma tarefa onde a resposta ingênua seria tecnicamente plausível mas violaria doutrina (como propor uma extensão quando deveria ser núcleo, ou vice-versa)."
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "eval_name": "eval-pipeline-vocabulario-advocacia",
+  "prompt": "Quero montar um pipeline específico para escritório de advocacia, com etapas tipo 'Consulta agendada', 'Proposta enviada', 'Contrato assinado', usando nomenclatura jurídica ('cliente'/'caso' em vez de 'lead'/'deal'). Como monto isso?",
+  "assertions": [
+    "Identifica corretamente que a tarefa é resolvida por configuração já existente (vocabulary jsonb do pipeline + custom_fields), não por mudança de código ou schema",
+    "Evita propor migration, coluna nova ou código novo desnecessário para o que é puramente configuração",
+    "Explica separadamente as duas partes: como criar as etapas (stages) do pipeline e como trocar a nomenclatura (vocabulary), sem confundir as duas",
+    "Não cita caminho de arquivo ou tabela que não existe no repositório"
+  ]
+}

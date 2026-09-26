@@ -35,10 +35,16 @@ A rota é pública (sem auth) e tem `robots: noindex`.
 > 1 accent forte mas não saturado, motion fluido, whitespace generoso, hierarquia
 > tipográfica > decoração.
 
-### Paletas (5)
+### Paletas (6)
 `Sage` · `Clay` · `Mist` · `Plum` · `Olive` — cada uma com 11 stops do accent,
 11 stops de neutro greige, 4 estados (success/warning/error/info), versões
 **light e dark definidas separadamente** (não invertidas).
+
+`Indigo` é a exceção deliberada à regra "não slate/zinc" acima: importada do
+design system "Kinetic Enterprise Precision" do projeto Stitch (`Soios CRM
+Visual Identity`, via Google Stitch MCP) e mantida com os hex exatos das
+escalas Tailwind Indigo/Slate que o próprio design system referencia. Existe
+como opção selecionável, não como substituição do default.
 
 ### Pareamentos tipográficos (4)
 1. Bricolage Grotesque + Plus Jakarta Sans (default)

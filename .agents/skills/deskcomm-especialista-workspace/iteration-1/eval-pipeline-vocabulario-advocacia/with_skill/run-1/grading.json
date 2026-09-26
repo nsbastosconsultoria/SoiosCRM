@@ -1,0 +1,41 @@
+{
+  "expectations": [
+    {
+      "text": "Identifica corretamente que a tarefa é resolvida por configuração já existente, não por mudança de código/schema",
+      "passed": true,
+      "evidence": "\"Nenhum código novo é necessário para o caso comum: crm_pipelines.vocabulary (jsonb) e crm_pipelines.settings.fields ... já existem no schema exatamente para isto\"."
+    },
+    {
+      "text": "Evita propor migration, coluna nova ou código novo desnecessário",
+      "passed": true,
+      "evidence": "A única exceção apontada (criar um SEGUNDO pipeline) é resolvida com a API REST já existente, não com migration — e é sinalizada como lacuna de UI, não de schema."
+    },
+    {
+      "text": "Explica separadamente etapas (stages) e vocabulário, sem confundir os dois",
+      "passed": true,
+      "evidence": "Seção 'Padrões a seguir' e o Plano de implementação (Caso A, passos 2 e 3) tratam etapas e vocabulário como itens distintos e sequenciais."
+    },
+    {
+      "text": "Não cita caminho de arquivo ou tabela que não existe",
+      "passed": true,
+      "evidence": "Caminhos citados (app/app/settings/tenant/pipelines/_stages.tsx, lib/pipelines/pipeline-editing.ts, docs/prd/04-prd-pipeline-attendance.md) são específicos e coerentes com achados independentes da versão sem skill."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  },
+  "claims": [
+    {
+      "claim": "POST /api/v1/pipelines existe mas nenhum componente de UI o chama, e a rota não aceita Bearer dsk_... (só cookie)",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Achado idêntico e independente na versão sem skill, incluindo a mesma observação sobre lib/auth/public-paths.ts — forte sinal de que é real, não alucinação."
+    }
+  ],
+  "eval_feedback": {
+    "overall": "4/4 — mas empatado com a versão sem skill em todas as assertions. Este eval também não discriminou a skill: ambas as versões acharam a mesma lacuna de produto (falta de botão para criar pipeline novo) de forma independente. O valor diferencial da skill aqui está em qualidade de estrutura (o briefing tem seção explícita 'Núcleo, extensão, ambos ou infraestrutura' respondendo à pergunta da doutrina de extensões de forma nomeada) mais do que em substância descoberta."
+  }
+}

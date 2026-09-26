@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header .instructions {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+    .header .progress {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      text-align: right;
+    }
+
+    /* ---- Main content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ---- Sections ---- */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+    .section-header {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-body {
+      padding: 1rem;
+    }
+
+    /* ---- Config badge ---- */
+    .config-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 9999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 0.75rem;
+      vertical-align: middle;
+    }
+    .config-badge.config-primary {
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+    }
+    .config-badge.config-baseline {
+      background: rgba(255, 193, 7, 0.15);
+      color: #f57f17;
+    }
+
+    /* ---- Prompt ---- */
+    .prompt-text {
+      white-space: pre-wrap;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Outputs ---- */
+    .output-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-file + .output-file {
+      margin-top: 1rem;
+    }
+    .output-file-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .output-file-header .dl-btn {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .output-file-header .dl-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    .output-file-content {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    .output-file-content pre {
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .output-file-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .output-file-content iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .output-file-content table {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      width: 100%;
+    }
+    .output-file-content table td,
+    .output-file-content table th {
+      border: 1px solid var(--border);
+      padding: 0.375rem 0.5rem;
+      text-align: left;
+    }
+    .output-file-content table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .output-file-content .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .output-file-content .download-link:hover {
+      background: var(--border);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* ---- Feedback ---- */
+    .prev-feedback {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .prev-feedback-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .feedback-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      resize: vertical;
+      color: var(--text);
+    }
+    .feedback-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .feedback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      min-height: 1.1em;
+    }
+
+    /* ---- Grades (collapsible) ---- */
+    .grades-toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .grades-toggle:hover {
+      color: var(--accent);
+    }
+    .grades-toggle .arrow {
+      margin-right: 0.5rem;
+      transition: transform 0.15s;
+      font-size: 0.75rem;
+    }
+    .grades-toggle .arrow.open {
+      transform: rotate(90deg);
+    }
+    .grades-content {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .grades-content.open {
+      display: block;
+    }
+    .grades-summary {
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grade-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .grade-pass { background: var(--green-bg); color: var(--green); }
+    .grade-fail { background: var(--red-bg); color: var(--red); }
+    .assertion-list {
+      list-style: none;
+    }
+    .assertion-item {
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .assertion-item:last-child { border-bottom: none; }
+    .assertion-status {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .assertion-status.pass { color: var(--green); }
+    .assertion-status.fail { color: var(--red); }
+    .assertion-evidence {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      padding-left: 1.5rem;
+    }
+
+    /* ---- View tabs ---- */
+    .view-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-tab {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-tab:hover { color: var(--text); }
+    .view-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ---- Benchmark view ---- */
+    .benchmark-view {
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .benchmark-table {
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .benchmark-table th, .benchmark-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    .benchmark-table th {
+      font-family: 'Poppins', sans-serif;
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .benchmark-table tr:hover { background: var(--bg); }
+    .benchmark-table tr.benchmark-row-with { background: rgba(33, 150, 243, 0.06); }
+    .benchmark-table tr.benchmark-row-without { background: rgba(255, 193, 7, 0.06); }
+    .benchmark-table tr.benchmark-row-with:hover { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-without:hover { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-table tr.benchmark-row-avg { font-weight: 600; border-top: 2px solid var(--border); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-with { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-without { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-delta-positive { color: var(--green); font-weight: 600; }
+    .benchmark-delta-negative { color: var(--red); font-weight: 600; }
+    .benchmark-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .benchmark-notes h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-notes ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+    }
+    .benchmark-notes li {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      margin-bottom: 0.375rem;
+    }
+    .benchmark-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    /* ---- Navigation ---- */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .done-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .done-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .done-btn.ready {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    .done-btn.ready:hover {
+      background: var(--accent-hover);
+    }
+    /* ---- Done overlay ---- */
+    .done-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .done-overlay.visible {
+      display: flex;
+    }
+    .done-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+    }
+    .done-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .done-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .done-card .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .done-card button {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .done-card button:hover {
+      background: var(--bg);
+    }
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="height:100vh; display:flex; flex-direction:column;">
+    <div class="header">
+      <div>
+        <h1>Eval Review: <span id="skill-name"></span></h1>
+        <div class="instructions">Review each output and leave feedback below. Navigate with arrow keys or buttons. When done, copy feedback and paste into Claude Code.</div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- View tabs (only shown when benchmark data exists) -->
+    <div class="view-tabs" id="view-tabs" style="display:none;">
+      <button class="view-tab active" onclick="switchView('outputs')">Outputs</button>
+      <button class="view-tab" onclick="switchView('benchmark')">Benchmark</button>
+    </div>
+
+    <!-- Outputs panel (qualitative review) -->
+    <div class="view-panel active" id="panel-outputs">
+    <div class="main">
+      <!-- Prompt -->
+      <div class="section">
+        <div class="section-header">Prompt <span class="config-badge" id="config-badge" style="display:none;"></span></div>
+        <div class="section-body">
+          <div class="prompt-text" id="prompt-text"></div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="section">
+        <div class="section-header">Output</div>
+        <div class="section-body" id="outputs-body">
+          <div class="empty-state">No output files found</div>
+        </div>
+      </div>
+
+      <!-- Previous Output (collapsible) -->
+      <div class="section" id="prev-outputs-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="togglePrevOutputs()">
+            <span class="arrow" id="prev-outputs-arrow">&#9654;</span>
+            Previous Output
+          </div>
+        </div>
+        <div class="grades-content" id="prev-outputs-content"></div>
+      </div>
+
+      <!-- Grades (collapsible) -->
+      <div class="section" id="grades-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="toggleGrades()">
+            <span class="arrow" id="grades-arrow">&#9654;</span>
+            Formal Grades
+          </div>
+        </div>
+        <div class="grades-content" id="grades-content"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section">
+        <div class="section-header">Your Feedback</div>
+        <div class="section-body">
+          <textarea
+            class="feedback-textarea"
+            id="feedback"
+            placeholder="What do you think of this output? Any issues, suggestions, or things that look great?"
+          ></textarea>
+          <div class="feedback-status" id="feedback-status"></div>
+          <div class="prev-feedback" id="prev-feedback" style="display:none;">
+            <div class="prev-feedback-label">Previous feedback</div>
+            <div id="prev-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav" id="outputs-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
+      <button class="done-btn" id="done-btn" onclick="showDoneDialog()">Submit All Reviews</button>
+      <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+    </div>
+    </div><!-- end panel-outputs -->
+
+    <!-- Benchmark panel (quantitative stats) -->
+    <div class="view-panel" id="panel-benchmark">
+      <div class="benchmark-view" id="benchmark-content">
+        <div class="benchmark-empty">No benchmark data available. Run a benchmark to see quantitative results here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="done-overlay">
+    <div class="done-card">
+      <h2>Review Complete</h2>
+      <p>Your feedback has been saved. Go back to your Claude Code session and tell Claude you're done reviewing.</p>
+      <div class="btn-row">
+        <button onclick="closeDoneDialog()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- Embedded data (injected by generate_review.py) ----
+    const EMBEDDED_DATA = {"skill_name": "deskcomm-especialista", "runs": [{"id": "eval-agente-ia-advocacia-with_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "resposta.md", "type": "text", "content": "# Briefing pr\u00e9-implementa\u00e7\u00e3o: agente de IA para escrit\u00f3rio de advocacia trabalhista (qualifica\u00e7\u00e3o + urg\u00eancia + agenda com o advogado da \u00e1rea)\n\n## O que muda\n\nNenhuma linha de c\u00f3digo muda. Isto \u00e9 uma **configura\u00e7\u00e3o de tenant** \u2014 o mesmo caminho que\n`deskcomm-cliente-novo` percorre para cl\u00ednica, imobili\u00e1ria ou loja, s\u00f3 que para um nicho\n(\"advocacia trabalhista\") que ainda n\u00e3o tem pacote pronto em `references/nichos.md`. O\nresultado \u00e9: um agente de IA publicado que faz o diagn\u00f3stico do caso trabalhista, decide a\nurg\u00eancia pelas respostas da pr\u00f3pria conversa, e marca a \"primeira reuni\u00e3o\" j\u00e1 vinculada ao\nadvogado respons\u00e1vel pela \u00e1rea \u2014 usando mecanismo que o produto j\u00e1 tem (tipo de atendimento\ncom dono), n\u00e3o um recurso novo.\n\n## Doutrina aplic\u00e1vel (o que foi lido, n\u00e3o o que foi lembrado)\n\n- `CLAUDE.md` \u2014 Doutrina DIRC (antes de adicionar campo) e `custom_fields jsonb` com schema\n  declarativo em `pipeline.settings.fields`: \u00e9 o padr\u00e3o que resolve \"\u00e1rea do direito\" e\n  \"urg\u00eancia\" sem tabela nova.\n- `.agents/skills/deskcomm-cliente-novo/SKILL.md` + `references/triagem.md` +\n  `references/nichos.md` + `references/pela-tela.md` + `references/prompt-do-agente.md` \u2014 o\n  roteiro tela a tela e a anatomia do prompt. `nichos.md` **n\u00e3o tem** pacote de advocacia;\n  o mais pr\u00f3ximo \u00e9 \"Servi\u00e7os, ag\u00eancia ou obra\" (diagn\u00f3stico \u2192 or\u00e7amento \u2192 decis\u00e3o) e o\n  gen\u00e9rico \"Outro tipo de neg\u00f3cio\".\n- C\u00f3digo lido diretamente (porque `docs/current-state.md` \u00e9 retrato de julho/2026 e lista\n  \"templates por nicho\" como **n\u00e3o iniciado** \u2014 desatualizado; o mecanismo abaixo j\u00e1 existe\n  e est\u00e1 em uso):\n  - `lib/agenda/consulta.ts` (coluna `default_owner_user_id` por tipo de atendimento) e\n    `lib/mcp/tools/agendamento.ts` (`owner_user_id` opcional em `crm_book_appointment` /\n    `crm_find_and_book_appointment` / `crm_find_free_slots`) \u2014 \u00e9 como o produto j\u00e1 resolve\n    \"reuni\u00e3o com a pessoa certa\".\n  - `lib/mcp/tools/operacao.ts` (`crm_list_team_members`) \u2014 **n\u00e3o devolve nome nem e-mail**\n    \u00e0 IA, s\u00f3 `user_id`/papel. Consequ\u00eancia direta para o plano abaixo.\n  - `lib/mcp/tools/leads.ts` (`crm_update_lead` aceita `custom_fields` como\n    `z.record(z.string(), z.unknown())`) \u2014 \u00e9 o que grava \"\u00e1rea do direito\" e \"urg\u00eancia\".\n  - `lib/mcp/tools/escalacao.ts` / `handoff.ts` (`crm_request_human_handoff`,\n    `crm_close_human_case` etc.) \u2014 \u00e9 a fam\u00edlia de \"casos\" que a doutrina de sistema vivo\n    exige para caso urgente n\u00e3o esperar a agenda.\n  - `lib/leads/campos-do-funil.ts` + `lib/schemas/settings.ts`\n    (`customFieldSchema`/`CustomFieldDef`) \u2014 o schema declarativo de campo personalizado.\n\n## Estado atual relevante\n\n`docs/current-state.md` (retrato de 2026-07-29, ele mesmo avisa que apodrece) lista\n\"templates por nicho (cl\u00ednica, imobili\u00e1ria, infoproduto, servi\u00e7os)\" em \"Pr\u00f3ximo no\nroadmap \u2014 n\u00e3o iniciado\". Isso \u00e9 sobre o **pacote documentado** em `references/nichos.md`\n(que de fato n\u00e3o cobre advocacia), n\u00e3o sobre a capacidade do produto: a leitura de c\u00f3digo\nacima confirma que agenda com dono por tipo de atendimento, campos personalizados por\npipeline e abertura de caso humano j\u00e1 existem e s\u00e3o usados por outros nichos hoje. N\u00e3o h\u00e1\ngap de produto para cumprir o pedido \u2014 h\u00e1 um pacote de nicho que falta escrever, e isso \u00e9\njustamente o papel desta sess\u00e3o, feito como config, n\u00e3o como c\u00f3digo.\n\n## Padr\u00f5es a seguir\n\n**Agente de IA \u2014 contrato de nicho/prompt j\u00e1 estabelecido:**\n\n- Funil pr\u00f3prio no vocabul\u00e1rio do nicho (`crm_pipelines`/`crm_stages`, exatamente uma etapa\n  \"ganhou\" e uma \"perdeu\"), como os cinco pacotes existentes.\n- Diagn\u00f3stico antes da oferta, uma pergunta por vez \u2014 n\u00e3o pular para \"vamos marcar\".\n- **\u00c1rea do direito e urg\u00eancia viram `custom_fields` do lead**, n\u00e3o coluna nova (DIRC:\n  \"Calcular/Referenciar\" antes de \"Duplicar\" \u2014 a doutrina de schema do `CLAUDE.md` pro\u00edbe\n  exatamente o oposto disso). O agente pergunta na conversa e grava via `crm_update_lead`.\n- **A reuni\u00e3o com \"o advogado respons\u00e1vel pela \u00e1rea\" \u00e9 resolvida pelo *tipo de atendimento*,\n  n\u00e3o pelo agente escolhendo uma pessoa por nome.** `crm_list_team_members` deliberadamente\n  esconde nome/e-mail do modelo (coment\u00e1rio no c\u00f3digo: \"o agente precisa saber a quem\n  direcionar, n\u00e3o a identidade pessoal de cada um\"). O roteamento correto \u00e9: um tipo de\n  atendimento por \u00e1rea (ex.: \"Consulta \u2013 Rescis\u00e3o e Verbas\", \"Consulta \u2013 Acidente de\n  Trabalho e Insalubridade\", \"Consulta \u2013 Ass\u00e9dio Moral/Sexual\", \"Consulta \u2013 Horas\n  Extras/Equipara\u00e7\u00e3o\"), cada um com `default_owner_user_id` = o `user_id` do advogado\n  daquela \u00e1rea, cadastrado por quem administra a organiza\u00e7\u00e3o em **Agenda \u203a\n  Tipos de atendimento**. O agente l\u00ea `crm_list_event_types` (nome + descri\u00e7\u00e3o, nunca\n  inventa slug), casa a \u00e1rea diagnosticada com o `event_type_slug` certo, e chama\n  `crm_find_free_slots` / `crm_find_and_book_appointment` \u2014 o dono vem do tipo, n\u00e3o de o\n  agente \"saber\" quem \u00e9 o Dr. Fulano.\n- Casos graves (prazo prescricional pr\u00f3ximo, acidente em andamento, demiss\u00e3o iminente):\n  **n\u00e3o \u00e9 o agente que decide sozinho o que fazer com a urg\u00eancia al\u00e9m de agendar** \u2014 a\n  doutrina de sistema vivo (nenhuma demanda sem pr\u00f3ximo passo garantido) pede que urg\u00eancia\n  alta tamb\u00e9m abra um `crm_request_human_handoff`/caso, para a Central de Avisos e a fila\n  humana verem que existe algo que n\u00e3o pode esperar a data da reuni\u00e3o. Isso \u00e9 a capacidade\n  cr\u00edtica \"casos\" ligada no agente (`pela-tela.md` passo 7), explicada \u00e0 pessoa antes de\n  ligar \u2014 nunca ligada por padr\u00e3o sem ela entender o que abre.\n- Prompt segue o esqueleto de `references/prompt-do-agente.md`: identidade, diagn\u00f3stico,\n  decis\u00e3o, situa\u00e7\u00f5es, limites, estilo \u2014 **sem** repetir port\u00f5es que o motor j\u00e1 imp\u00f5e (n\u00e3o\n  inventar pre\u00e7o, n\u00e3o confirmar agenda sem ferramenta, apresentar-se como assistente), e\n  **sem** vocabul\u00e1rio interno (nunca \"lead\", \"etapa qualificando\", nomes de ferramenta).\n\n**Esqueleto preenchido (ponto de partida \u2014 a triagem real com o escrit\u00f3rio ainda decide os\ndetalhes: nome do escrit\u00f3rio, \u00e1reas que atendem de fato, se fazem s\u00f3 trabalhista ou mais):**\n\n```markdown\n# Quem voc\u00ea \u00e9\nVoc\u00ea atende quem procura {escrit\u00f3rio}, especializado em Direito do Trabalho. Seu nome \u00e9\n{nome}. Fale com clareza e sem juridiqu\u00eas; quem escreve pode estar preocupado com o emprego\nou j\u00e1 ter sa\u00eddo dele.\n\n# O que voc\u00ea faz primeiro\nAntes de oferecer qualquer coisa, entenda, uma pergunta por vez:\n- Qual \u00e9 a situa\u00e7\u00e3o, em poucas palavras (demiss\u00e3o, horas extras n\u00e3o pagas, acidente de\n  trabalho, ass\u00e9dio, outro)?\n- Quando aconteceu ou quando terminou o v\u00ednculo (m\u00eas/ano basta)?\n- J\u00e1 existe processo aberto sobre isso, ou \u00e9 a primeira vez que procura orienta\u00e7\u00e3o?\n- Tem documentos \u00e0 m\u00e3o (carteira assinada, rescis\u00e3o, atestados, mensagens, testemunhas)?\n\n# Como voc\u00ea decide o pr\u00f3ximo passo\n- Situa\u00e7\u00e3o identificada e n\u00e3o \u00e9 urgente: ofere\u00e7a hor\u00e1rio de consulta inicial com o\n  advogado respons\u00e1vel por aquela \u00e1rea e confirme nome completo e telefone.\n- Prazo apertado (fato h\u00e1 perto de 2 anos, ou v\u00ednculo encerrado h\u00e1 mais de 2 anos), acidente\n  de trabalho em andamento, ou demiss\u00e3o nos \u00faltimos dias: ofere\u00e7a o hor\u00e1rio mais pr\u00f3ximo\n  dispon\u00edvel E chame uma pessoa da equipe agora \u2014 isso n\u00e3o espera a data marcada.\n- Fora da \u00e1rea trabalhista (c\u00edvel, criminal, fam\u00edlia): diga que o escrit\u00f3rio n\u00e3o atua nisso\n  e encerre com educa\u00e7\u00e3o.\n\n# Situa\u00e7\u00f5es\n- \"Quanto eu tenho direito a receber?\": n\u00e3o estime valor nenhum \u2014 isso \u00e9 an\u00e1lise de caso;\n  diga que o advogado calcula na consulta com os documentos.\n- \"Vou pensar\": pergunte o que falta para decidir e ofere\u00e7a registrar o hor\u00e1rio sem\n  compromisso de pagamento (a consulta inicial \u00e9 sempre o primeiro passo).\n- Pergunta sobre prazo (prescri\u00e7\u00e3o): n\u00e3o afirme prazo espec\u00edfico \u2014 diga que quanto antes\n  melhor e ofere\u00e7a o hor\u00e1rio mais pr\u00f3ximo.\n\n# Limites\nVoc\u00ea n\u00e3o d\u00e1 parecer jur\u00eddico, n\u00e3o estima indeniza\u00e7\u00e3o ou verba, n\u00e3o promete resultado de\nprocesso, n\u00e3o confirma se \"tem direito\" a nada. Chama uma pessoa da equipe quando: urg\u00eancia\nde prazo, acidente de trabalho em andamento, amea\u00e7a ou situa\u00e7\u00e3o de risco, ou pedido\nexpl\u00edcito de falar com um advogado.\n\n# Estilo\nMensagens curtas, uma pergunta por vez, sem termos jur\u00eddicos sem explica\u00e7\u00e3o. Emoji: n\u00e3o.\n```\n\n## N\u00facleo, extens\u00e3o, ambos ou infraestrutura\n\nNenhum dos quatro, no sentido da pergunta de `docs/doctrine/extensoes.md` (\"se nenhuma\norganiza\u00e7\u00e3o ativar isto, a opera\u00e7\u00e3o comum continua inteira?\") \u2014 porque **n\u00e3o h\u00e1 capacidade\nnova sendo instalada**. \u00c9 dado de configura\u00e7\u00e3o de UM tenant (funil, tipos de atendimento,\ncampos personalizados, prompt, follow-ups), gravado pelas telas que j\u00e1 existem e usadas\npor qualquer organiza\u00e7\u00e3o hoje. N\u00e3o compete com n\u00facleo nem com extens\u00e3o \u2014 \u00e9 o mesmo\n\"pacote de nicho\" que cl\u00ednica/imobili\u00e1ria/loja j\u00e1 usam, s\u00f3 que escrito para advocacia. Se,\nao aplicar, aparecer uma necessidade real que o produto n\u00e3o cobre (ver risco de\nconfidencialidade abaixo), **a\u00ed sim** vira uma decis\u00e3o de n\u00facleo vs. extens\u00e3o \u2014 n\u00e3o hoje.\n\n## Riscos de compatibilidade self-host/open-source\n\n- **Sem migration.** \u00c1rea do direito e urg\u00eancia s\u00e3o `custom_fields` em\n  `pipeline.settings.fields` (jsonb j\u00e1 existente); tipo de atendimento com dono usa coluna\n  (`default_owner_user_id`) que j\u00e1 est\u00e1 no schema e j\u00e1 \u00e9 exposta pela tela de Agenda. Nada\n  aqui pede `ALTER TABLE`, ent\u00e3o nada disto entra no ap\u00eandice do `baseline.sql`.\n- **Sem env var nova, sem tela nova, sem rota nova** \u2014 logo nenhum item de packaging,\n  navega\u00e7\u00e3o (`lib/navigation/catalogo.ts`) ou `.changes/` se aplica. Isto \u00e9 dado de\n  organiza\u00e7\u00e3o, n\u00e3o comportamento de produto.\n- **Confidencialidade entre \u00e1reas n\u00e3o \u00e9 resolvida pelo produto hoje.** `CLAUDE.md` \u00e9\n  expl\u00edcito: `user_pipeline_access` (permiss\u00e3o por pipeline) **n\u00e3o entra no MVP**. Isso\n  significa que qualquer `agent`/`manager` com acesso ao funil \"Consultas\" enxerga **todos**\n  os leads, de qualquer \u00e1rea \u2014 n\u00e3o h\u00e1 como restringir o advogado trabalhista de acidentes a\n  ver s\u00f3 os casos de acidente. Para um escrit\u00f3rio de advocacia isso \u00e9 uma quest\u00e3o real de\n  sigilo profissional/organiza\u00e7\u00e3o interna, n\u00e3o s\u00f3 prefer\u00eancia de UI. **Isto deve ser dito\n  ao cliente antes de configurar**, n\u00e3o assumido como resolvido; se for bloqueante, \u00e9\n  quest\u00e3o para levar ao dono do produto (issue), n\u00e3o para contornar com SQL ou RLS custom\n  fora de migration.\n- **Dados sens\u00edveis (LGPD).** Situa\u00e7\u00f5es como acidente de trabalho podem envolver dado de\n  sa\u00fade \u2014 categoria sens\u00edvel sob a LGPD. O prompt acima j\u00e1 limita o que o agente pergunta\n  ao m\u00ednimo de triagem (n\u00e3o pede laudo, n\u00e3o pede detalhe m\u00e9dico), e a base de conhecimento/\n  mem\u00f3ria da organiza\u00e7\u00e3o deve conter s\u00f3 pol\u00edtica do escrit\u00f3rio (\u00e1reas atendidas, hor\u00e1rio),\n  nunca informa\u00e7\u00e3o de caso de um cliente espec\u00edfico. Cascade de anonimiza\u00e7\u00e3o\n  (`Cliente Anonimizado #N`) do `CLAUDE.md` se aplica normalmente se o titular pedir remo\u00e7\u00e3o.\n- **`crm_list_team_members` n\u00e3o devolve nome.** Isto n\u00e3o \u00e9 bug a contornar \u2014 \u00e9 decis\u00e3o de\n  produto. O nome do advogado respons\u00e1vel chega ao cliente pelo **nome do tipo de\n  atendimento** ou pela mensagem final de confirma\u00e7\u00e3o (texto fixo/gerado, n\u00e3o vocabul\u00e1rio\n  interno), nunca por o agente \"descobrir\" identidade pela lista de time.\n- **Janela de envio e anti-banimento** seguem a doutrina padr\u00e3o (7h-22h, domingo liberado\n  por default) \u2014 um escrit\u00f3rio de advocacia pode querer restringir a domingo/feriado; isso\n  \u00e9 knob por canal, n\u00e3o pede c\u00f3digo.\n\n## Plano de implementa\u00e7\u00e3o\n\nOrdem que o schema imp\u00f5e (`references/pela-tela.md`), com o que muda para este nicho:\n\n1. **Equipe** \u2014 convidar os advogados respons\u00e1veis por cada \u00e1rea, com papel `agent` (ou\n   `manager`, se tamb\u00e9m precisarem gerenciar funil/relat\u00f3rios). \u00c9 pr\u00e9-requisito do passo 5:\n   sem `user_id` de cada advogado, n\u00e3o h\u00e1 a quem apontar `default_owner_user_id`.\n2. **Conex\u00f5es** \u2014 n\u00famero de WhatsApp do escrit\u00f3rio com status WORKING.\n3. **IA \u203a Credenciais** \u2014 chave do provedor de IA escolhido + chave OpenAI (\u00e1udio e base de\n   conhecimento), validadas.\n4. **IA \u203a Provedores** \u2014 modelo de atendimento (usa ferramentas) e modelo do classificador/\n   follow-up (barato).\n5. **Configura\u00e7\u00f5es \u203a Funis** \u2014 criar funil \"Consultas\" (Novo contato \u2192 J\u00e1 respondi \u2192\n   Entendendo o caso \u2192 Quer marcar consulta \u2192 Reuni\u00e3o agendada \u2192 Consulta realizada \u2192\n   N\u00e3o vai marcar, com \"Reuni\u00e3o agendada\"\u2192\"Consulta realizada\" mapeadas a exatamente um\n   \"ganhou\" e \"N\u00e3o vai marcar\" a \"perdeu\"); vocabul\u00e1rio (cliente = *cliente*, neg\u00f3cio =\n   *consulta*); **campos personalizados**: \"\u00c1rea do direito\" (select: Rescis\u00e3o/Verbas,\n   Horas Extras, Acidente de Trabalho, Ass\u00e9dio, Equipara\u00e7\u00e3o Salarial, Outro) e \"Urg\u00eancia\"\n   (select: Alta, M\u00e9dia, Baixa).\n6. **Agenda \u203a Tipos de atendimento** \u2014 um tipo por \u00e1rea (nome j\u00e1 leg\u00edvel para o cliente\n   final, ex. \"Consulta \u2013 Rescis\u00e3o e Verbas Trabalhistas\"), dura\u00e7\u00e3o (ex. 45 min), local\n   (presencial ou Google Meet), `owner` = o advogado daquela \u00e1rea.\n7. **IA \u203a Conhecimento** \u2014 FAQ institucional (\u00e1reas atendidas, forma de cobran\u00e7a da\n   consulta se houver, endere\u00e7o, documentos que o cliente deve levar) \u2014 nunca dado de caso.\n8. **IA \u203a Follow-ups** \u2014 sil\u00eancio 24h ap\u00f3s \"Entendendo o caso\"; no-show de reuni\u00e3o marcada\n   (gatilho \"falta a compromisso\").\n9. **IA \u203a Agentes** \u2014 criar o agente com o prompt do esqueleto acima; funis: \"Consultas\";\n   materiais: a FAQ; follow-ups armados; capacidades: pacote *vender* (agenda, conhecimento,\n   notas, funil) + capacidade cr\u00edtica **casos** ligada e explicada ao escrit\u00f3rio (\u00e9 o que\n   torna \"urg\u00eancia alta\" acion\u00e1vel de verdade, n\u00e3o s\u00f3 um r\u00f3tulo no lead); palavras de\n   passagem para humano incluindo \"quero falar com o advogado\", \"\u00e9 urgente\".\n10. **Testar** \u2014 rodar o roteiro: \"fui demitido sem justa causa semana passada\", \"trabalhei\n    2 anos sem carteira assinada e sa\u00ed h\u00e1 1 ano e meio\", \"sofri um acidente na empresa e\n    estou afastado\", \"quanto eu tenho direito a receber?\", \"quero falar direto com o\n    advogado\". Conferir: pergunta de diagn\u00f3stico correta, urg\u00eancia identificada nos casos 1\n    e 3 (abre caso, n\u00e3o s\u00f3 agenda), tipo de atendimento certo oferecido, nenhuma estimativa\n    de valor.\n11. **Publicar.**\n12. **IA \u203a Mem\u00f3ria** \u2014 regras da casa: \u00e1reas que n\u00e3o atendem, hor\u00e1rio de atendimento,\n    \"sigilo profissional: nunca pe\u00e7a documento sens\u00edvel por aqui, isso \u00e9 feito na consulta\".\n13. **Roteador** \u2014 s\u00f3 necess\u00e1rio se o escrit\u00f3rio quiser separar \"triagem de novo cliente\"\n    de \"cliente j\u00e1 em processo\" (suporte processual) no mesmo n\u00famero; para um agente \u00fanico\n    de capta\u00e7\u00e3o, n\u00e3o \u00e9 preciso.\n\nRegistrar tudo em `pacote-<escritorio>.md` (passo 1 de `deskcomm-cliente-novo`), incluindo\nexplicitamente o risco de confidencialidade entre \u00e1reas (se\u00e7\u00e3o acima) como item que o\nescrit\u00f3rio precisa aceitar ou escalar antes de publicar.\n"}], "grading": {"expectations": [{"text": "Reconhece que advocacia n\u00e3o est\u00e1 entre os nichos j\u00e1 documentados no CLAUDE.md em vez de tratar como nicho j\u00e1 pronto", "passed": true, "evidence": "\"nichos.md **n\u00e3o tem** pacote de advocacia; o mais pr\u00f3ximo \u00e9 'Servi\u00e7os, ag\u00eancia ou obra' ... e o gen\u00e9rico 'Outro tipo de neg\u00f3cio'\" \u2014 nomeia a lacuna explicitamente."}, {"text": "Aponta explicitamente para o padr\u00e3o de agente/roteador/follow-up por nicho (deskcomm-cliente-novo/deskcomm-prompt)", "passed": true, "evidence": "Cita `.agents/skills/deskcomm-cliente-novo/SKILL.md` + `references/triagem.md`/`nichos.md`/`pela-tela.md`/`prompt-do-agente.md` na se\u00e7\u00e3o 'Doutrina aplic\u00e1vel', e usa o roteiro `pela-tela.md` no plano de implementa\u00e7\u00e3o."}, {"text": "Menciona LGPD e/ou confidencialidade ao lidar com dado de caso jur\u00eddico", "passed": true, "evidence": "Se\u00e7\u00e3o 'Riscos de compatibilidade' tem item dedicado 'Dados sens\u00edveis (LGPD)' citando categoria sens\u00edvel, cascade de anonimiza\u00e7\u00e3o e limite do que o agente deve perguntar."}, {"text": "Produz a resposta como briefing estruturado, n\u00e3o como how-to solto", "passed": true, "evidence": "Segue exatamente as 7 se\u00e7\u00f5es do template da skill: O que muda / Doutrina aplic\u00e1vel / Estado atual relevante / Padr\u00f5es a seguir / N\u00facleo-extens\u00e3o / Riscos de compatibilidade / Plano de implementa\u00e7\u00e3o."}, {"text": "N\u00e3o cita caminho de arquivo ou nome de tabela/skill que n\u00e3o existe no reposit\u00f3rio", "passed": true, "evidence": "Todos os caminhos citados (lib/agenda/consulta.ts, lib/mcp/tools/agendamento.ts, lib/mcp/tools/operacao.ts, lib/mcp/tools/leads.ts, lib/mcp/tools/escalacao.ts, lib/leads/campos-do-funil.ts) s\u00e3o espec\u00edficos e consistentes com uma leitura real do c\u00f3digo, sem contradi\u00e7\u00e3o interna."}], "summary": {"passed": 5, "failed": 0, "total": 5, "pass_rate": 1.0}, "claims": [{"claim": "user_pipeline_access n\u00e3o est\u00e1 no MVP, logo nenhum advogado tem visibilidade restrita por \u00e1rea dentro do mesmo funil", "type": "factual", "verified": true, "evidence": "Consistente com a Doutrina Auth & RBAC do CLAUDE.md: 'Permiss\u00e3o por pipeline (user_pipeline_access) N\u00c3O entra no MVP'."}], "eval_feedback": {"overall": "Assertions discriminaram bem aqui: a diferen\u00e7a real (achado de risco de sigilo/confidencialidade entre \u00e1reas, que a baseline sem skill n\u00e3o menciona) n\u00e3o est\u00e1 coberta por nenhuma assertion expl\u00edcita \u2014 foi uma qualidade extra observada, n\u00e3o medida. Vale adicionar uma assertion futura tipo 'sinaliza risco de visibilidade/RBAC entre usu\u00e1rios do mesmo tenant quando a tarefa envolve dado sens\u00edvel compartilhado' para capturar esse tipo de achado sistematicamente."}}}, {"id": "eval-agente-ia-advocacia-without_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "resposta.md", "type": "text", "content": "# Agente de IA para escrit\u00f3rio de advocacia trabalhista \u2014 como montar no padr\u00e3o DeskcommCRM\n\nIsto \u00e9 um trabalho de **configura\u00e7\u00e3o** (pipeline, agente, roteador, agenda), n\u00e3o de c\u00f3digo: n\u00e3o\nprecisa de migration nem de PR. Segue a mesma receita que o produto usa para qualquer nicho\n(\"e-commerce, cl\u00ednica, imobili\u00e1ria, infoproduto, servi\u00e7os\" \u2014 o escrit\u00f3rio de advocacia entra como\n**servi\u00e7os**), feita pela tela do CRM. Vou percorrer na ordem em que as pe\u00e7as dependem uma da\noutra: funil \u2192 base de conhecimento \u2192 agente \u2192 detec\u00e7\u00e3o de urg\u00eancia \u2192 agendamento com o advogado\ncerto \u2192 guardrails espec\u00edficos do seu nicho \u2192 LGPD/\u00e9tica. No fim, o que testar antes de considerar\npronto.\n\n---\n\n## 0. O modelo mental: uma \"unidade\" de agente, dois pap\u00e9is internos\n\nO DeskcommCRM n\u00e3o deixa o mesmo modelo **falar** com o lead e **operar** o CRM no mesmo turno \u2014\nisso vaza vocabul\u00e1rio interno pro cliente (\"vou mover seu lead pra etapa qualifying\") e faz o\nagente prometer coisa que n\u00e3o executa. Por baixo do cap\u00f4, o que voc\u00ea configura como \"1 agente\" na\ntela roda em dois pap\u00e9is, sempre nessa ordem:\n\n1. **Conversador** \u2014 fala com o lead, s\u00f3 l\u00ea contexto (hist\u00f3rico, base de conhecimento, notas do\n   lead). N\u00e3o sabe que existe um CRM por tr\u00e1s.\n2. **Operador** \u2014 roda *depois* que a resposta j\u00e1 foi enviada, olha o que o Conversador declarou\n   (ex.: \"combinei de agendar a consulta\") e s\u00f3 ent\u00e3o chama as ferramentas de escrita: mover o\n   lead de etapa, salvar nota, **marcar o compromisso na agenda**, abrir caso para humano.\n\nNa pr\u00e1tica isso significa: quando voc\u00ea escrever o prompt, escreva como se estivesse **treinando\numa pessoa de triagem que atende telefone**, n\u00e3o como se estivesse ensinando a operar um sistema.\nO agendamento em si (achar hor\u00e1rio livre, reservar, gerar o link do Meet) \u00e9 tratado como\nconsequ\u00eancia do que foi combinado na conversa \u2014 voc\u00ea n\u00e3o precisa (e n\u00e3o deve) instruir o modelo a\n\"chamar a ferramenta X\"; ele decide falar, e o runtime decide operar.\n\n---\n\n## 1. Funil (pipeline) \u2014 vocabul\u00e1rio e etapas do escrit\u00f3rio\n\nEm **Configura\u00e7\u00f5es \u203a Pipelines** (`/app/settings/tenant/pipelines`), crie (ou adapte) um pipeline\npr\u00f3prio em vez de reaproveitar o de vendas gen\u00e9rico \u2014 cada pipeline tem `vocabulary` (renomeia\nlead/deal/won/lost) e `custom_fields` declarativos. Sugest\u00e3o para um escrit\u00f3rio trabalhista:\n\n| Vocabul\u00e1rio padr\u00e3o | Renomeie para |\n|---|---|\n| lead | Consulente |\n| deal | Caso |\n| won | Contratado |\n| lost | N\u00e3o avan\u00e7ou |\n\n**Etapas (stages):**\n\n1. Novo contato\n2. Triagem (qualifica\u00e7\u00e3o) \u2014 aqui a IA faz a maior parte do trabalho\n3. Consulta agendada\n4. Consulta realizada\n5. Contratado / N\u00e3o avan\u00e7ou\n\nMarque a etapa **Triagem** com `requires_human = true` sempre que a IA classificar o caso como\nurgente (ver \u00a73) \u2014 essa \u00e9 uma coluna real de `crm_stages`, n\u00e3o gambiarra: quando um lead entra\nnuma etapa com essa flag, o handoff pra fila humana dispara automaticamente (Sub-PRD 05, gatilho\nG4), independente do que o modelo \"decidiu\" fazer.\n\n**Campos customizados** (`pipeline.settings.fields`, viram Zod din\u00e2mico e aparecem na UI do\nlead) \u2014 pela doutrina DIRC, s\u00f3 crie campo que n\u00e3o \u00e9 FK e n\u00e3o \u00e9 calcul\u00e1vel:\n\n- `area_do_direito` (select: \"Rescis\u00e3o/verbas\", \"Acidente de trabalho\", \"Ass\u00e9dio moral/sexual\",\n  \"Equipara\u00e7\u00e3o salarial\", \"Horas extras\", \"Outro\") \u2014 vocabul\u00e1rio aberto, ent\u00e3o **sem** CHECK\n  constraint r\u00edgido no banco (a doutrina do projeto pro\u00edbe CHECK em coluna de vocabul\u00e1rio que pode\n  ganhar valor novo depois \u2014 aqui isso \u00e9 `custom_fields jsonb`, ent\u00e3o nem se aplica: \u00e9 s\u00f3 schema\n  Zod do lado do produto).\n- `urgencia` (select: \"Baixa\", \"M\u00e9dia\", \"Alta \u2014 risco de prazo/seguran\u00e7a\").\n- `prazo_prescricional_estimado` (date, opcional \u2014 quando o pr\u00f3prio consulente souber a data da\n  demiss\u00e3o, a IA pode calcular \"2 anos a partir da rescis\u00e3o, 5 anos anteriores\" e sugerir a data,\n  mas **sem afirmar como certeza jur\u00eddica** \u2014 ver guardrails).\n- `motivo_do_contato` (text curto, livre).\n\n**N\u00e3o** crie `advogado_responsavel` como campo de texto \u2014 isso \u00e9 o anti-pattern n\u00ba 1 da doutrina\n(\"string que deveria ser FK\"). O lead j\u00e1 tem `owner_user_id` (FK real para o usu\u00e1rio) \u2014 \u00e9 esse\ncampo que representa \"de quem \u00e9 este caso\", e \u00e9 ele que vai decidir a agenda de quem mostrar no\nagendamento (\u00a74).\n\n---\n\n## 2. Base de conhecimento (RAG) \u2014 o que o agente pode citar\n\nEm **IA \u203a Conhecimento** (`/app/ai/knowledge`), suba as fontes que o Conversador usa por RAG\n(isolado por `organization_id`, com cita\u00e7\u00e3o em `messages.metadata.citations[]` \u2014 nunca aparece\ncrua pro cliente, \u00e9 debug interno):\n\n- **FAQ manual**: \"Como funciona a primeira consulta\", \"voc\u00eas cobram pela consulta inicial?\",\n  \"quais documentos levar\" (CTPS, rescis\u00e3o, holerites, exames, testemunhas), \"quanto tempo demora\n  um processo trabalhista\", honor\u00e1rios (percentual de \u00eaxito x fixo \u2014 seja expl\u00edcito, isso evita o\n  agente inventar n\u00famero).\n- **Pol\u00edtica/institucional**: \u00e1reas que o escrit\u00f3rio atende de fato (n\u00e3o deixe o agente qualificar\n  para uma \u00e1rea que ningu\u00e9m do escrit\u00f3rio cobre \u2014 isso \u00e9 o guardrail \"nunca falar de coisa fora do\n  cat\u00e1logo\", G3/\u00a73.10 do Sub-PRD 05, adaptado de \"produto\" para \"\u00e1rea de atua\u00e7\u00e3o\").\n- **Conversas resolvidas como few-shot**: aqui eu recomendo **n\u00e3o ativar** essa fonte, ou ativar\n  com anonimiza\u00e7\u00e3o muito estrita. Conversa de triagem jur\u00eddica carrega detalhe sens\u00edvel (sa\u00fade,\n  situa\u00e7\u00e3o familiar, valores) e o escrit\u00f3rio tem **sigilo profissional** (Estatuto da OAB, art. 34,\n  VII) \u2014 n\u00e3o \u00e9 o mesmo risco de \"conversa resolvida de um e-commerce sobre rastreio de pedido\".\n\nEdi\u00e7\u00e3o de FAQ entra no bot em at\u00e9 ~30s (reindexa\u00e7\u00e3o incremental); n\u00e3o precisa reiniciar nada.\n\n---\n\n## 3. O agente de IA em si\n\nEm **IA \u203a Agentes \u203a Novo** (`/app/ai/agents/new`):\n\n- **Modelo**: deixe o default do Gateway (`anthropic/claude-sonnet-4-6`) para a conversa\n  principal; a classifica\u00e7\u00e3o auxiliar (se voc\u00ea usar Roteador \u2014 \u00a75) roda em Haiku, mais barato.\n- **Modo de opera\u00e7\u00e3o**: comece em **\"Assistido: revisar antes de enviar\"** nas primeiras semanas\n  \u2014 cada resposta espera aprova\u00e7\u00e3o humana antes de sair \u2014 e migre para autom\u00e1tico s\u00f3 depois de\n  ver o agente performando bem em casos reais. Para um escrit\u00f3rio de advocacia, isso importa mais\n  do que em e-commerce: uma resposta errada aqui pode ter implica\u00e7\u00e3o \u00e9tica/regulat\u00f3ria, n\u00e3o s\u00f3\n  comercial.\n- **Capacidades (tools)**: use os pacotes por jornada em vez do modo avan\u00e7ado tool-a-tool. Para\n  este caso, ligue:\n  - **\"Atender e responder\"** \u2014 ler hist\u00f3rico, responder com contexto.\n  - **\"Vender e mover o funil\"** \u2014 mover o Consulente pelas etapas do funil conforme qualifica.\n  - **\"N\u00e3o perder o cliente\"** \u2014 agenda retorno autom\u00e1tico se o lead sumir no meio da triagem\n    (ningu\u00e9m que perguntou sobre demiss\u00e3o sem justa causa pode ficar sem resposta).\n  - **\"Passar para um humano\"** \u2014 essencial: \u00e9 o pacote que d\u00e1 ao agente a capacidade de abrir caso\n    humano com resumo, para os gatilhos de urg\u00eancia/incerteza.\n  Deixe **\"Organizar a opera\u00e7\u00e3o\"** e **\"Aprender e evoluir\"** desligados no in\u00edcio \u2014 menos\n  superf\u00edcie, menos risco, mais f\u00e1cil de auditar.\n\n### System prompt (rascunho para colar e ajustar)\n\n```\nVoc\u00ea \u00e9 a triagem inicial do escrit\u00f3rio [Nome do Escrit\u00f3rio], especializado em Direito do\nTrabalho. Voc\u00ea conversa com pessoas que caem no WhatsApp buscando orienta\u00e7\u00e3o sobre uma\nsitua\u00e7\u00e3o de trabalho (demiss\u00e3o, acidente, ass\u00e9dio, sal\u00e1rio, horas extras, etc.).\n\nSeu objetivo em cada conversa:\n1. Entender, em linguagem simples, o que aconteceu (o que a pessoa vivenciou no trabalho,\n   quando, se ainda est\u00e1 empregada).\n2. Nunca dar parecer jur\u00eddico, nunca afirmar se a pessoa \"tem direito\" a algo, nunca estimar\n   valor de causa ou chance de vit\u00f3ria. Isso \u00e9 decis\u00e3o do advogado, sempre. Se perguntarem,\n   diga que o advogado avalia isso na consulta.\n3. Identificar se o caso tem sinal de urg\u00eancia: prazo prescricional pr\u00f3ximo (mais de 2 anos\n   desde a rescis\u00e3o OU perto disso), situa\u00e7\u00e3o em andamento (ass\u00e9dio ocorrendo agora, acidente\n   recente e grave, amea\u00e7a), ou pedido expl\u00edcito de urg\u00eancia da pessoa. Quando notar isso,\n   diga que vai priorizar o encaminhamento \u2014 n\u00e3o prometa que \"algu\u00e9m liga hoje\" a menos que\n   isso realmente aconte\u00e7a.\n4. Depois de entender o caso, oferecer para marcar a primeira consulta com o advogado.\n   Pergunte disponibilidade da pessoa (dias/hor\u00e1rios) antes de sugerir hor\u00e1rio.\n5. Nunca revele que existe um sistema, um CRM, \"etapas\" ou \"cadastro\" por tr\u00e1s \u2014 fale como\n   uma pessoa da recep\u00e7\u00e3o do escrit\u00f3rio falaria.\n6. Se a pessoa relatar risco imediato (viol\u00eancia, amea\u00e7a grave, situa\u00e7\u00e3o de sa\u00fade urgente),\n   priorize acolhimento e oriente a buscar ajuda imediata (192/190 se for emerg\u00eancia de\n   sa\u00fade/seguran\u00e7a) al\u00e9m de encaminhar ao escrit\u00f3rio.\n7. Se a pessoa pedir para falar com um humano, ou voc\u00ea n\u00e3o tiver certeza de como responder,\n   passe para um atendente humano imediatamente \u2014 nunca invente resposta.\n\nTom: acolhedor, direto, sem juridiqu\u00eas. A pessoa que fala com voc\u00ea geralmente est\u00e1 em\nsitua\u00e7\u00e3o de estresse (perdeu o emprego, est\u00e1 sofrendo ass\u00e9dio).\n```\n\nAjuste nome do escrit\u00f3rio, \u00e1reas realmente atendidas e o texto de honor\u00e1rios de acordo com a\npol\u00edtica real \u2014 o agente s\u00f3 deve afirmar o que est\u00e1 na base de conhecimento (\u00a72), n\u00e3o o que est\u00e1\ns\u00f3 no prompt solto.\n\n---\n\n## 4. Detec\u00e7\u00e3o de urg\u00eancia \u2014 o que j\u00e1 existe e o que voc\u00ea precisa adicionar\n\nO runtime tem um detector determin\u00edstico de \"sinal de urg\u00eancia\" (`lib/agent-engine/guardrails/\nsinal-de-urgencia.ts`) que roda sem custo de LLM \u2014 mas o vocabul\u00e1rio dele \u00e9 gen\u00e9rico e f\u00edsico\n(\"inc\u00eandio\", \"sem freio\", \"sangrando\", \"choque el\u00e9trico\"): serve para dar prioridade de alerta\nquando uma mensagem fica represada, **n\u00e3o \u00e9 jur\u00eddico** e n\u00e3o vai reconhecer \"meu prazo vence em 2\nsemanas\" ou \"meu chefe est\u00e1 me amea\u00e7ando\" como urgente.\n\nPara o seu caso, a urg\u00eancia jur\u00eddica precisa vir de **duas camadas complementares**, e n\u00e3o confiar\ns\u00f3 no detector gen\u00e9rico:\n\n1. **O pr\u00f3prio prompt** classificando e preenchendo o campo `urgencia` do lead (\u00a71) \u2014 \u00e9 o modelo\n   que sabe interpretar \"fui demitido em 2023\" como prazo apertado, um detector de palavra-chave\n   n\u00e3o sabe fazer conta de prescri\u00e7\u00e3o.\n2. **A etapa `requires_human=true`** (\u00a71) como rede de seguran\u00e7a: quando o lead entra qualificado\n   como urgente, o sistema abre a fila humana e notifica os atendentes online por Realtime \u2014 isso\n   n\u00e3o depende do modelo \"lembrar\" de escalar, \u00e9 imposto pelo runtime na entrada do est\u00e1gio.\n\nIsso \u00e9 mais confi\u00e1vel do que pedir ao modelo para \"chamar uma ferramenta de urg\u00eancia\": o\ncomportamento correto (mover para a etapa certa \u2192 dispara aviso) j\u00e1 \u00e9 tratado como consequ\u00eancia\nestrutural, n\u00e3o como instru\u00e7\u00e3o de prompt que pode ser esquecida.\n\n---\n\n## 5. Agendar com \"o advogado respons\u00e1vel pela \u00e1rea\"\n\nO CRM j\u00e1 exp\u00f5e um conjunto de ferramentas de agenda por MCP (`crm_list_event_types`,\n`crm_find_free_slots`, `crm_find_and_book_appointment`, `crm_confirm_appointment`, etc. \u2014 em\n`lib/mcp/tools/agendamento.ts`) que o papel Operador usa depois da conversa. Sua parte \u00e9 configurar\nos dois lados disso em **Configura\u00e7\u00f5es \u203a Agenda** (`/app/settings/tenant/agenda`):\n\n1. **Cada advogado precisa ter agenda pr\u00f3pria** (conectada ao Google Calendar, para o hor\u00e1rio\n   ofertado bater com a agenda real \u2014 o CRM sincroniza ocupa\u00e7\u00e3o e escreve o evento/gera o link do\n   Meet quando marca).\n2. **Crie um \"tipo de atendimento\"** (event type) por linha de triagem, ex.: \"Consulta inicial \u2014\n   Trabalhista\". Se o escrit\u00f3rio tem s\u00f3 um advogado trabalhista, o tipo de atendimento j\u00e1 resolve\n   \"com quem\" \u2014 n\u00e3o precisa de nada al\u00e9m disso.\n3. **Se houver mais de um advogado na \u00e1rea** (ex.: um focado em rescis\u00e3o/verbas e outro em\n   acidente/ass\u00e9dio), duas op\u00e7\u00f5es, dependendo de como voc\u00ea quer decidir \"quem atende\":\n   - **Round-robin simples**: um \u00fanico tipo de atendimento sem dono fixo \u2014 o agendamento cai em\n     quem tiver hor\u00e1rio livre entre os donos de agenda daquela fun\u00e7\u00e3o. Simples, mas n\u00e3o segmenta\n     por subespecialidade.\n   - **Roteamento por especialidade**: se a qualifica\u00e7\u00e3o (`area_do_direito`) j\u00e1 decidiu a\n     subespecialidade, grave o `owner_user_id` do lead (\u00a71) para o advogado certo *antes* de\n     oferecer hor\u00e1rio, e restrinja a busca de hor\u00e1rio a ele. Isso \u00e9 o que a ferramenta de agenda\n     j\u00e1 aceita (`owner_user_id` opcional no `crm_find_and_book_appointment`) \u2014 n\u00e3o exige feature\n     nova, s\u00f3 o dado (`owner_user_id` do lead) j\u00e1 estar preenchido quando o agendamento acontece.\n     Para isso funcionar de forma confi\u00e1vel (o modelo n\u00e3o decidir por conta pr\u00f3pria \"quem \u00e9 o\n     respons\u00e1vel\"), a atribui\u00e7\u00e3o do `owner_user_id` deve vir de uma regra determin\u00edstica \u2014 regra\n     de roteamento por etapa/tag, n\u00e3o do LLM adivinhando.\n4. Marque o tipo de atendimento como \"precisa confirma\u00e7\u00e3o\" se o escrit\u00f3rio quiser que um humano\n   confirme antes de tratar o hor\u00e1rio como fechado \u2014 o agente sempre vai dizer \"separei o hor\u00e1rio,\n   a equipe confirma\" nesse caso, nunca \"est\u00e1 confirmado\", ent\u00e3o n\u00e3o h\u00e1 risco de promessa que a\n   opera\u00e7\u00e3o n\u00e3o cumpre.\n\nSe o escrit\u00f3rio atender **mais de uma \u00e1rea do direito** (n\u00e3o s\u00f3 trabalhista) no mesmo n\u00famero de\nWhatsApp, use o **Roteador de Inten\u00e7\u00e3o** (`IA \u203a Roteadores`, tabelas `ai_routers`/\n`ai_router_members`) para direcionar a conversa a agentes diferentes por \u00e1rea antes mesmo da\nqualifica\u00e7\u00e3o \u2014 cada agente com seu pr\u00f3prio prompt, conhecimento e tipo de atendimento padr\u00e3o. Para\num escrit\u00f3rio s\u00f3 trabalhista, isso \u00e9 dispens\u00e1vel: um agente e um pipeline bastam.\n\n---\n\n## 6. Guardrails \u2014 ajuste o que \u00e9 gen\u00e9rico, n\u00e3o copie de outro nicho\n\nO produto vem com guardrails padr\u00e3o pensados para e-commerce (`ai_agents.guardrails` jsonb),\nincluindo um que **escala automaticamente sempre que o cliente menciona \"jur\u00eddico\" ou\n\"advogado\"** \u2014 faz sentido numa loja (\u00e9 sinal de reclama\u00e7\u00e3o grave), mas \u00e9 **contraproducente**\naqui: seu neg\u00f3cio inteiro \u00e9 jur\u00eddico, ent\u00e3o esse guardrail, se copiado sem revis\u00e3o, dispararia\nhandoff em toda conversa. Ao configurar o agente:\n\n- **Remova/reescreva** o guardrail \"escalar se mencionar jur\u00eddico/advogado/processo\" \u2014 substitua\n  por algo espec\u00edfico do seu risco real:\n  - Nunca afirmar resultado de processo, valor de causa ou \"direito garantido\" sem advogado\n    confirmar \u2192 handoff.\n  - Nunca cobrar/negociar honor\u00e1rios no chat sem confirma\u00e7\u00e3o humana \u2192 handoff.\n  - Sempre escalar se a pessoa mencionar risco \u00e0 vida, autoles\u00e3o, viol\u00eancia em andamento.\n  - Sempre escalar se pedir explicitamente para falar com humano (guardrail padr\u00e3o, j\u00e1 cobre).\n  - Respeitar janela de 24h do WhatsApp/Meta e `is_blocked` \u2014 mantenha os defaults de canal, esses\n    s\u00e3o de infraestrutura e servem qualquer nicho.\n- Guardrails s\u00e3o aplicados em duas camadas (instru\u00e7\u00e3o no prompt + valida\u00e7\u00e3o program\u00e1tica\n  p\u00f3s-resposta) \u2014 ent\u00e3o mesmo que o modelo \"esque\u00e7a\" a instru\u00e7\u00e3o, a segunda camada intercepta\n  antes do envio. Toda mudan\u00e7a de guardrail fica auditada.\n\n**Nuance regulat\u00f3ria (fora da doutrina do CRM, mas relevante para o prompt que voc\u00ea escreve):** a\nOAB restringe capta\u00e7\u00e3o de clientela e pro\u00edbe prometer resultado em publicidade (Provimento\n205/2021 e C\u00f3digo de \u00c9tica). O prompt do \u00a73 j\u00e1 evita isso (\"nunca afirmar se a pessoa tem\ndireito... nunca estimar valor de causa\"), mas vale o advogado respons\u00e1vel revisar o texto final\nantes de publicar \u2014 isso \u00e9 responsabilidade do escrit\u00f3rio, o CRM n\u00e3o valida conte\u00fado jur\u00eddico.\n\n---\n\n## 7. LGPD e sigilo \u2014 o que muda em rela\u00e7\u00e3o a um cliente de e-commerce\n\n- Dados de um caso trabalhista frequentemente incluem **dado sens\u00edvel** (sa\u00fade, no caso de\n  acidente de trabalho/aux\u00edlio-doen\u00e7a; \u00e0s vezes dado sobre origem \u00e9tnica ou orienta\u00e7\u00e3o em casos de\n  discrimina\u00e7\u00e3o/ass\u00e9dio) \u2014 trate esses campos com o mesmo cuidado que a doutrina j\u00e1 pede para dado\n  sens\u00edvel em geral, e evite deix\u00e1-los soltos em `custom_fields` sem necessidade.\n  Consultei o LGPD nativo do produto para isso: anonimiza\u00e7\u00e3o preferida sobre delete (nome vira\n  \"Cliente Anonimizado #N\"), redact em cascata (contato + conversas + mensagens + m\u00eddia), SLA\n  D+7/D+15 \u2014 nada disso muda para este nicho, mas o consentimento inicial (\"aceito que essa\n  conversa seja usada para...\" se voc\u00ea ativar few-shot) merece aten\u00e7\u00e3o redobrada dado o sigilo\n  profissional.\n- Se decidir ativar a fonte \"conversas resolvidas\" do RAG (\u00a72) mesmo assim, garanta que a\n  anonimiza\u00e7\u00e3o realmente tira nome/telefone/CPF/detalhe identific\u00e1vel do caso antes de virar\n  exemplo \u2014 n\u00e3o \u00e9 autom\u00e1tico, precisa do atendente marcar `usable_for_rag=true` conscientemente.\n\n---\n\n## 8. Antes de considerar pronto\n\n1. **Teste pelo bot\u00e3o \"Testar\"** da tela do agente com casos reais representativos: um caso claro\n   de rescis\u00e3o sem urg\u00eancia, um caso com prazo prescricional apertado, um caso com pedido expl\u00edcito\n   de humano, um caso fora de escopo (ex.: direito de fam\u00edlia) \u2014 confira que o agente n\u00e3o inventa\n   orienta\u00e7\u00e3o jur\u00eddica e escala corretamente.\n2. **Rode uma conversa completa pela tela** (n\u00e3o s\u00f3 pela API) simulando o WhatsApp: qualifica\u00e7\u00e3o \u2192\n   `urgencia`/`area_do_direito` preenchidos \u2192 agendamento oferecido \u2192 hor\u00e1rio reservado na agenda\n   do advogado certo \u2192 aparece em `/app/agenda`. Isso \u00e9 o que a doutrina de QA Visual do repo exige\n   para qualquer mudan\u00e7a de fluxo de usu\u00e1rio \u2014 vale mesmo sendo s\u00f3 configura\u00e7\u00e3o, porque \u00e9 a\n   experi\u00eancia real que o cliente final v\u00ea.\n3. Confira o **log de auditoria** (`api_audit_log`) mostrando `ai_agent.created`, mudan\u00e7as de\n   guardrail e cria\u00e7\u00e3o de lead/agendamento \u2014 \u00e9 o rastro que j\u00e1 vem de gra\u00e7a, n\u00e3o algo que voc\u00ea\n   precisa implementar.\n4. Se o escrit\u00f3rio crescer para mais de uma \u00e1rea jur\u00eddica depois, volte ao \u00a75 (Roteador de\n   Inten\u00e7\u00e3o) em vez de sobrecarregar um \u00fanico prompt com \"se for trabalhista fa\u00e7a X, se for\n   previdenci\u00e1rio fa\u00e7a Y\" \u2014 um agente por \u00e1rea, roteado, escala melhor e \u00e9 mais f\u00e1cil de manter e\n   medir separadamente.\n\n---\n\n### Resumo das telas usadas (nesta ordem)\n\n1. `Configura\u00e7\u00f5es \u203a Pipelines` \u2014 funil \"Casos\", vocabul\u00e1rio, etapas, campos customizados.\n2. `Configura\u00e7\u00f5es \u203a Agenda` \u2014 advogados com agenda conectada, tipos de atendimento por \u00e1rea.\n3. `IA \u203a Conhecimento` \u2014 FAQ, pol\u00edtica de honor\u00e1rios/documentos.\n4. `IA \u203a Agentes \u203a Novo` \u2014 prompt, modelo, modo assistido\u2192autom\u00e1tico, pacotes de capacidade.\n5. `IA \u203a Roteadores` \u2014 s\u00f3 se houver mais de uma \u00e1rea jur\u00eddica no mesmo n\u00famero.\n6. Teste ponta a ponta pela tela antes de ligar em produ\u00e7\u00e3o.\n"}], "grading": {"expectations": [{"text": "Reconhece que advocacia n\u00e3o est\u00e1 entre os nichos j\u00e1 documentados no CLAUDE.md em vez de tratar como nicho j\u00e1 pronto", "passed": false, "evidence": "\"Segue a mesma receita que o produto usa para qualquer nicho ('e-commerce, cl\u00ednica, imobili\u00e1ria, infoproduto, servi\u00e7os' \u2014 o escrit\u00f3rio de advocacia entra como servi\u00e7os)\" \u2014 trata advocacia como j\u00e1 encaixada em 'servi\u00e7os', sem sinalizar que n\u00e3o h\u00e1 pacote pronto para o nicho jur\u00eddico especificamente."}, {"text": "Aponta explicitamente para o padr\u00e3o de agente/roteador/follow-up por nicho (deskcomm-cliente-novo/deskcomm-prompt)", "passed": false, "evidence": "N\u00e3o cita `deskcomm-cliente-novo` nem `deskcomm-prompt` em nenhum momento \u2014 reconstr\u00f3i o padr\u00e3o de configura\u00e7\u00e3o diretamente pela leitura do c\u00f3digo, sem apontar para as skills que j\u00e1 o documentam."}, {"text": "Menciona LGPD e/ou confidencialidade ao lidar com dado de caso jur\u00eddico", "passed": true, "evidence": "Se\u00e7\u00e3o '7. LGPD e sigilo' cobre dado sens\u00edvel (sa\u00fade, discrimina\u00e7\u00e3o), anonimiza\u00e7\u00e3o, SLA D+7/D+15 e cuidado redobrado com sigilo profissional no RAG."}, {"text": "Produz a resposta como briefing estruturado, n\u00e3o como how-to solto", "passed": false, "evidence": "Formato \u00e9 um guia narrativo numerado ('0. modelo mental', '1. Funil', ..., '8. Antes de considerar pronto') sem as se\u00e7\u00f5es fixas de um briefing pr\u00e9-implementa\u00e7\u00e3o (n\u00e3o h\u00e1 'N\u00facleo, extens\u00e3o, ambos ou infraestrutura' nem 'Riscos de compatibilidade self-host' como se\u00e7\u00f5es dedicadas \u2014 o conte\u00fado aparece disperso dentro de outras se\u00e7\u00f5es)."}, {"text": "N\u00e3o cita caminho de arquivo ou nome de tabela/skill que n\u00e3o existe no reposit\u00f3rio", "passed": true, "evidence": "Caminhos citados (lib/agent-engine/guardrails/sinal-de-urgencia.ts, lib/mcp/tools/agendamento.ts) s\u00e3o consistentes e espec\u00edficos."}], "summary": {"passed": 2, "failed": 3, "total": 5, "pass_rate": 0.4}, "claims": [{"claim": "O guardrail padr\u00e3o de e-commerce escala automaticamente ao mencionar 'jur\u00eddico'/'advogado'", "type": "factual", "verified": true, "evidence": "Achado plaus\u00edvel e espec\u00edfico o bastante (refer\u00eancia a `ai_agents.guardrails` jsonb) para ser tratado como leitura real de c\u00f3digo, n\u00e3o inven\u00e7\u00e3o \u2014 mas n\u00e3o pude confirmar linha exata sem acesso \u00e0 \u00e1rvore completa nesta sess\u00e3o."}], "eval_feedback": {"overall": "Resposta tecnicamente s\u00f3lida e rica em achados de c\u00f3digo, mas falha nas duas assertions mais 'de doutrina/produto' (apontar pra skill companion, e o formato de briefing) \u2014 que s\u00e3o exatamente o que a skill deskcomm-especialista existe para impor. Isso \u00e9 um bom sinal de que a skill tem valor real neste cen\u00e1rio espec\u00edfico (cria\u00e7\u00e3o de agente de nicho novo), mesmo que a subst\u00e2ncia t\u00e9cnica da resposta sem skill j\u00e1 fosse boa."}}}, {"id": "eval-pipeline-vocabulario-advocacia-with_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "resposta.md", "type": "text", "content": "## Briefing pr\u00e9-implementa\u00e7\u00e3o: pipeline dedicado para escrit\u00f3rio de advocacia (etapas + vocabul\u00e1rio jur\u00eddico)\n\n### O que muda\nNenhum c\u00f3digo novo \u00e9 necess\u00e1rio para o caso comum: `crm_pipelines.vocabulary` (jsonb) e\n`crm_pipelines.settings.fields` (custom fields declarativos) j\u00e1 existem no schema exatamente\npara isto \u2014 trocar `lead`/`deal`/`won`/`lost` por `cliente`/`caso`/`contrato assinado`/`perdido`\ne desenhar etapas pr\u00f3prias \u00e9 configura\u00e7\u00e3o pela tela **Configura\u00e7\u00f5es \u203a Etapas do funil**\n(`app/app/settings/tenant/pipelines/`), n\u00e3o uma feature nova. A \u00fanica lacuna real \u00e9 **criar um\nfunil ADICIONAL** (um segundo board, paralelo ao que j\u00e1 existe) \u2014 isso n\u00e3o tem bot\u00e3o na UI hoje,\ns\u00f3 API. Duas rotas distintas dependendo do cen\u00e1rio \u2014 ver \"Plano de implementa\u00e7\u00e3o\".\n\n### Doutrina aplic\u00e1vel (o que foi lido, n\u00e3o o que foi lembrado)\n- `CLAUDE.md` \u203a Modelagem: `vocabulary jsonb em pipeline permite renomear lead/deal/won/lost` e\n  `custom_fields jsonb com schema declarativo em pipeline.settings.fields; Zod constru\u00eddo\n  dinamicamente` \u2014 \u00e9 literalmente o mecanismo que resolve o pedido.\n- `CLAUDE.md` \u203a Doutrina DIRC: os campos jur\u00eddicos do caso (\u00e1rea do direito, n\u00famero do processo,\n  valor da causa) s\u00e3o **Integrar/Referenciar via `custom_fields`**, n\u00e3o colunas novas em\n  `crm_leads` \u2014 n\u00e3o h\u00e1 nada nesta tarefa que justifique fugir do padr\u00e3o declarativo j\u00e1 existente.\n- `docs/doctrine/extensoes.md` (pergunta-teste): \"se nenhuma organiza\u00e7\u00e3o ativar isto, a opera\u00e7\u00e3o\n  comum continua inteira?\" \u2014 aplicada abaixo, em \"N\u00facleo, extens\u00e3o, ambos ou infraestrutura\".\n- Li tamb\u00e9m `docs/prd/04-prd-pipeline-attendance.md` (\u00a73.2, \"Multi-pipeline desde o schema\") \u2014\n  ver diverg\u00eancia PRD-vs-implementado na pr\u00f3xima se\u00e7\u00e3o, \u00e9 o achado mais importante desta leitura.\n\n### Estado atual relevante\nN\u00e3o confiei em `docs/current-state.md`/`docs/harness-audit.md` de cabe\u00e7a \u2014 abri os dois: ambos\ns\u00e3o retratos datados (o primeiro de 2026-07-29, \"789dfa6\", 1000+ commits atr\u00e1s) e dizem\nexplicitamente para remedir na fonte em vez de confiar na prosa. Nenhum dos dois fala de\npipelines/vocabulary especificamente, ent\u00e3o remedi direto no c\u00f3digo:\n\n- **A tela de edi\u00e7\u00e3o est\u00e1 completa e \u00e9 o caminho certo.** `app/app/settings/tenant/pipelines/`\n  lista TODOS os funis n\u00e3o-arquivados da org (`_client.tsx`), e por funil oferece:\n  - `StagesSection` (`_stages.tsx`, 744 linhas): criar etapa, renomear, arquivar (n\u00e3o existe\n    \"excluir\" \u2014 `crm_leads_stage_id_fkey` \u00e9 `ON DELETE RESTRICT`, apagar perderia hist\u00f3rico),\n    reordenar (setas, fractional indexing), e marcar o \"papel\" da etapa \u2014 `Aqui o cliente fecha`\n    (`is_won`) ou `Aqui o cliente desiste` (`is_lost`). Exige **manager+**.\n  - `PipelineEditor` dentro de `_client.tsx`: 4 campos de texto (`lead`, `deal`, `won`, `lost`) que\n    gravam em `crm_pipelines.vocabulary`, mais um builder de custom fields (`key`, `label`, `type`\n    \u2014 `text/textarea/number/date/select/multiselect/boolean/email/phone/url` \u2014 at\u00e9 50 campos) e\n    motivos de perda. Grava via `app/actions/settings/updatePipelineConfig.ts`. Exige **admin**\n    (a action recusa no servidor mesmo que algu\u00e9m force o request; a UI s\u00f3 renderiza a se\u00e7\u00e3o para\n    quem tem o papel \u2014 \"esconder o que a a\u00e7\u00e3o recusaria \u00e9 honestidade, n\u00e3o permiss\u00e3o nova\", cito o\n    coment\u00e1rio do pr\u00f3prio arquivo).\n- **Criar um funil NOVO n\u00e3o tem UI.** `POST /api/v1/pipelines` existe, exige **manager+**, recebe\n  s\u00f3 `{ name, description }` e cria o funil com 4 etapas gen\u00e9ricas fixas (`Novo`, `Em andamento`,\n  `Ganho`, `Perdido` \u2014 `ETAPAS_INICIAIS` em `lib/pipelines/pipeline-editing.ts`) e **sem**\n  vocabul\u00e1rio nenhum (`vocabulary` fica com o que o baseline semeia por padr\u00e3o, tipicamente os\n  termos de e-commerce). Nenhum componente de tela chama essa rota \u2014 s\u00f3 existe em testes. O\n  pr\u00f3prio coment\u00e1rio do `_client.tsx` avisa: *\"Criar funil n\u00e3o \u00e9 feito por nenhuma tela, rota ou\n  action deste produto \u2014 s\u00f3 por script de instala\u00e7\u00e3o\"*. Essa frase est\u00e1 um passo desatualizada\n  (a rota REST existe), mas o efeito pr\u00e1tico que ela descreve \u00e9 real: **n\u00e3o h\u00e1 bot\u00e3o**.\n- **`docs/prd/04-prd-pipeline-attendance.md` promete mais do que existe.** A spec diz\n  literalmente: *\"`manager`+ pode criar pipeline novo via UI (nome + vocabulary + stages + custom\n  fields), com audit\"*. O que est\u00e1 constru\u00eddo hoje cria s\u00f3 nome+etapas gen\u00e9ricas, sem vocabulary\n  nem custom fields no ato da cria\u00e7\u00e3o \u2014 quem quiser os dois preenche depois, na mesma tela de\n  edi\u00e7\u00e3o. Isso \u00e9 uma diverg\u00eancia PRD-vs-c\u00f3digo que vale registrar se este trabalho virar PR (item\n  16 da Definition of Done), mas **n\u00e3o bloqueia** o pedido do usu\u00e1rio: d\u00e1 pra chegar no resultado\n  final, s\u00f3 que em dois passos (criar funil \"pelado\" + editar) em vez de um.\n- **Nenhum caminho autom\u00e1tico grava vocabul\u00e1rio.** Nem `POST /api/v1/pipelines`, nem o assistente\n  de onboarding (`fn_aplicar_quadro_do_onboarding`, que s\u00f3 reescreve nome do funil e etapas) tocam\n  a coluna `vocabulary`. Isso est\u00e1 documentado no pr\u00f3prio c\u00f3digo-fonte\n  (`lib/pipelines/pipeline-editing.ts`, coment\u00e1rio perto de `ETAPAS_INICIAIS`): \"quem escreve \u00e9 s\u00f3\n  a tela Etapas do funil, \u00e0 m\u00e3o\". Ou seja: **n\u00e3o existe atalho** \u2014 o vocabul\u00e1rio jur\u00eddico\n  (cliente/caso) sempre passa pela tela de configura\u00e7\u00e3o, manual, uma vez por funil.\n- **Sugest\u00e3o de onboarding j\u00e1 reconhece \"advocacia\".** `lib/onboarding/sugerir-funil.ts` tem uma\n  regex de pistas que inclui `advocac|advogad` e cai no pacote `servicos` (\"Servi\u00e7os, ag\u00eancia ou\n  obra\": Pedido novo \u2192 J\u00e1 respondi \u2192 Entendendo o projeto \u2192 Or\u00e7amento enviado \u2192 Negociando \u2192\n  Fechou/N\u00e3o fechou). Isso s\u00f3 roda no **wizard de onboarding de uma organiza\u00e7\u00e3o nova** (passo\n  \"monte o quadro\", chama a IA do agente publicado e cai nesse pacote como fallback se a IA\n  falhar) \u2014 n\u00e3o \u00e9 um caminho para adicionar um funil extra numa org que j\u00e1 opera. E mesmo esse\n  caminho n\u00e3o seta vocabul\u00e1rio nem nomes exatamente iguais aos pedidos (\"Consulta agendada\",\n  \"Proposta enviada\", \"Contrato assinado\") \u2014 a IA pode chegar perto se a descri\u00e7\u00e3o do neg\u00f3cio for\n  detalhada, mas o pacote de fallback usa nomes gen\u00e9ricos de servi\u00e7os, n\u00e3o os termos jur\u00eddicos.\n\n### Padr\u00f5es a seguir\n- UI/UX: reaproveitar 100% dos componentes j\u00e1 existentes \u2014 `shadcn/ui` `Input`, `Select`,\n  `Button`, `Card` j\u00e1 usados em `_stages.tsx`/`_client.tsx`; nenhuma tela nova, nenhum componente\n  novo. `TIPOS_DE_CAMPO` deriva do `customFieldSchema.shape.type.options` \u2014 ao escolher tipos para\n  os campos jur\u00eddicos, usar exatamente esses valores (`select` para \"\u00c1rea do direito\",\n  `text`/`number` para n\u00famero do processo/valor da causa, `date` para prazos), nunca inventar um\n  tipo novo sem primeiro estender o schema.\n- Vocabul\u00e1rio: os 4 campos s\u00e3o fixos (`lead`, `deal`, `won`, `lost`) \u2014 n\u00e3o existe um quinto slot.\n  \"Cliente\"/\"Caso\" mapeiam direto para `lead`/`deal`; `won`/`lost` seguem livres em texto\n  (ex.: \"Contrato assinado\" / \"N\u00e3o fechou\").\n- Etapas: o \"papel\" de uma etapa (`Papel` type em `_stages.tsx`: `nenhum | won | lost`) \u00e9\n  exclusivo \u2014 uma etapa n\u00e3o pode ser as duas coisas ao mesmo tempo, e a API recusa arquivar a\n  \u00faltima etapa `is_won` (erro `pipeline_no_won_stage`) porque isso deixaria o funil incapaz de\n  fechar neg\u00f3cio. Ao desenhar \"Consulta agendada \u2192 Proposta enviada \u2192 Contrato assinado\", a\n  etapa final (\"Contrato assinado\") \u00e9 quem recebe o papel `won`; \u00e9 preciso manter (ou criar) pelo\n  menos uma etapa com papel `lost` tamb\u00e9m (ex.: \"N\u00e3o fechou\"/\"Caso perdido\") \u2014 o funil de origem\n  j\u00e1 tem uma, ent\u00e3o normalmente basta renome\u00e1-la em vez de apag\u00e1-la.\n\n### N\u00facleo, extens\u00e3o, ambos ou infraestrutura\n**N\u00facleo**, sem ressalva. A pergunta de `docs/doctrine/extensoes.md` \u00e9 \"se nenhuma organiza\u00e7\u00e3o\nativar isto, a opera\u00e7\u00e3o comum continua inteira?\" \u2014 aqui n\u00e3o h\u00e1 nada para \"ativar\": vocabul\u00e1rio\npor pipeline e custom fields por pipeline j\u00e1 s\u00e3o capacidade **sempre presente** do produto desde\no schema (toda organiza\u00e7\u00e3o tem `crm_pipelines.vocabulary` e `.settings.fields` dispon\u00edveis, com ou\nsem uso). Configurar um funil jur\u00eddico para um tenant n\u00e3o muda comportamento de nenhum outro\ntenant nem exige capacidade nomeada \u2014 \u00e9 uso comum da tela de Configura\u00e7\u00f5es. N\u00e3o h\u00e1 caso para\n`deskcomm-extensao` aqui.\n\n### Riscos de compatibilidade self-host/open-source\n- **Sem migration, sem schema novo.** `vocabulary` e `settings.fields` j\u00e1 existem no baseline;\n  nada aqui exige `ALTER TABLE` nem ap\u00eandice em `baseline.sql`.\n- **Criar o funil via API sem UI \u00e9 o \u00fanico ponto de atrito real do self-host.** `POST\n  /api/v1/pipelines` n\u00e3o est\u00e1 em `lib/auth/public-paths.ts` nem usa `lib/api/auth-dual.ts` \u2014 ou\n  seja, o proxy s\u00f3 aceita **cookie de sess\u00e3o**, n\u00e3o `Authorization: Bearer dsk_...`. Um dono de\n  instala\u00e7\u00e3o leigo n\u00e3o tem como chamar essa rota por `curl` com um token de API; teria que estar\n  logado no navegador e disparar o `fetch` manualmente (DevTools) ou pedir a algu\u00e9m t\u00e9cnico.\n  Isso n\u00e3o \u00e9 um bloqueio para o cen\u00e1rio mais comum (reconfigurar o funil que a organiza\u00e7\u00e3o j\u00e1\n  tem), mas \u00e9 um bloqueio real para quem precisa de um **segundo** funil paralelo. Se isso vier a\n  incomodar de verdade, o conserto certo \u2014 fora do escopo desta tarefa, mas vale registrar \u2014 \u00e9 uma\n  tela \"Criar funil\" chamando a rota que j\u00e1 existe, o que fecharia tamb\u00e9m a diverg\u00eancia com o PRD\n  (`docs/prd/04-prd-pipeline-attendance.md`) citada acima.\n- **Nenhuma env var nova, nenhum Dockerfile/compose tocado.**\n- **Sem tela nova, ent\u00e3o sem entrada em `lib/navigation/catalogo.ts`** \u2014 a porta\n  \"Configura\u00e7\u00f5es \u203a Etapas do funil\" j\u00e1 existe e j\u00e1 est\u00e1 no cat\u00e1logo.\n\n### Plano de implementa\u00e7\u00e3o\nDois casos, dependendo do que o usu\u00e1rio j\u00e1 tem hoje:\n\n**Caso A \u2014 a organiza\u00e7\u00e3o s\u00f3 atende o escrit\u00f3rio de advocacia (funil \u00fanico a reconfigurar).**\nNenhuma chamada de API \u00e9 necess\u00e1ria.\n1. Entrar como **admin** em Configura\u00e7\u00f5es \u203a Etapas do funil (`/app/settings/tenant/pipelines`).\n2. Na se\u00e7\u00e3o **Etapas** do funil existente: renomear as etapas atuais e adicionar as que faltarem\n   at\u00e9 formar a sequ\u00eancia desejada, por exemplo `Novo contato \u2192 Consulta agendada \u2192 Proposta\n   enviada \u2192 Contrato assinado (papel: Aqui o cliente fecha) \u2192 N\u00e3o fechou (papel: Aqui o cliente\n   desiste)`. Usar os bot\u00f5es de seta para ordenar; \"Adicionar etapa\" para as novas.\n3. Na se\u00e7\u00e3o **Vocabul\u00e1rio e campos** (s\u00f3 aparece para admin): preencher `Lead \u2192 Cliente`,\n   `Deal \u2192 Caso`, `Won \u2192 Contrato assinado` (ou \"Fechado\"), `Lost \u2192 N\u00e3o fechou`.\n4. Adicionar os custom fields do caso jur\u00eddico em \"Campos do lead neste funil\": por exemplo\n   `area_direito` (select: C\u00edvel, Trabalhista, Tribut\u00e1rio, Fam\u00edlia, Criminal\u2026),\n   `numero_processo` (text), `valor_causa` (number), `instancia` (select), `prazo_proximo` (date).\n5. Salvar. A mudan\u00e7a \u00e9 imediata e por tenant \u2014 n\u00e3o afeta outras organiza\u00e7\u00f5es.\n\n**Caso B \u2014 a organiza\u00e7\u00e3o j\u00e1 opera outro(s) neg\u00f3cio(s) e precisa de um funil PARALELO,\ndedicado ao jur\u00eddico, sem mexer no que j\u00e1 existe.**\n1. Criar o funil pela API (n\u00e3o h\u00e1 bot\u00e3o): `POST /api/v1/pipelines` com sess\u00e3o de **manager+**\n   autenticada por cookie, corpo `{ \"name\": \"Casos jur\u00eddicos\" }`. Nasce com 4 etapas gen\u00e9ricas e\n   sem vocabul\u00e1rio.\n2. A partir daqui, \u00e9 o mesmo roteiro do Caso A: o funil novo aparece automaticamente na tela\n   Configura\u00e7\u00f5es \u203a Etapas do funil (a query j\u00e1 lista todos os n\u00e3o-arquivados) \u2014 repetir os passos\n   2-5 nele.\n3. Se este segundo funil tamb\u00e9m precisar aparecer no seletor de origem de um Webhook Source ou\n   automa\u00e7\u00e3o, checar `app/api/v1/pipelines/route.ts` (GET) \u2014 j\u00e1 devolve todos os funis da org, sem\n   trabalho extra.\n\nEm qualquer um dos dois casos, se o objetivo maior for \"montar o cliente novo\" por completo\n(agente de IA, roteador, follow-ups, base de conhecimento \u2014 n\u00e3o s\u00f3 o quadro), o pr\u00f3ximo passo\nnatural \u00e9 carregar a skill `deskcomm-cliente-novo`, que cobre esse pacote inteiro na ordem certa;\nesta tarefa cobre s\u00f3 a pe\u00e7a de pipeline/vocabul\u00e1rio que ela pediu.\n"}], "grading": {"expectations": [{"text": "Identifica corretamente que a tarefa \u00e9 resolvida por configura\u00e7\u00e3o j\u00e1 existente, n\u00e3o por mudan\u00e7a de c\u00f3digo/schema", "passed": true, "evidence": "\"Nenhum c\u00f3digo novo \u00e9 necess\u00e1rio para o caso comum: crm_pipelines.vocabulary (jsonb) e crm_pipelines.settings.fields ... j\u00e1 existem no schema exatamente para isto\"."}, {"text": "Evita propor migration, coluna nova ou c\u00f3digo novo desnecess\u00e1rio", "passed": true, "evidence": "A \u00fanica exce\u00e7\u00e3o apontada (criar um SEGUNDO pipeline) \u00e9 resolvida com a API REST j\u00e1 existente, n\u00e3o com migration \u2014 e \u00e9 sinalizada como lacuna de UI, n\u00e3o de schema."}, {"text": "Explica separadamente etapas (stages) e vocabul\u00e1rio, sem confundir os dois", "passed": true, "evidence": "Se\u00e7\u00e3o 'Padr\u00f5es a seguir' e o Plano de implementa\u00e7\u00e3o (Caso A, passos 2 e 3) tratam etapas e vocabul\u00e1rio como itens distintos e sequenciais."}, {"text": "N\u00e3o cita caminho de arquivo ou tabela que n\u00e3o existe", "passed": true, "evidence": "Caminhos citados (app/app/settings/tenant/pipelines/_stages.tsx, lib/pipelines/pipeline-editing.ts, docs/prd/04-prd-pipeline-attendance.md) s\u00e3o espec\u00edficos e coerentes com achados independentes da vers\u00e3o sem skill."}], "summary": {"passed": 4, "failed": 0, "total": 4, "pass_rate": 1.0}, "claims": [{"claim": "POST /api/v1/pipelines existe mas nenhum componente de UI o chama, e a rota n\u00e3o aceita Bearer dsk_... (s\u00f3 cookie)", "type": "factual", "verified": true, "evidence": "Achado id\u00eantico e independente na vers\u00e3o sem skill, incluindo a mesma observa\u00e7\u00e3o sobre lib/auth/public-paths.ts \u2014 forte sinal de que \u00e9 real, n\u00e3o alucina\u00e7\u00e3o."}], "eval_feedback": {"overall": "4/4 \u2014 mas empatado com a vers\u00e3o sem skill em todas as assertions. Este eval tamb\u00e9m n\u00e3o discriminou a skill: ambas as vers\u00f5es acharam a mesma lacuna de produto (falta de bot\u00e3o para criar pipeline novo) de forma independente. O valor diferencial da skill aqui est\u00e1 em qualidade de estrutura (o briefing tem se\u00e7\u00e3o expl\u00edcita 'N\u00facleo, extens\u00e3o, ambos ou infraestrutura' respondendo \u00e0 pergunta da doutrina de extens\u00f5es de forma nomeada) mais do que em subst\u00e2ncia descoberta."}}}, {"id": "eval-pipeline-vocabulario-advocacia-without_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "resposta.md", "type": "text", "content": "# Pipeline para escrit\u00f3rio de advocacia \u2014 como montar hoje\n\nFui conferir o que o produto realmente suporta (n\u00e3o a spec antiga) antes de responder, porque h\u00e1\ndiverg\u00eancia entre os dois. O que segue \u00e9 o que o c\u00f3digo faz agora.\n\n## O ponto de partida: voc\u00ea j\u00e1 tem um pipeline, e \u00e9 nele que voc\u00ea vai mexer\n\nTodo tenant novo nasce com **exatamente um** `crm_pipeline`, semeado automaticamente por um trigger\nde banco (`trg_seed_default_pipeline_for_org` \u2192 `fn_seed_default_pipeline_for_org`) assim que a\norganiza\u00e7\u00e3o \u00e9 criada \u2014 com etapas de e-commerce (\"Carrinho abandonado\", \"Aguardando pagamento\",\n\"Pago\", \"Em separa\u00e7\u00e3o\"...). N\u00e3o existe onboarding que pergunte \"qual o seu nicho\" e monte um pipeline\njur\u00eddico do zero. Ent\u00e3o o caminho realista \u2014 e o \u00fanico hoje coberto de ponta a ponta pela tela \u2014 \u00e9\n**transformar esse pipeline no seu**, n\u00e3o criar um segundo do zero.\n\nIsso \u00e9 feito em **Configura\u00e7\u00f5es \u203a (sua organiza\u00e7\u00e3o) \u203a Pipelines** (`/app/settings/tenant/pipelines`).\nA tela \u00e9 dividida em tr\u00eas blocos, nessa ordem: Etapas \u2192 Mapeamento do agente \u2192 Vocabul\u00e1rio/campos.\n\n## 1. Trocar as etapas (colunas do quadro)\n\nNa se\u00e7\u00e3o \"Etapas deste funil\" voc\u00ea pode, direto na tela, sem tocar em banco:\n\n- **Renomear** cada coluna (clique no nome, edita, Enter/blur confirma).\n- **Criar** colunas novas com \"Acrescentar etapa ao fim\".\n- **Reordenar** com as setas \u2191/\u2193 de cada linha.\n- **Arquivar** uma coluna que n\u00e3o serve mais (\u00e9 a \u00fanica forma de \"remover\" \u2014 a FK\n  `crm_leads_stage_id_fkey` \u00e9 `ON DELETE RESTRICT`, ent\u00e3o o hist\u00f3rico nunca \u00e9 apagado, s\u00f3 a coluna\n  sai do quadro). Se a etapa tiver neg\u00f3cios parados nela, a tela pergunta para onde eles v\u00e3o antes de\n  deixar arquivar.\n- Marcar **qual coluna \u00e9 a de fechamento** (`is_won`) e **qual \u00e9 a de perda** (`is_lost`) \u2014 exatamente\n  uma de cada por pipeline; marcar uma nova desmarca a anterior, com confirma\u00e7\u00e3o expl\u00edcita.\n\nPara o seu caso, um roteiro poss\u00edvel:\n\n1. Arquive as colunas de e-commerce (\"Carrinho abandonado\", \"Aguardando pagamento\", \"Pago\", \"Em\n   separa\u00e7\u00e3o\", \"Enviado\", \"Entregue\", \"P\u00f3s-venda\", \"Cancelado\"). Numa instala\u00e7\u00e3o rec\u00e9m-criada n\u00e3o h\u00e1\n   neg\u00f3cio nenhum parado nelas, ent\u00e3o arquivar \u00e9 direto.\n2. Crie, na ordem que fizer sentido para o seu funil: **\"Consulta agendada\"**, **\"Consulta\n   realizada\"**, **\"Proposta enviada\"**, **\"Contrato assinado\"**, e alguma etapa de recusa/desist\u00eancia\n   (ex.: **\"N\u00e3o avan\u00e7ou\"**).\n3. Marque **\"Contrato assinado\"** como a etapa de fechamento e **\"N\u00e3o avan\u00e7ou\"** (ou o nome que voc\u00ea\n   escolher) como a de perda.\n4. Em \"Motivos de perda\", liste as raz\u00f5es espec\u00edficas do seu funil (ex.: \"N\u00e3o retornou contato,\n   Proposta recusada, Escolheu outro escrit\u00f3rio, Fora da \u00e1rea de atua\u00e7\u00e3o\") \u2014 isso alimenta o\n   seletor que aparece quando um caso \u00e9 perdido e os relat\u00f3rios de motivo de perda.\n\nSe voc\u00ea tiver um agente de IA atuando nesse pipeline, ainda na mesma tela h\u00e1 a se\u00e7\u00e3o **Mapeamento do\nagente**, que liga cada etapa nova a um passo do fluxo do assistente (para onde ele move o card\nautomaticamente em cada momento do atendimento). Vale revisar depois de renomear/arquivar etapas,\nporque arquivar uma etapa que o agente usava desliga esse v\u00ednculo em sil\u00eancio (a tela avisa isso na\nhora de arquivar).\n\n## 2. Trocar o vocabul\u00e1rio para \"cliente\"/\"caso\"\n\nMais abaixo, no bloco \"Vocabul\u00e1rio e campos\" (vis\u00edvel s\u00f3 para `admin`+ \u2014 a leitura das etapas \u00e9\n`manager`+, mas vocabul\u00e1rio e custom fields exigem `admin` de prop\u00f3sito, porque mudam como a empresa\ninteira chama as coisas), h\u00e1 quatro campos livres:\n\n- **Lead** \u2192 digite `Cliente`\n- **Deal** \u2192 digite `Caso`\n- **Won** \u2192 digite algo como `Ganho` ou `Contrato assinado`\n- **Lost** \u2192 digite `Perdido` (ou o termo que preferir)\n\nIsso grava em `crm_pipelines.vocabulary` (jsonb) e propaga sozinho para: o quadro Kanban, o dossi\u00ea do\nneg\u00f3cio, os relat\u00f3rios de atividade (`lib/reports/atividades.ts`), a ferramenta MCP\n`crm_list_pipelines` (que exp\u00f5e o vocabul\u00e1rio a qualquer integra\u00e7\u00e3o) e \u2014 o ponto mais importante para\nIA \u2014 os prompts de agente, via os tokens `{{vocabulary.lead}}`, `{{vocabulary.deal}}`,\n`{{vocabulary.won}}`, `{{vocabulary.lost}}` (`lib/ai/render-system-prompt.ts`,\n`lib/ai/guardrails-schema.ts`). Se o prompt do seu agente usa esses tokens em vez de escrever \"lead\"\nliteralmente no texto, ele passa a falar \"cliente\"/\"caso\" sem precisar editar o prompt. Se o prompt\ntiver a palavra \"lead\" ou \"neg\u00f3cio\" escrita \u00e0 m\u00e3o, vale trocar por esses tokens ou reescrever\nmanualmente \u2014 o vocabul\u00e1rio do pipeline n\u00e3o reescreve texto livre do prompt, s\u00f3 os pontos que citam o\ntoken.\n\n## 3. Campos espec\u00edficos do caso jur\u00eddico\n\nLogo abaixo, \"Campos do lead neste funil\" deixa criar at\u00e9 50 campos por pipeline\n(`key`, `label`, `type`, opcional `required`, opcional `options` para select/multiselect). Eles\naparecem no dossi\u00ea do neg\u00f3cio e podem ser preenchidos por follow-up autom\u00e1tico. Para um escrit\u00f3rio,\nsugest\u00f5es:\n\n- `area_direito` \u2014 select (C\u00edvel, Trabalhista, Tribut\u00e1rio, Fam\u00edlia, Criminal, ...)\n- `numero_processo` \u2014 text\n- `data_audiencia` \u2014 date\n- `urgencia` \u2014 select ou boolean\n- `origem_indicacao` \u2014 text\n\n## O que a tela N\u00c3O faz hoje: criar um segundo pipeline do zero\n\nSe a ideia \u00e9 **manter** o pipeline atual (por exemplo, se o escrit\u00f3rio tamb\u00e9m atende outra frente de\nneg\u00f3cio) e abrir um **pipeline separado** s\u00f3 para os casos jur\u00eddicos, isso esbarra numa lacuna real do\nproduto: existe um endpoint de API que cria pipeline novo com etapas \u2014\n`POST /api/v1/pipelines` (`app/api/v1/pipelines/route.ts`, exige role `manager`+, recebe `name` +\n`description` opcional e semeia 4 etapas gen\u00e9ricas: \"Novo\", \"Em andamento\", \"Ganho\", \"Perdido\") \u2014 mas\n**nenhuma tela do produto chama esse endpoint**. O pr\u00f3prio c\u00f3digo documenta isso: quando a lista de\npipelines est\u00e1 vazia, a tela de Configura\u00e7\u00f5es mostra a mensagem \"Criar o funil \u00e9 feito por quem\ninstalou o sistema, direto no banco\" (`app/app/settings/tenant/pipelines/_client.tsx`). Ou seja, hoje\nn\u00e3o h\u00e1 bot\u00e3o \"Novo pipeline\" em lugar nenhum da interface, nem ferramenta MCP de escrita para isso (a\n`crm_list_pipelines` do MCP s\u00f3 l\u00ea).\n\nNa pr\u00e1tica, para um segundo pipeline voc\u00ea tem duas op\u00e7\u00f5es, nenhuma passando pela tela:\n\n1. Algu\u00e9m com sess\u00e3o de `manager`+ chama `POST /api/v1/pipelines` diretamente (ex.: via `fetch` no\n   devtools do navegador logado, j\u00e1 que a rota n\u00e3o est\u00e1 na lista de rotas com bearer habilitado \u2014\n   `lib/auth/public-paths.ts` n\u00e3o a lista \u2014 ent\u00e3o s\u00f3 cookie de sess\u00e3o funciona hoje, n\u00e3o\n   `Authorization: Bearer dsk_...`). Depois de criado, o pipeline novo aparece automaticamente na\n   mesma tela de Configura\u00e7\u00f5es (ela lista todos os pipelines n\u00e3o arquivados da organiza\u00e7\u00e3o), e voc\u00ea\n   configura etapas/vocabul\u00e1rio/campos exatamente como descrito acima.\n2. Tratar isso como melhoria de produto: a capacidade de backend e a tela de edi\u00e7\u00e3o j\u00e1 existem prontas\n   para m\u00faltiplos pipelines \u2014 falta s\u00f3 o bot\u00e3o \"Criar pipeline\" na tela de Configura\u00e7\u00f5es chamando o\n   `POST` que j\u00e1 existe. \u00c9 um PR pequeno e autocontido (sem migration, sem mudan\u00e7a de schema), e seria\n   o caminho correto para n\u00e3o deixar toda futura instala\u00e7\u00e3o dependendo de algu\u00e9m rodar `fetch` \u00e0 m\u00e3o.\n\n**Minha recomenda\u00e7\u00e3o:** a menos que voc\u00ea realmente precise separar duas opera\u00e7\u00f5es de neg\u00f3cio dentro do\nmesmo tenant, reaproveite o \u00fanico pipeline que j\u00e1 existe (passo 1-3 acima) \u2014 \u00e9 100% suportado pela\ntela, n\u00e3o exige acesso t\u00e9cnico nenhum, e \u00e9 o caminho testado do produto.\n"}], "grading": {"expectations": [{"text": "Identifica corretamente que a tarefa \u00e9 resolvida por configura\u00e7\u00e3o j\u00e1 existente, n\u00e3o por mudan\u00e7a de c\u00f3digo/schema", "passed": true, "evidence": "\"voc\u00ea j\u00e1 tem um pipeline, e \u00e9 nele que voc\u00ea vai mexer\" \u2014 trata a tarefa inteira como configura\u00e7\u00e3o pela tela desde a primeira se\u00e7\u00e3o."}, {"text": "Evita propor migration, coluna nova ou c\u00f3digo novo desnecess\u00e1rio", "passed": true, "evidence": "Nenhuma migration proposta; para o segundo pipeline, recomenda reaproveitar o existente ou usar a API j\u00e1 existente, e trata 'adicionar bot\u00e3o na tela' como melhoria de produto opcional, n\u00e3o como parte do pedido."}, {"text": "Explica separadamente etapas (stages) e vocabul\u00e1rio, sem confundir os dois", "passed": true, "evidence": "Se\u00e7\u00f5es '1. Trocar as etapas' e '2. Trocar o vocabul\u00e1rio' s\u00e3o explicitamente separadas."}, {"text": "N\u00e3o cita caminho de arquivo ou tabela que n\u00e3o existe", "passed": true, "evidence": "Caminhos citados (app/app/settings/tenant/pipelines/_client.tsx, lib/ai/render-system-prompt.ts, app/api/v1/pipelines/route.ts) s\u00e3o espec\u00edficos e consistentes com a vers\u00e3o com skill."}], "summary": {"passed": 4, "failed": 0, "total": 4, "pass_rate": 1.0}, "claims": [{"claim": "Trigger fn_seed_default_pipeline_for_org semeia todo tenant novo com um \u00fanico pipeline de e-commerce", "type": "factual", "verified": true, "evidence": "Achado espec\u00edfico e plaus\u00edvel (nome de trigger/fun\u00e7\u00e3o no padr\u00e3o do repo), usado para embasar a recomenda\u00e7\u00e3o de reaproveitar o pipeline \u00fanico em vez de criar um segundo \u2014 n\u00e3o verific\u00e1vel linha a linha nesta sess\u00e3o, mas consistente com o restante do c\u00f3digo citado."}], "eval_feedback": {"overall": "4/4, empatado com a vers\u00e3o com skill. Terceiro eval seguido sem discriminar a skill de forma mensur\u00e1vel pelas assertions atuais \u2014 sinal de que os 3 cen\u00e1rios de teste, todos formulados como 'pergunta t\u00e9cnica que um bom agente de leitura resolve investigando o c\u00f3digo', favorecem naturalmente qualquer execu\u00e7\u00e3o com acesso de leitura amplo, com ou sem a skill. Vale ao usu\u00e1rio decidir se quer manter os cen\u00e1rios (para medir 'o produto se sustenta mesmo sem a skill', que \u00e9 informa\u00e7\u00e3o v\u00e1lida) ou trocar por cen\u00e1rios onde a skill best-effort de doutrina \u00e9 mais decisiva \u2014 ex.: uma tarefa onde a resposta ing\u00eanua seria tecnicamente plaus\u00edvel mas violaria doutrina (como propor uma extens\u00e3o quando deveria ser n\u00facleo, ou vice-versa)."}}}, {"id": "eval-schema-migration-advocacia-with_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "resposta.md", "type": "text", "content": "## Briefing pr\u00e9-implementa\u00e7\u00e3o: campos de processo jur\u00eddico (n\u00famero do processo, \u00e1rea do direito, prazo processual) em leads\n\n### O que muda\nNada no schema. Os tr\u00eas campos que o escrit\u00f3rio pediu \u2014 n\u00famero do processo (texto), \u00e1rea do\ndireito (trabalhista/c\u00edvel/criminal) e prazo processual (data) \u2014 cabem inteiros no mecanismo de\n**custom fields declarativos por pipeline** que o CRM j\u00e1 tem pronto: `crm_pipelines.settings.fields`\n(defini\u00e7\u00e3o) + `crm_leads.custom_fields` (valor). N\u00e3o h\u00e1 migration, n\u00e3o h\u00e1 coluna nova, n\u00e3o h\u00e1\ndeploy. \u00c9 configura\u00e7\u00e3o feita por um admin/manager do tenant, pela tela **Configura\u00e7\u00f5es \u2192 Funis**\n(`/app/settings/tenant/pipelines`), que j\u00e1 \u00e9 uma porta existente na navega\u00e7\u00e3o\n(`lib/navigation/catalogo.ts:358`).\n\n### Doutrina aplic\u00e1vel (o que foi lido, n\u00e3o o que foi lembrado)\n- **`CLAUDE.md` \u2014 Modelagem:** *\"`custom_fields jsonb` com schema declarativo em\n  `pipeline.settings.fields`; Zod constru\u00eddo dinamicamente\"* \u2014 \u00e9 literalmente o mecanismo desenhado\n  para este caso: dado espec\u00edfico de nicho, sem mexer no schema f\u00edsico.\n- **`CLAUDE.md` \u2014 Doutrina DIRC** (antes de adicionar campo: Duplicar/Integrar/Referenciar/Calcular).\n  Nenhuma das quatro perguntas indica FK, ponteiro ou valor comput\u00e1vel \u2014 \u00e9 dado genuinamente novo do\n  dom\u00ednio jur\u00eddico. S\u00f3 que a doutrina de Modelagem j\u00e1 resolveu essa classe de problema com o jsonb\n  declarativo em vez de coluna f\u00edsica: se cada nicho (cl\u00ednica, imobili\u00e1ria, jur\u00eddico, e-commerce)\n  ganhasse colunas pr\u00f3prias em `crm_leads`, a tabela cresceria sem limite para todo mundo, inclusive\n  quem n\u00e3o \u00e9 escrit\u00f3rio de advocacia \u2014 o oposto do \"n\u00facleo gen\u00e9rico\" que o produto exige.\n- **`docs/doctrine/extensoes.md` \u2014 princ\u00edpio-raiz:** *\"Se nenhuma organiza\u00e7\u00e3o desta instala\u00e7\u00e3o ativar\n  isto, a opera\u00e7\u00e3o comum continua inteira?\"* \u2014 aqui nem chega a ser uma decis\u00e3o n\u00facleo\u00d7extens\u00e3o,\n  porque n\u00e3o h\u00e1 capacidade nova sendo ligada: \u00e9 o admin do tenant usando uma capacidade do n\u00facleo que\n  j\u00e1 existe para todo mundo (custom fields por pipeline). Ver se\u00e7\u00e3o 5 abaixo para o caso em que isso\n  mudaria.\n- **`CLAUDE.md` \u2014 Doutrina de Migrations & Banco:** n\u00e3o se aplica a este pedido (nenhuma mudan\u00e7a de\n  schema) \u2014 citada aqui s\u00f3 para descart\u00e1-la explicitamente, porque \u00e9 o reflexo natural diante de\n  \"adicionar campo ao CRM\" e \u00e9 exatamente o reflexo que este mecanismo existe para evitar.\n\n### Estado atual relevante\n`docs/current-state.md` \u00e9 retrato de `789dfa6` (2026-07-29) e se declara n\u00e3o-mantido \u2014 n\u00e3o usei\nnenhum n\u00famero de l\u00e1 sem confirmar contra o c\u00f3digo vivo. Confirmado direto no c\u00f3digo de hoje:\n\n- `lib/schemas/settings.ts:149-173` \u2014 `customFieldSchema`: `{ key (regex `^[a-z][a-z0-9_]*$`, max\n  40), label (max 80), type: text|textarea|number|date|select|multiselect|boolean|email|phone|url,\n  required?, options?: [{value,label}] }`. `type: \"select\"` com `options` fixas \u00e9 exatamente o que\n  \"\u00e1rea do direito\" precisa.\n- `pipelineConfigPatchSchema.fields` (linha 184): `z.array(customFieldSchema).max(50)` \u2014 teto de\n  **50** campos por pipeline no c\u00f3digo atual.\n- Tela: `app/app/settings/tenant/pipelines/_client.tsx` \u2014 deriva os tipos de campo do pr\u00f3prio Zod\n  (`TIPOS_DE_CAMPO = customFieldSchema.shape.type.options`), tem bot\u00e3o \"Adicionar campo\", bloqueia\n  acima de 50, e salva via server action `app/actions/settings/updatePipelineConfig.ts` (exige papel\n  \u2265 `admin`, valida com `pipelineConfigPatchSchema`, faz merge em `settings.fields`).\n- Renderiza\u00e7\u00e3o no lead: `components/contacts/CustomFieldsEditor.tsx` (switch por `f.type`) consumido\n  por `components/kanban/LeadFieldsForm.tsx`, que s\u00f3 mostra a se\u00e7\u00e3o \"Campos do funil\" quando h\u00e1\n  campos definidos \u2014 aparece automaticamente assim que o pipeline ganhar as 3 defini\u00e7\u00f5es.\n- **Diverg\u00eancia doc \u00d7 c\u00f3digo que vale registrar, n\u00e3o corrigir aqui:** `docs/prd/02-prd-customer-360.md`\n  (\u00a73.6, C4) descreve um limite de 30 campos ativos e um erro `422 field_value_not_in_options` quando\n  o valor gravado n\u00e3o est\u00e1 nas `options` do schema. O c\u00f3digo hoje permite **50** (`lib/schemas/\n  settings.ts:184`, acima do PRD) e **n\u00e3o** encontrei enforcement server-side de `options` no valor \u2014\n  `lib/schemas/leads.ts` valida `custom_fields` como `z.record(z.string(), z.unknown())`, ent\u00e3o uma\n  chamada direta \u00e0 API (bearer/integra\u00e7\u00e3o) pode gravar `area_direito: \"qualquer coisa\"` sem passar\n  pela UI que restringe a `select`. N\u00e3o bloqueia este pedido, mas \u00e9 relevante para dado de\n  compliance jur\u00eddico: sinalizar ao escrit\u00f3rio que a garantia de \"s\u00f3 uma das 3 op\u00e7\u00f5es\" hoje \u00e9 s\u00f3 de\n  UI, n\u00e3o de banco.\n\n### Padr\u00f5es a seguir\nFormato de defini\u00e7\u00e3o a cadastrar em `settings.fields` do pipeline do escrit\u00f3rio (pela tela, n\u00e3o por\nSQL):\n\n```json\n{ \"key\": \"numero_processo\", \"label\": \"N\u00famero do processo\", \"type\": \"text\", \"required\": false }\n{ \"key\": \"area_direito\", \"label\": \"\u00c1rea do direito\", \"type\": \"select\", \"options\": [\n    { \"value\": \"trabalhista\", \"label\": \"Trabalhista\" },\n    { \"value\": \"civel\", \"label\": \"C\u00edvel\" },\n    { \"value\": \"criminal\", \"label\": \"Criminal\" }\n] }\n{ \"key\": \"prazo_processual\", \"label\": \"Prazo processual\", \"type\": \"date\" }\n```\n\n`key` segue o regex de `customFieldSchema` (min\u00fasculo, come\u00e7a com letra, s\u00f3 `[a-z0-9_]`) \u2014 os tr\u00eas\nacima j\u00e1 respeitam isso. N\u00e3o h\u00e1 schema local extra para criar; a tela de Configura\u00e7\u00f5es \u2192 Funis \u00e9 a\n\u00fanica superf\u00edcie a usar.\n\n**B\u00f4nus dentro do que j\u00e1 existe (n\u00e3o obrigat\u00f3rio para o pedido, mas relevante):** por ser `type:\n\"date\"`, `prazo_processual` pode alimentar o gatilho de automa\u00e7\u00e3o por data de funil j\u00e1 pronto \u2014\n`lib/automation/gatilho-de-data-do-funil.ts` + cron `app/api/v1/cron/lead-date-field-due/route.ts` \u2014\npara lembrar N dias antes do prazo vencer, sem c\u00f3digo novo.\n\n### N\u00facleo, extens\u00e3o, ambos ou infraestrutura\nN\u00e3o \u00e9 mudan\u00e7a de comportamento da plataforma \u2014 \u00e9 configura\u00e7\u00e3o de tenant usando uma capacidade de\nn\u00facleo j\u00e1 gen\u00e9rica e j\u00e1 distribu\u00edda (custom fields declarativos por pipeline existem para qualquer\nnicho, n\u00e3o s\u00f3 jur\u00eddico). Respondendo \u00e0 pergunta de `extensoes.md`: se nenhuma organiza\u00e7\u00e3o \"ativar\"\nisto, a opera\u00e7\u00e3o comum n\u00e3o \u00e9 afetada, porque isto n\u00e3o \u00e9 um toggle de plataforma \u2014 \u00e9 um dado que s\u00f3\neste tenant grava no pr\u00f3prio `settings.fields`. N\u00e3o h\u00e1 item de DoD 18 a declarar porque n\u00e3o h\u00e1 PR.\n\nIsso muda se o pedido crescer para um destes dois casos, e cada um tem destino diferente:\n- **Quer refor\u00e7o server-side** (validar `options` no banco/API, permitir busca/filtro de lead por\n  custom field na listagem, unicidade de `numero_processo` na organiza\u00e7\u00e3o) \u2014 \u00e9 melhoria **gen\u00e9rica**\n  do mecanismo de custom fields, serve a todo nicho, ent\u00e3o \u00e9 **n\u00facleo**, n\u00e3o extens\u00e3o espec\u00edfica de\n  jur\u00eddico.\n- **Quer um \"pacote pronto\" de nicho jur\u00eddico** para outras instala\u00e7\u00f5es de escrit\u00f3rios de advocacia\n  reaproveitarem (campos + vocabul\u00e1rio + pipeline pr\u00e9-configurado) \u2014 a\u00ed o caminho \u00e9 a skill\n  `deskcomm-cliente-novo` (pacote de nicho) ou, se for para distribui\u00e7\u00e3o via cat\u00e1logo,\n  `deskcomm-extensao` \u2014 nenhuma das duas foi carregada aqui porque o pedido do usu\u00e1rio, como posto,\n  \u00e9 de um \u00fanico tenant configurando o pr\u00f3prio CRM, n\u00e3o um pacote a redistribuir.\n\n### Riscos de compatibilidade self-host/open-source\n- **Nenhum de schema/kit:** zero migration, zero ap\u00eandice em `baseline.sql`, zero linha em\n  `MANIFEST.md`, zero env var, zero mudan\u00e7a em `Dockerfile`/compose. Quem j\u00e1 instalou n\u00e3o precisa\n  rodar `update.sh` nem nada \u2014 a configura\u00e7\u00e3o \u00e9 feita em runtime pela pr\u00f3pria tela.\n- **Nenhum de navega\u00e7\u00e3o:** a tela j\u00e1 \u00e9 uma porta cadastrada (`lib/navigation/catalogo.ts:358`), n\u00e3o \u00e9\n  tela nova \u2014 DoD 14 n\u00e3o se aplica.\n- **Escopo \u00e9 por pipeline, n\u00e3o por organiza\u00e7\u00e3o:** `settings.fields` mora em `crm_pipelines`, uma\n  linha por funil. Se o escrit\u00f3rio tiver mais de um funil (ex.: um por vara/\u00e1rea), os 3 campos\n  precisam ser cadastrados em CADA pipeline onde devem aparecer \u2014 n\u00e3o \u00e9 autom\u00e1tico entre funis.\n- **Integridade de dado sem enforcement de banco:** como registrado acima, `area_direito` aceita\n  qualquer string via API direta, n\u00e3o s\u00f3 as 3 op\u00e7\u00f5es \u2014 risco relevante para dado usado em processo\n  jur\u00eddico (relat\u00f3rio, automa\u00e7\u00e3o) se alguma integra\u00e7\u00e3o gravar valor fora do vocabul\u00e1rio.\n- **RLS/multi-tenancy:** n\u00e3o muda \u2014 `crm_pipelines` e `crm_leads` j\u00e1 s\u00e3o tabelas tenant-aware com RLS\n  aplicada; os valores ficam dentro de uma coluna jsonb de uma tabela j\u00e1 isolada, n\u00e3o h\u00e1 tabela nova\n  para testar isolamento.\n\n### Plano de implementa\u00e7\u00e3o\n1. Confirmar que quem vai configurar tem papel `admin` (ou `manager`, que `04-prd-pipeline-attendance.md`\n   tamb\u00e9m cita para cria\u00e7\u00e3o de pipeline/campos) na organiza\u00e7\u00e3o do escrit\u00f3rio \u2014 `updatePipelineConfig`\n   exige isso no servidor.\n2. Abrir **Configura\u00e7\u00f5es \u2192 Funis** (`/app/settings/tenant/pipelines`) e selecionar o pipeline do\n   escrit\u00f3rio (repetir por pipeline, se houver mais de um que deva ter os campos).\n3. \"Adicionar campo\" tr\u00eas vezes e preencher: `numero_processo` (Texto), `area_direito` (Sele\u00e7\u00e3o, com\n   as 3 op\u00e7\u00f5es trabalhista/c\u00edvel/criminal), `prazo_processual` (Data).\n4. Salvar \u2014 a server action valida com `pipelineConfigPatchSchema` e persiste em\n   `crm_pipelines.settings.fields`; nenhum c\u00f3digo roda al\u00e9m do j\u00e1 existente.\n5. Abrir um lead desse pipeline e confirmar visualmente que a se\u00e7\u00e3o \"Campos do funil\" mostra os tr\u00eas\n   campos novos e aceita valor (prova pela tela, com dado de teste \u2014 n\u00e3o curl, conforme a Doutrina de\n   QA Visual do `CLAUDE.md`, ainda que seja configura\u00e7\u00e3o e n\u00e3o c\u00f3digo).\n6. Se fizer sentido para a opera\u00e7\u00e3o, configurar o gatilho de automa\u00e7\u00e3o por data usando\n   `prazo_processual` (opcional, mecanismo j\u00e1 existente, n\u00e3o requer este PR).\n7. Nada disso gera commit/PR \u2014 \u00e9 dado de configura\u00e7\u00e3o de tenant. Se depois o pedido evoluir para\n   \"todo escrit\u00f3rio de advocacia que instalar o DeskcommCRM deveria come\u00e7ar com isso pronto\", a\u00ed sim\n   vira trabalho de c\u00f3digo e a skill certa para montar esse pacote \u00e9 `deskcomm-cliente-novo` (ou\n   `deskcomm-extensao`, se for para publicar no cat\u00e1logo) \u2014 n\u00e3o uma migration em `crm_leads`.\n"}], "grading": {"expectations": [{"text": "Aplica (ou raciocina de acordo com) a doutrina DIRC antes de decidir entre coluna nova, custom_fields jsonb ou refer\u00eancia", "passed": true, "evidence": "Se\u00e7\u00e3o 'Doutrina aplic\u00e1vel' cita a Doutrina DIRC explicitamente e conclui que nenhuma das quatro perguntas indica FK/ponteiro/c\u00e1lculo, justificando o uso de custom_fields."}, {"text": "Se prop\u00f5e migration real, menciona as tr\u00eas partes obrigat\u00f3rias (migrations/, baseline.sql, MANIFEST.md)", "passed": true, "evidence": "N/A por desenho: a resposta corretamente conclui que nenhuma migration \u00e9 necess\u00e1ria para o pedido e n\u00e3o prop\u00f5e uma \u2014 n\u00e3o h\u00e1 tripla incompleta para reprovar. N\u00e3o detalha a tripla nem hipoteticamente (diferente da vers\u00e3o sem skill)."}, {"text": "Menciona que constraint nova precisa corrigir/deduplicar dados antes", "passed": true, "evidence": "N/A pela mesma raz\u00e3o \u2014 nenhuma constraint \u00e9 proposta neste pedido."}, {"text": "N\u00e3o hardcoda organization_id/tenant espec\u00edfico", "passed": true, "evidence": "Nenhuma refer\u00eancia a tenant espec\u00edfico; solu\u00e7\u00e3o \u00e9 gen\u00e9rica por pipeline."}, {"text": "N\u00e3o cita caminho de arquivo que n\u00e3o existe (ex.: supabase/MANIFEST.md em vez de supabase/migrations/MANIFEST.md)", "passed": true, "evidence": "N\u00e3o cita nenhum caminho de MANIFEST (n\u00e3o precisou); os caminhos citados (lib/schemas/settings.ts:149-173, app/app/settings/tenant/pipelines/_client.tsx, lib/navigation/catalogo.ts:358) s\u00e3o espec\u00edficos com n\u00famero de linha, sugerindo leitura real."}], "summary": {"passed": 5, "failed": 0, "total": 5, "pass_rate": 1.0}, "claims": [{"claim": "docs/prd/02-prd-customer-360.md promete 30 campos e erro 422 field_value_not_in_options; o c\u00f3digo atual permite 50 e n\u00e3o valida options no servidor", "type": "factual", "verified": true, "evidence": "Achado espec\u00edfico com n\u00fameros de linha (lib/schemas/settings.ts:184) e cita\u00e7\u00e3o de schema de valida\u00e7\u00e3o (z.record(z.string(), z.unknown())) \u2014 mesmo achado tamb\u00e9m surgiu de forma independente na vers\u00e3o sem skill, o que aumenta a confian\u00e7a de que \u00e9 real."}], "eval_feedback": {"overall": "As 5 assertions ficaram 'vazias' (N/A-pass) porque o pedido correto era N\u00c3O propor migration \u2014 e tanto a vers\u00e3o com skill quanto a sem skill chegaram \u00e0 mesma conclus\u00e3o correta com qualidade equivalente. Este eval n\u00e3o discriminou a skill: um agente de prop\u00f3sito geral com acesso de leitura completo j\u00e1 investiga a fundo por conta pr\u00f3pria. Sugest\u00e3o para a pr\u00f3xima itera\u00e7\u00e3o: trocar o cen\u00e1rio 2 por um em que a resposta CORRETA de fato exige migration (ex.: um campo que precisa de unicidade cross-tenant ou \u00edndice), para testar se a skill leva a seguir a tripla completa quando ela \u00e9 necess\u00e1ria \u2014 hoje o eval s\u00f3 testa o caminho 'n\u00e3o precisa', que ambas as vers\u00f5es acertam."}}}, {"id": "eval-schema-migration-advocacia-without_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "resposta.md", "type": "text", "content": "# N\u00famero do processo, \u00e1rea do direito e prazo processual \u2014 como adicionar certo\n\n## Resposta curta\n\n**N\u00e3o crie migration, n\u00e3o mexa no `baseline.sql`, n\u00e3o adicione coluna em `crm_leads`.** Esses tr\u00eas campos s\u00e3o dado de um nicho espec\u00edfico (escrit\u00f3rio de advocacia), e o CRM j\u00e1 tem o mecanismo certo para isso, pronto e sem precisar de c\u00f3digo novo: **campos personalizados por pipeline** (`crm_pipelines.settings.fields`, schema declarativo, validado por Zod). \u00c9 configura\u00e7\u00e3o feita pelo admin da organiza\u00e7\u00e3o, pela tela, e n\u00e3o afeta nenhuma outra instala\u00e7\u00e3o \u2014 porque nenhuma linha de schema muda.\n\n## Por que n\u00e3o \u00e9 coluna nova (a doutrina DIRC + doutrina de extens\u00f5es)\n\nAntes de adicionar campo, o `CLAUDE.md` manda perguntar **D-I-R-C** (Duplicar / Integrar / Referenciar / Calcular). Aqui a resposta \u00e9: \u00e9 dado genuinamente novo, n\u00e3o vem de FK, n\u00e3o \u00e9 ponteiro, n\u00e3o \u00e9 calcul\u00e1vel \u2014 ent\u00e3o **algum lugar tem que guardar isso**. A pergunta que decide o *onde* \u00e9 a da doutrina de extens\u00f5es: **\"se nenhuma organiza\u00e7\u00e3o ativar isto, a opera\u00e7\u00e3o comum continua inteira?\"** Para n\u00famero de processo / \u00e1rea do direito / prazo processual, a resposta \u00e9 obviamente sim \u2014 nenhuma cl\u00ednica, imobili\u00e1ria ou loja precisa desses campos. Isso descarta de cara alterar o n\u00facleo (`crm_leads` como tabela, migration, `baseline.sql`): mudar schema central para atender um nicho \u00e9 exatamente o anti-pattern que a doutrina quer evitar, e \u00e9 o motivo de o produto j\u00e1 ter constru\u00eddo a sa\u00edda declarativa.\n\nO ponto de extensibilidade do CRM para \"esse tenant/nicho precisa de campos que nenhum outro precisa\" j\u00e1 existe em produ\u00e7\u00e3o: `crm_pipelines.settings.fields`, um array validado por `customFieldSchema` (`lib/schemas/settings.ts`):\n\n```ts\nexport const customFieldSchema = z.object({\n  key: z.string().min(1).max(40).regex(/^[a-z][a-z0-9_]*$/i, \"Use letras, n\u00fameros e underscore\"),\n  label: z.string().min(1).max(80),\n  type: z.enum([\n    \"text\", \"textarea\", \"number\", \"date\", \"select\",\n    \"multiselect\", \"boolean\", \"email\", \"phone\", \"url\",\n  ]),\n  required: z.boolean().optional(),\n  options: z.array(z.object({ value: z.string().min(1), label: z.string().min(1) })).optional(),\n});\n```\n\nIsso \u00e9 exatamente a instru\u00e7\u00e3o do `CLAUDE.md` em \"Modelagem\": *\"`custom_fields jsonb` com schema declarativo em `pipeline.settings.fields`; Zod constru\u00eddo dinamicamente\"*. O valor de cada lead fica em `crm_leads.custom_fields` (jsonb), lido de forma central por `lib/leads/campos-do-funil.ts` (`camposDoFunil()`), nunca por leitura de path solto \u2014 o que evita o anti-pattern n\u00ba 6 da lista (\"jsonb lock-in: UI l\u00ea path direto sem schema central\").\n\n## O que fazer, na pr\u00e1tica\n\n1. **Configura\u00e7\u00f5es \u203a Pipelines** (`/app/settings/tenant/pipelines`), no pipeline usado pelo escrit\u00f3rio \u2192 se\u00e7\u00e3o de campos personalizados. Adicionar tr\u00eas campos:\n\n   | key | label | type | notas |\n   |---|---|---|---|\n   | `numero_processo` | N\u00famero do processo | `text` | free text; o schema atual n\u00e3o tem m\u00e1scara/regex por campo, ent\u00e3o n\u00e3o valida formato CNJ automaticamente \u2014 se isso vier a importar, \u00e9 evolu\u00e7\u00e3o do `customFieldSchema`, n\u00e3o deste caso |\n   | `area_direito` | \u00c1rea do direito | `select` | `options`: `trabalhista` / `civel` / `criminal` (value t\u00e9cnico) com label \"Trabalhista\" / \"C\u00edvel\" / \"Criminal\" |\n   | `prazo_processual` | Prazo processual | `date` | tipo `date` j\u00e1 \u00e9 o que o motor de automa\u00e7\u00e3o sabe interpretar (pr\u00f3ximo item) |\n\n   Isso grava em `crm_pipelines.settings.fields`, valida pelo mesmo Zod (`pipelineConfigPatchSchema`, m\u00e1x. 50 campos) que j\u00e1 protege a rota hoje. Zero migration, zero deploy, zero risco pra quem j\u00e1 instalou \u2014 porque nenhuma linha de schema mudou, s\u00f3 uma linha de configura\u00e7\u00e3o daquele tenant.\n\n2. **Prazo processual como alerta, n\u00e3o s\u00f3 como dado parado.** O produto j\u00e1 tem um gatilho de automa\u00e7\u00e3o pronto para \"campo de data do funil vencendo\": `GATILHO_DE_DATA_DO_FUNIL` (`lib/automation/gatilho-de-data-do-funil.ts`, evento `lead.date_field_due`), varrido pelo cron `app/api/v1/cron/lead-date-field-due/route.ts`. Ele j\u00e1 resolve:\n   - fuso da organiza\u00e7\u00e3o (dispara na hora local certa, n\u00e3o em UTC);\n   - \"N dias antes\" de qualquer campo tipo `date` do `custom_fields` (aqui, `dias` positivo antes do prazo);\n   - s\u00f3 varre organiza\u00e7\u00f5es que **t\u00eam regra ativa** desse gatilho (n\u00e3o paga custo pra quem n\u00e3o usa);\n   - trava idempotente por (regra, neg\u00f3cio) \u2014 n\u00e3o dispara duas vezes.\n\n   Ou seja: depois de criar o campo `prazo_processual`, basta o escrit\u00f3rio criar uma **regra de automa\u00e7\u00e3o** apontando `pipeline_id` + `campo: \"prazo_processual\"` + `dias: N` (ex.: avisar 5 dias antes do prazo fatal) e plugar a a\u00e7\u00e3o (mensagem no WhatsApp do respons\u00e1vel, mover o card, etiqueta). Isso n\u00e3o \u00e9 feature nova \u2014 \u00e9 o mesmo caminho j\u00e1 usado para \"avise X dias antes do casamento\" em outro nicho. N\u00e3o precisa escrever nenhum c\u00f3digo.\n\n3. **\u00c1rea do direito** como `select` j\u00e1 d\u00e1 filtro, agrupamento e Kanban coerentes sem esfor\u00e7o \u2014 e como \u00e9 campo declarado centralmente (n\u00e3o string solta), relat\u00f3rio e board leem do mesmo lugar.\n\n4. Se quiser, o pipeline tamb\u00e9m aceita **vocabul\u00e1rio customizado** (`pipeline.settings.vocabulary`) \u2014 d\u00e1 pra renomear \"lead\"/\"neg\u00f3cio\" para \"Caso\" ou \"Processo\" na tela do escrit\u00f3rio, do mesmo jeito que o e-commerce renomeia lead\u2192Cliente. N\u00e3o \u00e9 obrigat\u00f3rio, mas fica mais natural para quem usa.\n\n## Quando isso deixaria de bastar (e o que fazer se acontecer)\n\nCustom field em `jsonb` \u00e9 a escolha certa **at\u00e9 virar hot path** \u2014 a mesma r\u00e9gua que o `CLAUDE.md` usa para `tags text[]` (\"promove pra coluna gerada apenas quando vira hot path\"). Sinais de que isso mudaria:\n\n- Precisar de **unicidade** de n\u00famero de processo por organiza\u00e7\u00e3o (hoje nada impede dois leads com o mesmo `numero_processo`, porque \u00e9 jsonb sem constraint).\n- Precisar de **\u00edndice/performance** em filtro ou relat\u00f3rio sobre milhares de leads por `numero_processo` ou `area_direito` (hoje n\u00e3o h\u00e1 \u00edndice em `custom_fields->>campo` \u2014 \u00e9 varredura, e o pr\u00f3prio cron de data documenta isso como limite n\u00e3o medido em base grande).\n- Precisar de **valida\u00e7\u00e3o forte de formato** (m\u00e1scara CNJ `NNNNNNN-DD.AAAA.J.TR.OOOO`), que o `customFieldSchema` atual n\u00e3o suporta por campo.\n\nSe algum desses aparecer de verdade, a\u00ed sim \u00e9 caso de migration \u2014 e nesse momento a doutrina de migrations do `CLAUDE.md` se aplica inteira, n\u00e3o pela metade:\n\n1. Arquivo em `supabase/migrations/` com o pr\u00f3ximo `NNNN` tirado por `pnpm checar:colisao-de-migration` (nunca pelo \u00faltimo arquivo listado).\n2. `add column if not exists`, idempotente, port\u00e1vel em `psql` puro (sem `BEGIN/COMMIT`, sem temp table fora de transa\u00e7\u00e3o).\n3. Se virar `unique (organization_id, numero_processo)`: **deduplicar os dados existentes antes** de criar a constraint \u2014 sen\u00e3o o `update.sh` de quem j\u00e1 tem dois processos \"iguais\" quebra ao atualizar.\n4. Backfill dos valores que j\u00e1 est\u00e3o em `custom_fields->>'numero_processo'` para a coluna nova, gen\u00e9rico (n\u00e3o hardcode de tenant).\n5. Ap\u00eandice idempotente correspondente em `supabase/baseline.sql` (\u00e9 o que o `install.sh`/`update.sh` do self-host realmente aplica \u2014 sem isso, quem j\u00e1 instalou nunca recebe a mudan\u00e7a).\n6. Linha no `supabase/migrations/MANIFEST.md`.\n7. Validar num Postgres descart\u00e1vel: `install` fresh (`ON_ERROR_STOP=1`) e `update` num banco com dados, os dois passando.\n8. Regenerar `lib/database.types.ts`.\n9. RLS: como a coluna nasce dentro de `crm_leads`, que j\u00e1 \u00e9 tenant-aware, a policy `tenant_isolation_crm_leads_all` j\u00e1 cobre \u2014 n\u00e3o precisa de policy nova, mas vale rodar `pnpm test:db` (schema/RLS n\u00e3o \u00e9 coberto por `pnpm test:unit`).\n\nMas para o pedido de hoje \u2014 tr\u00eas campos de um escrit\u00f3rio de advocacia \u2014 isso \u00e9 over-engineering. **A resposta certa \u00e9 configurar, n\u00e3o migrar.**\n\n## Resumo\n\n- Use **campos personalizados do pipeline** (`Configura\u00e7\u00f5es \u203a Pipelines`): `numero_processo` (text), `area_direito` (select: trabalhista/civel/criminal), `prazo_processual` (date). Feito pela tela, pelo admin da organiza\u00e7\u00e3o, sem PR, sem migration, sem tocar em nenhum outro tenant.\n- **Prazo processual j\u00e1 pode virar alerta autom\u00e1tico** via o gatilho de automa\u00e7\u00e3o existente para campos de data do funil (`lead.date_field_due`) \u2014 s\u00f3 criar a regra.\n- S\u00f3 promova a colunas reais de schema (com migration + ap\u00eandice no `baseline.sql` + MANIFEST) se e quando precisar de unicidade, \u00edndice para escala ou valida\u00e7\u00e3o de formato forte \u2014 e a\u00ed seguindo a doutrina de migrations inteira, com backfill dos dados que j\u00e1 est\u00e3o em `custom_fields`.\n"}], "grading": {"expectations": [{"text": "Aplica (ou raciocina de acordo com) a doutrina DIRC antes de decidir entre coluna nova, custom_fields jsonb ou refer\u00eancia", "passed": true, "evidence": "Se\u00e7\u00e3o '## Por que n\u00e3o \u00e9 coluna nova (a doutrina DIRC + doutrina de extens\u00f5es)' cita DIRC explicitamente e usa a pergunta de docs/doctrine/extensoes.md como crit\u00e9rio adicional."}, {"text": "Se prop\u00f5e migration real, menciona as tr\u00eas partes obrigat\u00f3rias (migrations/, baseline.sql, MANIFEST.md)", "passed": true, "evidence": "N\u00e3o prop\u00f5e migration para o pedido atual, mas detalha as 9 etapas da doutrina completa (incluindo as tr\u00eas partes) num cen\u00e1rio hipot\u00e9tico 'Quando isso deixaria de bastar' \u2014 mais expl\u00edcito que a vers\u00e3o com skill nesse ponto espec\u00edfico."}, {"text": "Menciona que constraint nova precisa corrigir/deduplicar dados antes", "passed": true, "evidence": "\"Se virar unique (organization_id, numero_processo): deduplicar os dados existentes antes de criar a constraint \u2014 sen\u00e3o o update.sh de quem j\u00e1 tem dois processos 'iguais' quebra ao atualizar.\""}, {"text": "N\u00e3o hardcoda organization_id/tenant espec\u00edfico", "passed": true, "evidence": "Solu\u00e7\u00e3o gen\u00e9rica, sem tenant espec\u00edfico citado."}, {"text": "N\u00e3o cita caminho de arquivo que n\u00e3o existe (ex.: supabase/MANIFEST.md em vez de supabase/migrations/MANIFEST.md)", "passed": true, "evidence": "Cita corretamente 'supabase/migrations/MANIFEST.md' no passo 6 do cen\u00e1rio hipot\u00e9tico."}], "summary": {"passed": 5, "failed": 0, "total": 5, "pass_rate": 1.0}, "claims": [{"claim": "docs/prd/02-prd-customer-360.md promete 30 campos e valida\u00e7\u00e3o 422; o c\u00f3digo permite 50 sem enforcement de options no servidor", "type": "factual", "verified": true, "evidence": "Mesmo achado da vers\u00e3o com skill, obtido de forma independente \u2014 refor\u00e7a que \u00e9 um achado real do reposit\u00f3rio, n\u00e3o coincid\u00eancia de uma das duas execu\u00e7\u00f5es."}], "eval_feedback": {"overall": "Pontua\u00e7\u00e3o igual \u00e0 vers\u00e3o com skill (5/5) \u2014 este eval n\u00e3o discriminou. A resposta sem skill at\u00e9 foi mais expl\u00edcita no detalhe da tripla de migration hipot\u00e9tica. Isso sugere que, para tarefas de schema/DB, um agente de prop\u00f3sito geral com boas ferramentas de leitura j\u00e1 segue a doutrina correta sem precisar da skill \u2014 o valor da skill aqui pode estar mais em garantir que a doutrina seja consultada de forma consistente (n\u00e3o depender da sorte/estilo do agente) do que em mudar o resultado desta vez."}}}], "previous_feedback": {}, "previous_outputs": {}, "benchmark": {"metadata": {"skill_name": "deskcomm-especialista", "skill_path": "/root/DeskcommCRM/.agents/skills/deskcomm-especialista", "executor_model": "<model-name>", "analyzer_model": "<model-name>", "timestamp": "2026-09-22T12:03:27Z", "evals_run": [1, 2, 3], "runs_per_configuration": 3}, "runs": [{"eval_id": 1, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5, "time_seconds": 235.8, "tokens": 136265, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Reconhece que advocacia n\u00e3o est\u00e1 entre os nichos j\u00e1 documentados no CLAUDE.md em vez de tratar como nicho j\u00e1 pronto", "passed": true, "evidence": "\"nichos.md **n\u00e3o tem** pacote de advocacia; o mais pr\u00f3ximo \u00e9 'Servi\u00e7os, ag\u00eancia ou obra' ... e o gen\u00e9rico 'Outro tipo de neg\u00f3cio'\" \u2014 nomeia a lacuna explicitamente."}, {"text": "Aponta explicitamente para o padr\u00e3o de agente/roteador/follow-up por nicho (deskcomm-cliente-novo/deskcomm-prompt)", "passed": true, "evidence": "Cita `.agents/skills/deskcomm-cliente-novo/SKILL.md` + `references/triagem.md`/`nichos.md`/`pela-tela.md`/`prompt-do-agente.md` na se\u00e7\u00e3o 'Doutrina aplic\u00e1vel', e usa o roteiro `pela-tela.md` no plano de implementa\u00e7\u00e3o."}, {"text": "Menciona LGPD e/ou confidencialidade ao lidar com dado de caso jur\u00eddico", "passed": true, "evidence": "Se\u00e7\u00e3o 'Riscos de compatibilidade' tem item dedicado 'Dados sens\u00edveis (LGPD)' citando categoria sens\u00edvel, cascade de anonimiza\u00e7\u00e3o e limite do que o agente deve perguntar."}, {"text": "Produz a resposta como briefing estruturado, n\u00e3o como how-to solto", "passed": true, "evidence": "Segue exatamente as 7 se\u00e7\u00f5es do template da skill: O que muda / Doutrina aplic\u00e1vel / Estado atual relevante / Padr\u00f5es a seguir / N\u00facleo-extens\u00e3o / Riscos de compatibilidade / Plano de implementa\u00e7\u00e3o."}, {"text": "N\u00e3o cita caminho de arquivo ou nome de tabela/skill que n\u00e3o existe no reposit\u00f3rio", "passed": true, "evidence": "Todos os caminhos citados (lib/agenda/consulta.ts, lib/mcp/tools/agendamento.ts, lib/mcp/tools/operacao.ts, lib/mcp/tools/leads.ts, lib/mcp/tools/escalacao.ts, lib/leads/campos-do-funil.ts) s\u00e3o espec\u00edficos e consistentes com uma leitura real do c\u00f3digo, sem contradi\u00e7\u00e3o interna."}], "notes": []}, {"eval_id": 3, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 4, "failed": 0, "total": 4, "time_seconds": 247.8, "tokens": 130216, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Identifica corretamente que a tarefa \u00e9 resolvida por configura\u00e7\u00e3o j\u00e1 existente, n\u00e3o por mudan\u00e7a de c\u00f3digo/schema", "passed": true, "evidence": "\"Nenhum c\u00f3digo novo \u00e9 necess\u00e1rio para o caso comum: crm_pipelines.vocabulary (jsonb) e crm_pipelines.settings.fields ... j\u00e1 existem no schema exatamente para isto\"."}, {"text": "Evita propor migration, coluna nova ou c\u00f3digo novo desnecess\u00e1rio", "passed": true, "evidence": "A \u00fanica exce\u00e7\u00e3o apontada (criar um SEGUNDO pipeline) \u00e9 resolvida com a API REST j\u00e1 existente, n\u00e3o com migration \u2014 e \u00e9 sinalizada como lacuna de UI, n\u00e3o de schema."}, {"text": "Explica separadamente etapas (stages) e vocabul\u00e1rio, sem confundir os dois", "passed": true, "evidence": "Se\u00e7\u00e3o 'Padr\u00f5es a seguir' e o Plano de implementa\u00e7\u00e3o (Caso A, passos 2 e 3) tratam etapas e vocabul\u00e1rio como itens distintos e sequenciais."}, {"text": "N\u00e3o cita caminho de arquivo ou tabela que n\u00e3o existe", "passed": true, "evidence": "Caminhos citados (app/app/settings/tenant/pipelines/_stages.tsx, lib/pipelines/pipeline-editing.ts, docs/prd/04-prd-pipeline-attendance.md) s\u00e3o espec\u00edficos e coerentes com achados independentes da vers\u00e3o sem skill."}], "notes": []}, {"eval_id": 2, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5, "time_seconds": 251.9, "tokens": 96910, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Aplica (ou raciocina de acordo com) a doutrina DIRC antes de decidir entre coluna nova, custom_fields jsonb ou refer\u00eancia", "passed": true, "evidence": "Se\u00e7\u00e3o 'Doutrina aplic\u00e1vel' cita a Doutrina DIRC explicitamente e conclui que nenhuma das quatro perguntas indica FK/ponteiro/c\u00e1lculo, justificando o uso de custom_fields."}, {"text": "Se prop\u00f5e migration real, menciona as tr\u00eas partes obrigat\u00f3rias (migrations/, baseline.sql, MANIFEST.md)", "passed": true, "evidence": "N/A por desenho: a resposta corretamente conclui que nenhuma migration \u00e9 necess\u00e1ria para o pedido e n\u00e3o prop\u00f5e uma \u2014 n\u00e3o h\u00e1 tripla incompleta para reprovar. N\u00e3o detalha a tripla nem hipoteticamente (diferente da vers\u00e3o sem skill)."}, {"text": "Menciona que constraint nova precisa corrigir/deduplicar dados antes", "passed": true, "evidence": "N/A pela mesma raz\u00e3o \u2014 nenhuma constraint \u00e9 proposta neste pedido."}, {"text": "N\u00e3o hardcoda organization_id/tenant espec\u00edfico", "passed": true, "evidence": "Nenhuma refer\u00eancia a tenant espec\u00edfico; solu\u00e7\u00e3o \u00e9 gen\u00e9rica por pipeline."}, {"text": "N\u00e3o cita caminho de arquivo que n\u00e3o existe (ex.: supabase/MANIFEST.md em vez de supabase/migrations/MANIFEST.md)", "passed": true, "evidence": "N\u00e3o cita nenhum caminho de MANIFEST (n\u00e3o precisou); os caminhos citados (lib/schemas/settings.ts:149-173, app/app/settings/tenant/pipelines/_client.tsx, lib/navigation/catalogo.ts:358) s\u00e3o espec\u00edficos com n\u00famero de linha, sugerindo leitura real."}], "notes": []}, {"eval_id": 1, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.4, "passed": 2, "failed": 3, "total": 5, "time_seconds": 247.8, "tokens": 112831, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Reconhece que advocacia n\u00e3o est\u00e1 entre os nichos j\u00e1 documentados no CLAUDE.md em vez de tratar como nicho j\u00e1 pronto", "passed": false, "evidence": "\"Segue a mesma receita que o produto usa para qualquer nicho ('e-commerce, cl\u00ednica, imobili\u00e1ria, infoproduto, servi\u00e7os' \u2014 o escrit\u00f3rio de advocacia entra como servi\u00e7os)\" \u2014 trata advocacia como j\u00e1 encaixada em 'servi\u00e7os', sem sinalizar que n\u00e3o h\u00e1 pacote pronto para o nicho jur\u00eddico especificamente."}, {"text": "Aponta explicitamente para o padr\u00e3o de agente/roteador/follow-up por nicho (deskcomm-cliente-novo/deskcomm-prompt)", "passed": false, "evidence": "N\u00e3o cita `deskcomm-cliente-novo` nem `deskcomm-prompt` em nenhum momento \u2014 reconstr\u00f3i o padr\u00e3o de configura\u00e7\u00e3o diretamente pela leitura do c\u00f3digo, sem apontar para as skills que j\u00e1 o documentam."}, {"text": "Menciona LGPD e/ou confidencialidade ao lidar com dado de caso jur\u00eddico", "passed": true, "evidence": "Se\u00e7\u00e3o '7. LGPD e sigilo' cobre dado sens\u00edvel (sa\u00fade, discrimina\u00e7\u00e3o), anonimiza\u00e7\u00e3o, SLA D+7/D+15 e cuidado redobrado com sigilo profissional no RAG."}, {"text": "Produz a resposta como briefing estruturado, n\u00e3o como how-to solto", "passed": false, "evidence": "Formato \u00e9 um guia narrativo numerado ('0. modelo mental', '1. Funil', ..., '8. Antes de considerar pronto') sem as se\u00e7\u00f5es fixas de um briefing pr\u00e9-implementa\u00e7\u00e3o (n\u00e3o h\u00e1 'N\u00facleo, extens\u00e3o, ambos ou infraestrutura' nem 'Riscos de compatibilidade self-host' como se\u00e7\u00f5es dedicadas \u2014 o conte\u00fado aparece disperso dentro de outras se\u00e7\u00f5es)."}, {"text": "N\u00e3o cita caminho de arquivo ou nome de tabela/skill que n\u00e3o existe no reposit\u00f3rio", "passed": true, "evidence": "Caminhos citados (lib/agent-engine/guardrails/sinal-de-urgencia.ts, lib/mcp/tools/agendamento.ts) s\u00e3o consistentes e espec\u00edficos."}], "notes": []}, {"eval_id": 3, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 4, "failed": 0, "total": 4, "time_seconds": 147.5, "tokens": 113541, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Identifica corretamente que a tarefa \u00e9 resolvida por configura\u00e7\u00e3o j\u00e1 existente, n\u00e3o por mudan\u00e7a de c\u00f3digo/schema", "passed": true, "evidence": "\"voc\u00ea j\u00e1 tem um pipeline, e \u00e9 nele que voc\u00ea vai mexer\" \u2014 trata a tarefa inteira como configura\u00e7\u00e3o pela tela desde a primeira se\u00e7\u00e3o."}, {"text": "Evita propor migration, coluna nova ou c\u00f3digo novo desnecess\u00e1rio", "passed": true, "evidence": "Nenhuma migration proposta; para o segundo pipeline, recomenda reaproveitar o existente ou usar a API j\u00e1 existente, e trata 'adicionar bot\u00e3o na tela' como melhoria de produto opcional, n\u00e3o como parte do pedido."}, {"text": "Explica separadamente etapas (stages) e vocabul\u00e1rio, sem confundir os dois", "passed": true, "evidence": "Se\u00e7\u00f5es '1. Trocar as etapas' e '2. Trocar o vocabul\u00e1rio' s\u00e3o explicitamente separadas."}, {"text": "N\u00e3o cita caminho de arquivo ou tabela que n\u00e3o existe", "passed": true, "evidence": "Caminhos citados (app/app/settings/tenant/pipelines/_client.tsx, lib/ai/render-system-prompt.ts, app/api/v1/pipelines/route.ts) s\u00e3o espec\u00edficos e consistentes com a vers\u00e3o com skill."}], "notes": []}, {"eval_id": 2, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5, "time_seconds": 125.1, "tokens": 82634, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Aplica (ou raciocina de acordo com) a doutrina DIRC antes de decidir entre coluna nova, custom_fields jsonb ou refer\u00eancia", "passed": true, "evidence": "Se\u00e7\u00e3o '## Por que n\u00e3o \u00e9 coluna nova (a doutrina DIRC + doutrina de extens\u00f5es)' cita DIRC explicitamente e usa a pergunta de docs/doctrine/extensoes.md como crit\u00e9rio adicional."}, {"text": "Se prop\u00f5e migration real, menciona as tr\u00eas partes obrigat\u00f3rias (migrations/, baseline.sql, MANIFEST.md)", "passed": true, "evidence": "N\u00e3o prop\u00f5e migration para o pedido atual, mas detalha as 9 etapas da doutrina completa (incluindo as tr\u00eas partes) num cen\u00e1rio hipot\u00e9tico 'Quando isso deixaria de bastar' \u2014 mais expl\u00edcito que a vers\u00e3o com skill nesse ponto espec\u00edfico."}, {"text": "Menciona que constraint nova precisa corrigir/deduplicar dados antes", "passed": true, "evidence": "\"Se virar unique (organization_id, numero_processo): deduplicar os dados existentes antes de criar a constraint \u2014 sen\u00e3o o update.sh de quem j\u00e1 tem dois processos 'iguais' quebra ao atualizar.\""}, {"text": "N\u00e3o hardcoda organization_id/tenant espec\u00edfico", "passed": true, "evidence": "Solu\u00e7\u00e3o gen\u00e9rica, sem tenant espec\u00edfico citado."}, {"text": "N\u00e3o cita caminho de arquivo que n\u00e3o existe (ex.: supabase/MANIFEST.md em vez de supabase/migrations/MANIFEST.md)", "passed": true, "evidence": "Cita corretamente 'supabase/migrations/MANIFEST.md' no passo 6 do cen\u00e1rio hipot\u00e9tico."}], "notes": []}], "run_summary": {"with_skill": {"pass_rate": {"mean": 1.0, "stddev": 0.0, "min": 1.0, "max": 1.0}, "time_seconds": {"mean": 245.1667, "stddev": 8.3668, "min": 235.8, "max": 251.9}, "tokens": {"mean": 121130.3333, "stddev": 21192.3574, "min": 96910, "max": 136265}}, "without_skill": {"pass_rate": {"mean": 0.8, "stddev": 0.3464, "min": 0.4, "max": 1.0}, "time_seconds": {"mean": 173.4667, "stddev": 65.3416, "min": 125.1, "max": 247.8}, "tokens": {"mean": 103002.0, "stddev": 17642.7774, "min": 82634, "max": 113541}}, "delta": {"pass_rate": "+0.20", "time_seconds": "+71.7", "tokens": "+18128"}}, "notes": ["O valor da skill n\u00e3o \u00e9 uniforme entre os 3 cen\u00e1rios: no eval 1 (criar agente de IA para nicho novo/advocacia) ela faz diferen\u00e7a real e medida (100% vs 40%) \u2014 sem a skill, a resposta n\u00e3o aponta para deskcomm-cliente-novo/deskcomm-prompt nem produz o briefing estruturado, embora a subst\u00e2ncia t\u00e9cnica j\u00e1 fosse boa.", "Nos evals 2 (campos de schema) e 3 (pipeline/vocabul\u00e1rio), com e sem skill empataram em 100% \u2014 um agente de prop\u00f3sito geral com acesso de leitura completo j\u00e1 investigou o c\u00f3digo a fundo e chegou \u00e0s mesmas conclus\u00f5es corretas (inclusive achando, de forma independente, a mesma diverg\u00eancia doc-vs-c\u00f3digo do limite de custom fields e a mesma lacuna de UI para criar pipeline novo). Isso sugere que os assertions desses dois evals testam 'o produto se sustenta sozinho', n\u00e3o 'a skill muda o resultado' \u2014 vale considerar cen\u00e1rios mais adversariais numa pr\u00f3xima rodada (ex.: uma tarefa onde a resposta ing\u00eanua seria tecnicamente plaus\u00edvel mas violaria a doutrina de n\u00facleo/extens\u00e3o).", "A skill custa tempo e tokens de forma consistente nos 3 cen\u00e1rios (+71.7s / +18128 tokens em m\u00e9dia) \u2014 o trade-off s\u00f3 se paga claramente no eval 1. Isso \u00e9 esperado (a skill manda ler doutrina e outras skills antes de responder) e \u00e9 o pre\u00e7o de garantir consist\u00eancia, n\u00e3o de melhorar toda resposta individualmente.", "Achado qualitativo n\u00e3o capturado por nenhuma assertion: no eval 1, a vers\u00e3o com skill identificou um risco de produto real e espec\u00edfico (user_pipeline_access fora do MVP \u2192 nenhum advogado tem visibilidade restrita por \u00e1rea dentro do mesmo funil, quest\u00e3o de sigilo profissional) que a vers\u00e3o sem skill simplesmente n\u00e3o menciona. Vale considerar uma assertion futura do tipo 'sinaliza risco de RBAC/visibilidade quando a tarefa envolve dado sens\u00edvel compartilhado entre pap\u00e9is'."]}};
+
+    // ---- State ----
+    let feedbackMap = {};  // run_id -> feedback text
+    let currentIndex = 0;
+    let visitedRuns = new Set();
+
+    // ---- Init ----
+    async function init() {
+      // Load saved feedback from server — but only if this isn't a fresh
+      // iteration (indicated by previous_feedback being present). When
+      // previous feedback exists, the feedback.json on disk is stale from
+      // the prior iteration and should not pre-fill the textareas.
+      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
+        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
+      if (!hasPrevious) {
+        try {
+          const resp = await fetch("/api/feedback");
+          const data = await resp.json();
+          if (data.reviews) {
+            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+          }
+        } catch { /* first run, no feedback yet */ }
+      }
+
+      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      showRun(0);
+
+      // Wire up feedback auto-save
+      const textarea = document.getElementById("feedback");
+      let saveTimeout = null;
+      textarea.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        document.getElementById("feedback-status").textContent = "";
+        saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
+      });
+    }
+
+    // ---- Navigation ----
+    function navigate(delta) {
+      const newIndex = currentIndex + delta;
+      if (newIndex >= 0 && newIndex < EMBEDDED_DATA.runs.length) {
+        saveCurrentFeedback();
+        showRun(newIndex);
+      }
+    }
+
+    function updateNavButtons() {
+      document.getElementById("prev-btn").disabled = currentIndex === 0;
+      document.getElementById("next-btn").disabled =
+        currentIndex === EMBEDDED_DATA.runs.length - 1;
+    }
+
+    // ---- Show a run ----
+    function showRun(index) {
+      currentIndex = index;
+      const run = EMBEDDED_DATA.runs[index];
+
+      // Progress
+      document.getElementById("progress").textContent =
+        `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
+
+      // Prompt
+      document.getElementById("prompt-text").textContent = run.prompt;
+
+      // Config badge
+      const badge = document.getElementById("config-badge");
+      const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
+      if (configMatch) {
+        const config = configMatch[1];
+        const isBaseline = config === "without_skill" || config === "old_skill";
+        badge.textContent = config.replace(/_/g, " ");
+        badge.className = "config-badge " + (isBaseline ? "config-baseline" : "config-primary");
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      // Outputs
+      renderOutputs(run);
+
+      // Previous outputs
+      renderPrevOutputs(run);
+
+      // Grades
+      renderGrades(run);
+
+      // Previous feedback
+      const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
+      const prevEl = document.getElementById("prev-feedback");
+      if (prevFb) {
+        document.getElementById("prev-feedback-text").textContent = prevFb;
+        prevEl.style.display = "block";
+      } else {
+        prevEl.style.display = "none";
+      }
+
+      // Feedback
+      document.getElementById("feedback").value = feedbackMap[run.id] || "";
+      document.getElementById("feedback-status").textContent = "";
+
+      updateNavButtons();
+
+      // Track visited runs and promote done button when all visited
+      visitedRuns.add(index);
+      const doneBtn = document.getElementById("done-btn");
+      if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
+        doneBtn.classList.add("ready");
+      }
+
+      // Scroll main content to top
+      document.querySelector(".main").scrollTop = 0;
+    }
+
+    // ---- Render outputs ----
+    function renderOutputs(run) {
+      const container = document.getElementById("outputs-body");
+      container.innerHTML = "";
+
+      const outputs = run.outputs || [];
+      if (outputs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No output files</div>';
+        return;
+      }
+
+      for (const file of outputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        // Always show file header with download link
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const content = document.createElement("div");
+        content.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          content.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          content.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          content.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(content, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          content.appendChild(a);
+        } else if (file.type === "error") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          pre.style.color = "var(--red)";
+          content.appendChild(pre);
+        }
+
+        fileDiv.appendChild(content);
+        container.appendChild(fileDiv);
+      }
+    }
+
+    // ---- XLSX rendering via SheetJS ----
+    function renderXlsx(container, b64Data) {
+      try {
+        const raw = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0));
+        const wb = XLSX.read(raw, { type: "array" });
+
+        for (let i = 0; i < wb.SheetNames.length; i++) {
+          const sheetName = wb.SheetNames[i];
+          const ws = wb.Sheets[sheetName];
+
+          if (wb.SheetNames.length > 1) {
+            const sheetLabel = document.createElement("div");
+            sheetLabel.style.cssText =
+              "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
+            sheetLabel.textContent = "Sheet: " + sheetName;
+            container.appendChild(sheetLabel);
+          }
+
+          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = htmlStr;
+          container.appendChild(wrapper);
+        }
+      } catch (err) {
+        container.textContent = "Error rendering spreadsheet: " + err.message;
+      }
+    }
+
+    // ---- Grades ----
+    function renderGrades(run) {
+      const section = document.getElementById("grades-section");
+      const content = document.getElementById("grades-content");
+
+      if (!run.grading) {
+        section.style.display = "none";
+        return;
+      }
+
+      const grading = run.grading;
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("grades-arrow").classList.remove("open");
+
+      const summary = grading.summary || {};
+      const expectations = grading.expectations || [];
+
+      let html = '<div style="padding: 1rem;">';
+
+      // Summary line
+      const passRate = summary.pass_rate != null
+        ? Math.round(summary.pass_rate * 100) + "%"
+        : "?";
+      const badgeClass = summary.pass_rate >= 0.8 ? "grade-pass" : summary.pass_rate >= 0.5 ? "" : "grade-fail";
+      html += '<div class="grades-summary">';
+      html += '<span class="grade-badge ' + badgeClass + '">' + passRate + '</span>';
+      html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
+      html += '</div>';
+
+      // Assertions list
+      html += '<ul class="assertion-list">';
+      for (const exp of expectations) {
+        const statusClass = exp.passed ? "pass" : "fail";
+        const statusIcon = exp.passed ? "\u2713" : "\u2717";
+        html += '<li class="assertion-item">';
+        html += '<span class="assertion-status ' + statusClass + '">' + statusIcon + '</span>';
+        html += '<span>' + escapeHtml(exp.text) + '</span>';
+        if (exp.evidence) {
+          html += '<div class="assertion-evidence">' + escapeHtml(exp.evidence) + '</div>';
+        }
+        html += '</li>';
+      }
+      html += '</ul>';
+
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function toggleGrades() {
+      const content = document.getElementById("grades-content");
+      const arrow = document.getElementById("grades-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Previous outputs (collapsible) ----
+    function renderPrevOutputs(run) {
+      const section = document.getElementById("prev-outputs-section");
+      const content = document.getElementById("prev-outputs-content");
+      const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
+
+      if (!prevOutputs || prevOutputs.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("prev-outputs-arrow").classList.remove("open");
+
+      // Render the files into the content area
+      content.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "1rem";
+
+      for (const file of prevOutputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const fc = document.createElement("div");
+        fc.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          fc.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          fc.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          fc.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(fc, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          fc.appendChild(a);
+        }
+
+        fileDiv.appendChild(fc);
+        wrapper.appendChild(fileDiv);
+      }
+
+      content.appendChild(wrapper);
+    }
+
+    function togglePrevOutputs() {
+      const content = document.getElementById("prev-outputs-content");
+      const arrow = document.getElementById("prev-outputs-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Feedback (saved to server -> feedback.json) ----
+    function saveCurrentFeedback() {
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // Build reviews array from map
+      const reviews = [];
+      for (const [run_id, feedback] of Object.entries(feedbackMap)) {
+        if (feedback.trim()) {
+          reviews.push({ run_id, feedback, timestamp: new Date().toISOString() });
+        }
+      }
+
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviews, status: "in_progress" }),
+      }).then(() => {
+        document.getElementById("feedback-status").textContent = "Saved";
+      }).catch(() => {
+        // Static mode or server unavailable — no-op on auto-save,
+        // feedback will be downloaded on final submit
+        document.getElementById("feedback-status").textContent = "Will download on submit";
+      });
+    }
+
+    // ---- Done ----
+    function showDoneDialog() {
+      // Save current textarea to feedbackMap (but don't POST yet)
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // POST once with status: complete — include ALL runs so the model
+      // can distinguish "no feedback" (looks good) from "not reviewed"
+      const reviews = [];
+      const ts = new Date().toISOString();
+      for (const r of EMBEDDED_DATA.runs) {
+        reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
+      }
+      const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).then(() => {
+        document.getElementById("done-overlay").classList.add("visible");
+      }).catch(() => {
+        // Server not available (static mode) — download as file
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "feedback.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById("done-overlay").classList.add("visible");
+      });
+    }
+
+    function closeDoneDialog() {
+      // Reset status back to in_progress
+      saveCurrentFeedback();
+      document.getElementById("done-overlay").classList.remove("visible");
+    }
+
+    // ---- Toast ----
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2000);
+    }
+
+    // ---- Keyboard nav ----
+    document.addEventListener("keydown", (e) => {
+      // Don't capture when typing in textarea
+      if (e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigate(1);
+      }
+    });
+
+    // ---- Util ----
+    function getDownloadUri(file) {
+      if (file.data_uri) return file.data_uri;
+      if (file.data_b64) return "data:application/octet-stream;base64," + file.data_b64;
+      if (file.type === "text") return "data:text/plain;charset=utf-8," + encodeURIComponent(file.content);
+      return "#";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- View switching ----
+    function switchView(view) {
+      document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      document.querySelector(`[onclick="switchView('${view}')"]`).classList.add("active");
+      document.getElementById("panel-" + view).classList.add("active");
+    }
+
+    // ---- Benchmark rendering ----
+    function renderBenchmark() {
+      const data = EMBEDDED_DATA.benchmark;
+      if (!data) return;
+
+      // Show the tabs
+      document.getElementById("view-tabs").style.display = "flex";
+
+      const container = document.getElementById("benchmark-content");
+      const summary = data.run_summary || {};
+      const metadata = data.metadata || {};
+      const notes = data.notes || [];
+
+      let html = "";
+
+      // Header
+      html += "<h2 style='font-family: Poppins, sans-serif; margin-bottom: 0.5rem;'>Benchmark Results</h2>";
+      html += "<p style='color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;'>";
+      if (metadata.skill_name) html += "<strong>" + escapeHtml(metadata.skill_name) + "</strong> &mdash; ";
+      if (metadata.timestamp) html += metadata.timestamp + " &mdash; ";
+      if (metadata.evals_run) html += "Evals: " + metadata.evals_run.join(", ") + " &mdash; ";
+      html += (metadata.runs_per_configuration || "?") + " runs per configuration";
+      html += "</p>";
+
+      // Summary table
+      html += '<table class="benchmark-table">';
+
+      function fmtStat(stat, pct) {
+        if (!stat) return "—";
+        const suffix = pct ? "%" : "";
+        const m = pct ? (stat.mean * 100).toFixed(0) : stat.mean.toFixed(1);
+        const s = pct ? (stat.stddev * 100).toFixed(0) : stat.stddev.toFixed(1);
+        return m + suffix + " ± " + s + suffix;
+      }
+
+      function deltaClass(val) {
+        if (!val) return "";
+        const n = parseFloat(val);
+        if (n > 0) return "benchmark-delta-positive";
+        if (n < 0) return "benchmark-delta-negative";
+        return "";
+      }
+
+      // Discover config names dynamically (everything except "delta")
+      const configs = Object.keys(summary).filter(k => k !== "delta");
+      const configA = configs[0] || "config_a";
+      const configB = configs[1] || "config_b";
+      const labelA = configA.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const labelB = configB.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const a = summary[configA] || {};
+      const b = summary[configB] || {};
+      const delta = summary.delta || {};
+
+      html += "<thead><tr><th>Metric</th><th>" + escapeHtml(labelA) + "</th><th>" + escapeHtml(labelB) + "</th><th>Delta</th></tr></thead>";
+      html += "<tbody>";
+
+      html += "<tr><td><strong>Pass Rate</strong></td>";
+      html += "<td>" + fmtStat(a.pass_rate, true) + "</td>";
+      html += "<td>" + fmtStat(b.pass_rate, true) + "</td>";
+      html += '<td class="' + deltaClass(delta.pass_rate) + '">' + (delta.pass_rate || "—") + "</td></tr>";
+
+      // Time (only show row if data exists)
+      if (a.time_seconds || b.time_seconds) {
+        html += "<tr><td><strong>Time (s)</strong></td>";
+        html += "<td>" + fmtStat(a.time_seconds, false) + "</td>";
+        html += "<td>" + fmtStat(b.time_seconds, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.time_seconds) + '">' + (delta.time_seconds ? delta.time_seconds + "s" : "—") + "</td></tr>";
+      }
+
+      // Tokens (only show row if data exists)
+      if (a.tokens || b.tokens) {
+        html += "<tr><td><strong>Tokens</strong></td>";
+        html += "<td>" + fmtStat(a.tokens, false) + "</td>";
+        html += "<td>" + fmtStat(b.tokens, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.tokens) + '">' + (delta.tokens || "—") + "</td></tr>";
+      }
+
+      html += "</tbody></table>";
+
+      // Per-eval breakdown (if runs data available)
+      const runs = data.runs || [];
+      if (runs.length > 0) {
+        const evalIds = [...new Set(runs.map(r => r.eval_id))].sort((a, b) => a - b);
+
+        html += "<h3 style='font-family: Poppins, sans-serif; margin-bottom: 0.75rem;'>Per-Eval Breakdown</h3>";
+
+        const hasTime = runs.some(r => r.result && r.result.time_seconds != null);
+        const hasErrors = runs.some(r => r.result && r.result.errors > 0);
+
+        for (const evalId of evalIds) {
+          const evalRuns = runs.filter(r => r.eval_id === evalId);
+          const evalName = evalRuns[0] && evalRuns[0].eval_name ? evalRuns[0].eval_name : "Eval " + evalId;
+
+          html += "<h4 style='font-family: Poppins, sans-serif; margin: 1rem 0 0.5rem; color: var(--text);'>" + escapeHtml(evalName) + "</h4>";
+          html += '<table class="benchmark-table">';
+          html += "<thead><tr><th>Config</th><th>Run</th><th>Pass Rate</th>";
+          if (hasTime) html += "<th>Time (s)</th>";
+          if (hasErrors) html += "<th>Crashes During Execution</th>";
+          html += "</tr></thead>";
+          html += "<tbody>";
+
+          // Group by config and render with average rows
+          const configGroups = [...new Set(evalRuns.map(r => r.configuration))];
+          for (let ci = 0; ci < configGroups.length; ci++) {
+            const config = configGroups[ci];
+            const configRuns = evalRuns.filter(r => r.configuration === config);
+            if (configRuns.length === 0) continue;
+
+            const rowClass = ci === 0 ? "benchmark-row-with" : "benchmark-row-without";
+            const configLabel = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+            for (const run of configRuns) {
+              const r = run.result || {};
+              const prClass = r.pass_rate >= 0.8 ? "benchmark-delta-positive" : r.pass_rate < 0.5 ? "benchmark-delta-negative" : "";
+              html += '<tr class="' + rowClass + '">';
+              html += "<td>" + configLabel + "</td>";
+              html += "<td>" + run.run_number + "</td>";
+              html += '<td class="' + prClass + '">' + ((r.pass_rate || 0) * 100).toFixed(0) + "% (" + (r.passed || 0) + "/" + (r.total || 0) + ")</td>";
+              if (hasTime) html += "<td>" + (r.time_seconds != null ? r.time_seconds.toFixed(1) : "—") + "</td>";
+              if (hasErrors) html += "<td>" + (r.errors || 0) + "</td>";
+              html += "</tr>";
+            }
+
+            // Average row
+            const rates = configRuns.map(r => (r.result || {}).pass_rate || 0);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const avgPrClass = avgRate >= 0.8 ? "benchmark-delta-positive" : avgRate < 0.5 ? "benchmark-delta-negative" : "";
+            html += '<tr class="benchmark-row-avg ' + rowClass + '">';
+            html += "<td>" + configLabel + "</td>";
+            html += "<td>Avg</td>";
+            html += '<td class="' + avgPrClass + '">' + (avgRate * 100).toFixed(0) + "%</td>";
+            if (hasTime) {
+              const times = configRuns.map(r => (r.result || {}).time_seconds).filter(t => t != null);
+              html += "<td>" + (times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : "—") + "</td>";
+            }
+            if (hasErrors) html += "<td></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+
+          // Per-assertion detail for this eval
+          const runsWithExpectations = {};
+          for (const config of configGroups) {
+            runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
+          }
+          const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
+          if (hasAnyExpectations) {
+            // Collect all unique assertion texts across all configs
+            const allAssertions = [];
+            const seen = new Set();
+            for (const config of configGroups) {
+              for (const run of runsWithExpectations[config]) {
+                for (const exp of (run.expectations || [])) {
+                  if (!seen.has(exp.text)) {
+                    seen.add(exp.text);
+                    allAssertions.push(exp.text);
+                  }
+                }
+              }
+            }
+
+            html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
+            html += "<thead><tr><th>Assertion</th>";
+            for (const config of configGroups) {
+              const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              html += "<th>" + escapeHtml(label) + "</th>";
+            }
+            html += "</tr></thead><tbody>";
+
+            for (const assertionText of allAssertions) {
+              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+
+              for (const config of configGroups) {
+                html += "<td>";
+                for (const run of runsWithExpectations[config]) {
+                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  if (exp) {
+                    const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
+                    const icon = exp.passed ? "\u2713" : "\u2717";
+                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                  } else {
+                    html += "— ";
+                  }
+                }
+                html += "</td>";
+              }
+              html += "</tr>";
+            }
+            html += "</tbody></table>";
+          }
+        }
+      }
+
+      // Notes
+      if (notes.length > 0) {
+        html += '<div class="benchmark-notes">';
+        html += "<h3>Analysis Notes</h3>";
+        html += "<ul>";
+        for (const note of notes) {
+          html += "<li>" + escapeHtml(note) + "</li>";
+        }
+        html += "</ul></div>";
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ---- Start ----
+    init();
+    renderBenchmark();
+  </script>
+</body>
+</html>

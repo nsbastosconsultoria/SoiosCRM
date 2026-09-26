@@ -2,7 +2,7 @@
 // "Soft-tech / calmo" — neutros desaturados (greige/warm-gray), accent não-saturado.
 // 5-Constraint Rule applied: Shape, Color (exact hex), Typography, Motion, Layout.
 
-export type PaletteId = "sage" | "clay" | "mist" | "plum" | "olive";
+export type PaletteId = "sage" | "clay" | "mist" | "plum" | "olive" | "indigo";
 export type TypoId = "bricolage-jakarta" | "fraunces-manrope" | "atkinson" | "source-plex";
 export type DensityId = "aerada" | "equilibrada" | "compacta";
 export type ThemeId = "light" | "dark";
@@ -176,6 +176,39 @@ export const PALETTES: Record<PaletteId, PaletteDef> = {
     surfaces: {
       light: { bg: "#faf9f4", surface: "#ffffff", surfaceElevated: "#f3f0e3", text: "#191712", textMuted: "#534e3e", border: "#e3dfcc" },
       dark:  { bg: "#11100d", surface: "#181713", surfaceElevated: "#21201b", text: "#f3f1ea", textMuted: "#807a68", border: "#2c2a24" },
+    },
+  },
+  // Fonte: projeto Stitch "Soios CRM Visual Identity", design system "Kinetic
+  // Enterprise Precision" (Google Stitch MCP, importado em 2026-09-22).
+  // Accent e neutrals batem com as escalas padrão Tailwind Indigo/Slate — é
+  // a paleta que o design system do Stitch já referenciava por nome
+  // ("Indigo-600", "Slate-900" etc.) nas suas próprias guidelines.
+  indigo: {
+    id: "indigo",
+    name: "Indigo",
+    description: "Índigo corporativo. Alta velocidade, precisão computacional, SaaS enterprise.",
+    accent: {
+      50: "#eef2ff", 100: "#e0e7ff", 200: "#c7d2fe", 300: "#a5b4fc",
+      400: "#818cf8", 500: "#6366f1", 600: "#4f46e5", 700: "#4338ca",
+      800: "#3730a3", 900: "#312e81", 950: "#1e1b4b",
+    },
+    neutralLight: {
+      50: "#f8fafc", 100: "#f1f5f9", 200: "#e2e8f0", 300: "#cbd5e1",
+      400: "#94a3b8", 500: "#64748b", 600: "#475569", 700: "#334155",
+      800: "#1e293b", 900: "#0f172a", 950: "#020617",
+    },
+    neutralDark: {
+      50: "#f1f5f9", 100: "#dde3ea", 200: "#b7c0cc", 300: "#8b96a8",
+      400: "#64748b", 500: "#475569", 600: "#2c3446", 700: "#1c2333",
+      800: "#131826", 900: "#0b0f1a", 950: "#05070d",
+    },
+    states: {
+      light: { success: "#10b981", warning: "#f59e0b", error: "#ef4444", info: "#3b82f6" },
+      dark:  { success: "#34d399", warning: "#fbbf24", error: "#f87171", info: "#60a5fa" },
+    },
+    surfaces: {
+      light: { bg: "#f8fafc", surface: "#ffffff", surfaceElevated: "#f1f5f9", text: "#0f172a", textMuted: "#475569", border: "#e2e8f0" },
+      dark:  { bg: "#0b0f1a", surface: "#131826", surfaceElevated: "#1c2333", text: "#f1f5f9", textMuted: "#8b96a8", border: "#2c3446" },
     },
   },
 };

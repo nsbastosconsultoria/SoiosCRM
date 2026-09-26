@@ -1,0 +1,46 @@
+{
+  "expectations": [
+    {
+      "text": "Aplica (ou raciocina de acordo com) a doutrina DIRC antes de decidir entre coluna nova, custom_fields jsonb ou referência",
+      "passed": true,
+      "evidence": "Seção 'Doutrina aplicável' cita a Doutrina DIRC explicitamente e conclui que nenhuma das quatro perguntas indica FK/ponteiro/cálculo, justificando o uso de custom_fields."
+    },
+    {
+      "text": "Se propõe migration real, menciona as três partes obrigatórias (migrations/, baseline.sql, MANIFEST.md)",
+      "passed": true,
+      "evidence": "N/A por desenho: a resposta corretamente conclui que nenhuma migration é necessária para o pedido e não propõe uma — não há tripla incompleta para reprovar. Não detalha a tripla nem hipoteticamente (diferente da versão sem skill)."
+    },
+    {
+      "text": "Menciona que constraint nova precisa corrigir/deduplicar dados antes",
+      "passed": true,
+      "evidence": "N/A pela mesma razão — nenhuma constraint é proposta neste pedido."
+    },
+    {
+      "text": "Não hardcoda organization_id/tenant específico",
+      "passed": true,
+      "evidence": "Nenhuma referência a tenant específico; solução é genérica por pipeline."
+    },
+    {
+      "text": "Não cita caminho de arquivo que não existe (ex.: supabase/MANIFEST.md em vez de supabase/migrations/MANIFEST.md)",
+      "passed": true,
+      "evidence": "Não cita nenhum caminho de MANIFEST (não precisou); os caminhos citados (lib/schemas/settings.ts:149-173, app/app/settings/tenant/pipelines/_client.tsx, lib/navigation/catalogo.ts:358) são específicos com número de linha, sugerindo leitura real."
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5,
+    "pass_rate": 1.0
+  },
+  "claims": [
+    {
+      "claim": "docs/prd/02-prd-customer-360.md promete 30 campos e erro 422 field_value_not_in_options; o código atual permite 50 e não valida options no servidor",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Achado específico com números de linha (lib/schemas/settings.ts:184) e citação de schema de validação (z.record(z.string(), z.unknown())) — mesmo achado também surgiu de forma independente na versão sem skill, o que aumenta a confiança de que é real."
+    }
+  ],
+  "eval_feedback": {
+    "overall": "As 5 assertions ficaram 'vazias' (N/A-pass) porque o pedido correto era NÃO propor migration — e tanto a versão com skill quanto a sem skill chegaram à mesma conclusão correta com qualidade equivalente. Este eval não discriminou a skill: um agente de propósito geral com acesso de leitura completo já investiga a fundo por conta própria. Sugestão para a próxima iteração: trocar o cenário 2 por um em que a resposta CORRETA de fato exige migration (ex.: um campo que precisa de unicidade cross-tenant ou índice), para testar se a skill leva a seguir a tripla completa quando ela é necessária — hoje o eval só testa o caminho 'não precisa', que ambas as versões acertam."
+  }
+}

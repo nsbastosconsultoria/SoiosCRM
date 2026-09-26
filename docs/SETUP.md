@@ -143,6 +143,14 @@ No menu lateral → **Storage** → **New bucket**:
 - **Name:** `whatsapp-media`
 - **Public bucket:** **NÃO** (deixe desmarcado — usamos URLs assinadas)
 
+### Login social (Google) — opcional
+
+Login por e-mail/senha já funciona sem nenhum passo extra. Se quiser também o
+botão **Entrar com Google**, o toggle fica em **Authentication → Providers →
+Google** no dashboard do Supabase, e a credencial OAuth precisa ser criada no
+Google Cloud Console primeiro — passo a passo completo em
+[`runbooks/habilitar-login-google.md`](runbooks/habilitar-login-google.md).
+
 ---
 
 ## 2. Upstash Redis — rate limit + idempotência
@@ -555,6 +563,9 @@ Confira se você está logado: `supabase login` — vai abrir o browser pra auto
 
 ### Esqueci a senha do banco do Supabase
 **Project Settings → Database → Reset database password**. Lembrando que isso invalida conexões existentes.
+
+### "Entrar com Google" dá erro / `provider is not enabled`
+Não é bug — é o provedor Google desligado no seu projeto Supabase (login por e-mail continua funcionando). Passo a passo: [`runbooks/habilitar-login-google.md`](runbooks/habilitar-login-google.md).
 
 ### Docker compose não sobe o WAHA
 - Docker Desktop está rodando? Ícone na barra de menus.
