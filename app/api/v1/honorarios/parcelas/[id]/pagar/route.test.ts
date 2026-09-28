@@ -2,7 +2,7 @@
  * POST /api/v1/honorarios/parcelas/[id]/pagar — DIRC "integrar": cria um `financial_entries`
  * do caixa núcleo e liga por `financial_entry_id`, nunca uma tabela de "pagamento" própria.
  *
- * Tudo passa por `fn_honorarios_parcela_pagar` (migration 0398, RPC) — uma função com
+ * Tudo passa por `fn_honorarios_parcela_pagar` (migration 0480, RPC) — uma função com
  * `for update`, não três chamadas separadas do PostgREST. É essa função que garante que
  * pagar a mesma parcela duas vezes (dois cliques, um retry) nunca lança duas vezes no caixa;
  * aqui o fake só prova que a ROTA lê a resposta da RPC certo, incluindo o "já paga" que vem
@@ -15,11 +15,17 @@ import { fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import type { AuthUser } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
+import { comIdempotencia } from "@/lib/api/idempotency";
+import type * as Idempotencia from "@/lib/api/idempotency";
 
 vi.mock("@/lib/auth/require-role", () => ({ requireRole: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 vi.mock("@/lib/impersonate/support", () => ({ requireSupportWrite: vi.fn(async () => null) }));
 vi.mock("@/lib/audit", () => ({ audit: vi.fn() }));
+vi.mock("@/lib/api/idempotency", async (importOriginal) => {
+  const real = await importOriginal<typeof Idempotencia>();
+  return { ...real, comIdempotencia: vi.fn(real.comIdempotencia) };
+});
 
 const ORG_ID = "22222222-2222-4222-8222-222222222222";
 const USER_ID = "11111111-1111-4111-8111-111111111111";
@@ -51,13 +57,18 @@ function negado(): void {
   } as never);
 }
 
-function postReq(body: unknown): NextRequest {
+function postReq(body: unknown, chave?: string): NextRequest {
   return new NextRequest(`http://localhost/api/v1/honorarios/parcelas/${PARCELA_ID}/pagar`, {
     method: "POST",
     body: JSON.stringify(body),
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      ...(chave ? { "Idempotency-Key": chave } : {}),
+    },
   });
 }
+
+const CHAVE = "88888888-8888-4888-8888-888888888888";
 
 /** Um único ponto de entrada agora: `.rpc("fn_honorarios_parcela_pagar", ...)`. */
 function fakeSupabase(resultado: { data?: unknown; error?: { message?: string; code?: string } | null }) {
@@ -163,5 +174,83 @@ describe("POST /api/v1/honorarios/parcelas/[id]/pagar", () => {
     expect(res.status).toBe(409);
     const body = await res.json();
     expect(body.error.code).toBe("module_not_installed");
+  });
+  it("conta de outra organização (a função recusa com conta_invalida) → 422", async () => {
+    autorizadoComoManager();
+    vi.mocked(createClient).mockResolvedValue(
+      fakeSupabase({ error: { message: "conta_invalida", code: "22023" } }) as never,
+    );
+
+    const { POST } = await import("./route");
+    const res = await POST(postReq({ account_id: ACCOUNT_ID }), params);
+
+    expect(res.status).toBe(422);
+  });
+
+  it("Idempotency-Key que não é UUID → 400, e a função nem é chamada", async () => {
+    autorizadoComoManager();
+    const supabase = fakeSupabase({ data: null });
+    vi.mocked(createClient).mockResolvedValue(supabase as never);
+
+    const { POST } = await import("./route");
+    const res = await POST(postReq({ account_id: ACCOUNT_ID }, "nao-e-uuid"), params);
+
+    expect(res.status).toBe(400);
+    expect(supabase.rpc).not.toHaveBeenCalled();
+  });
+
+  it("o segundo clique com a MESMA chave recebe o recibo do primeiro e não paga de novo", async () => {
+    autorizadoComoManager();
+    const supabase = fakeSupabase({ data: null });
+    vi.mocked(createClient).mockResolvedValue(supabase as never);
+    const recibo = { id: PARCELA_ID, status: "pago", financial_entry_id: "fe-1" };
+    vi.mocked(comIdempotencia).mockResolvedValueOnce({
+      tipo: "replay",
+      resposta: recibo,
+      status: 200,
+    } as never);
+
+    const { POST } = await import("./route");
+    const res = await POST(postReq({ account_id: ACCOUNT_ID }, CHAVE), params);
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).data).toEqual(recibo);
+    expect(supabase.rpc).not.toHaveBeenCalled();
+    // A parcela entra no hash: a mesma chave numa parcela diferente é conflito, não replay.
+    expect(comIdempotencia).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chave: CHAVE,
+        organizationId: ORG_ID,
+        corpo: { parcela_id: PARCELA_ID, account_id: ACCOUNT_ID },
+      }),
+    );
+  });
+
+  it("a mesma chave com outro corpo → 409 idempotency_conflict", async () => {
+    autorizadoComoManager();
+    vi.mocked(createClient).mockResolvedValue(fakeSupabase({ data: null }) as never);
+    vi.mocked(comIdempotencia).mockResolvedValueOnce({ tipo: "conflito" } as never);
+
+    const { POST } = await import("./route");
+    const res = await POST(postReq({ account_id: ACCOUNT_ID }, CHAVE), params);
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).error.code).toBe("idempotency_conflict");
+  });
+
+  it("a função recusa dentro da idempotência → a recusa chega ao cliente, não um 500", async () => {
+    autorizadoComoManager();
+    vi.mocked(createClient).mockResolvedValue(
+      fakeSupabase({ error: { message: "parcela_ja_paga", code: "22023" } }) as never,
+    );
+    vi.mocked(comIdempotencia).mockImplementationOnce(async (entrada) => ({
+      tipo: "executou",
+      ...(await entrada.executar()),
+    }) as never);
+
+    const { POST } = await import("./route");
+    const res = await POST(postReq({ account_id: ACCOUNT_ID }, CHAVE), params);
+
+    expect(res.status).toBe(422);
   });
 });

@@ -60,7 +60,7 @@ export const PROVEDORES = [
     id: "openai",
     rotulo: "OpenAI (GPT)",
     quandoUsar:
-      "Necessário para transcrever áudio e para indexar o seu material — esses dois pontos usam tecnologia da OpenAI mesmo quando o resto está em outro provedor.",
+      "Na configuração padrão, transcreve áudio. Para indexar material, uma chave OpenAI ou OpenRouter atende ao mesmo modelo de embedding.",
     aceitaEndpointProprio: true,
     catalogoSincronizavel: false,
     ondePegarAChave: "https://platform.openai.com/api-keys",
@@ -105,6 +105,23 @@ export const PROVEDORES = [
     catalogoSincronizavel: true,
     ondePegarAChave: "https://app.requesty.ai/api-keys",
     prefixoDaChave: "rqsty-…",
+  },
+  {
+    id: "custom",
+    rotulo: "Provedor personalizado (compatível com OpenAI)",
+    quandoUsar:
+      "Endpoint seu que fala a API da OpenAI — OmniRouter, 9Router, LiteLLM hospedado ou proxy corporativo, num endereço público. Você informa o endereço (base URL) e a chave, e o CRM conversa com ele como conversa com a OpenAI.",
+    aceitaEndpointProprio: true,
+    catalogoSincronizavel: false,
+    // O provedor personalizado NÃO tem portal de chave — quem emite a chave é
+    // o gateway do próprio operador. O valor fica só porque o tipo exige um
+    // endereço para os outros; o diálogo esconde o link "Onde pegar a chave"
+    // quando este provedor está escolhido, e a página que explica o recurso é
+    // `docs/features/provedor-personalizado.md`. TLD `.example` de propósito:
+    // é o reservado para documentação (RFC 2606/6761), que a catraca de marca
+    // não trata como host de terceiro — e o link não é clicável, é escondido.
+    ondePegarAChave: "https://docs.example/provedor-personalizado",
+    prefixoDaChave: "sk-…",
   },
 ] as const satisfies readonly ProvedorSuportado[];
 // `as const satisfies` e não anotação de tipo: a anotação apagaria os literais

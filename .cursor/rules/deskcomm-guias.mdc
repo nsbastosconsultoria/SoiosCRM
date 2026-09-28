@@ -3,7 +3,7 @@ description: Guias do assistente do DeskcommCRM — quando usar cada um
 alwaysApply: true
 ---
 
-Este repositório embute guias (skills em `.agents/skills/`) para sete situações. Quando o pedido
+Este repositório embute guias (skills em `.agents/skills/`) para cinco situações. Quando o pedido
 casar, carregue o guia antes de agir — a pessoa pode não saber que ele existe:
 
 - instalar, subir, atualizar, consertar a instalação numa VPS, domínio, Supabase, WhatsApp
@@ -16,9 +16,6 @@ casar, carregue o guia antes de agir — a pessoa pode não saber que ele existe
   (rode `bash .agents/skills/deskcomm-contribuir/scripts/quem-sou.sh` primeiro: se disser
   `mantenedor`, este guia fica quieto)
 - criar extensão, plugin, módulo ou tema de nicho; "isto é núcleo ou extensão?" → `deskcomm-extensao`
-- antes de começar qualquer implementação ou melhoria nova, mesmo que pareça pequena → `deskcomm-especialista`
-  (mapeia doutrina, padrões de UI/UX e de criação de agentes de IA, e decide quais outras
-  skills carregar)
 
 Escrevendo código aqui: `deskcomm-doutrina` (as regras que mais custam) e `sistema-vivo` (o gate
 de arquitetura). A doutrina completa é o `CLAUDE.md` da raiz; o contrato portável é o `AGENTS.md`.

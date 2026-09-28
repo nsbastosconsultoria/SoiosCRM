@@ -97,6 +97,7 @@ import {
   type FollowupGateDb,
   type NoDeGatilho,
 } from "./agent-followup-gate";
+import { contatosComRetornoVivo } from "./retorno-segura-o-fluxo";
 
 /**
  * Status que ocupam a vaga do índice único `idx_followup_enrollments_one_live`
@@ -120,6 +121,11 @@ export interface SilenceSweepDb {
   loadActiveSilencePointers(): Promise<SilencePointer[]>;
   /** Contact ids da org sem inbound desde `cutoffIso` (inclusive); `segments` vazio = todos. */
   loadSilentContactIds(orgId: string, cutoffIso: string, segments: string[]): Promise<string[]>;
+  /**
+   * Contatos com RETORNO agendado vivo — quem tem um "te escrevo no dia 30" a
+   * caminho não entra no fluxo de silêncio. Ver `retorno-segura-o-fluxo.ts`.
+   */
+  loadContatosComRetornoVivo(orgId: string): Promise<Set<string>>;
   /** Nó `trigger` do grafo pinado + se o fluxo pede agente; `null` se version/nó não existir. */
   loadTriggerNode(orgId: string, versionId: string): Promise<NoDeGatilho | null>;
   /**
@@ -157,6 +163,8 @@ export interface SilenceSweepSummary {
   skipped_existing: number;
   /** Elegível por silêncio, mas com tentativa deste pointer iniciada há menos de `threshold_minutes` — ver o cooldown no cabeçalho do arquivo. */
   skipped_cooldown: number;
+  /** Silenciosos que ficaram de fora porque já têm um retorno agendado. */
+  skipped_pending_return: number;
   /**
    * Pointers que FALHARAM nesta varredura (logados e pulados). Um pointer ruim
    * — de uma empresa só — não pode calar a varredura de todas as outras: antes,
@@ -179,6 +187,7 @@ export async function runSilenceSweep(deps: SilenceSweepDeps): Promise<SilenceSw
     enrolled: 0,
     skipped_existing: 0,
     skipped_cooldown: 0,
+    skipped_pending_return: 0,
     pointers_failed: 0,
   };
 
@@ -229,8 +238,13 @@ export async function runSilenceSweep(deps: SilenceSweepDeps): Promise<SilenceSw
         cutoffIso,
       );
       const nextEvalAt = clock().toISOString();
+      const comRetorno = await db.loadContatosComRetornoVivo(pointer.organization_id);
 
       for (const contactId of contactIds) {
+        if (comRetorno.has(contactId)) {
+          summary.skipped_pending_return++;
+          continue;
+        }
         if (emCooldown.has(contactId)) {
           summary.skipped_cooldown++;
           continue;
@@ -396,6 +410,10 @@ export function createSupabaseSilenceSweepDb(admin: SupabaseClient): SilenceSwee
         origins.set(`${orgId}:${contactId}`, v.boundary);
       }
       return silentIds;
+    },
+
+    loadContatosComRetornoVivo(orgId) {
+      return contatosComRetornoVivo(admin, orgId);
     },
 
     async loadTriggerNode(orgId, versionId) {

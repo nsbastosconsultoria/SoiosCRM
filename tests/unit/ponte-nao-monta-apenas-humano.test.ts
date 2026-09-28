@@ -87,9 +87,13 @@ describe("a ponte do turno respeita `apenasHumano`", () => {
       handoffSignal: { triggered: false },
     });
     // Controle positivo: se o filtro derrubasse tudo, o teste acima passaria
-    // vacuamente e o agente ficaria sem ferramenta nenhuma.
+    // vacuamente e o agente ficaria sem ferramenta nenhuma. A folga conta as
+    // exclusões deliberadas que este teste monta: o handoff (toggle desligado
+    // aqui), o rascunho e o preparo da proposta (fora pela chave da versão e
+    // pela capacidade, as duas desligadas aqui), e as de módulo opcional, que
+    // nenhum módulo ligado aqui oferece.
     expect(Object.keys(montadas).length).toBeGreaterThan(
-      allTools.length - apenasHumano.length - semModulo - 3,
+      allTools.length - apenasHumano.length - semModulo - 4,
     );
     expect(montadas).toHaveProperty("crm_search_contacts");
   });

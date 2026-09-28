@@ -27,6 +27,8 @@ const request = {
 let rows: Record<string, Row[]>;
 /** 42P01 só para as duas tabelas do módulo — simula instalação sem o módulo. */
 let moduloDesinstalado: boolean;
+/** Erro de leitura que NÃO é "tabela inexistente" numa das tabelas do módulo. */
+let falhaDeLeitura: string | null;
 
 class ReadQuery {
   columns = "";
@@ -68,6 +70,9 @@ class ReadQuery {
     return this.execute().then(resolve, reject);
   }
   async execute() {
+    if (falhaDeLeitura === this.table) {
+      return { data: null, error: { code: "57014", message: "canceling statement due to statement timeout" } };
+    }
     if (
       moduloDesinstalado &&
       (this.table === "honorarios_contratos" || this.table === "honorarios_parcelas")
@@ -92,6 +97,7 @@ class ReadQuery {
 
 beforeEach(() => {
   moduloDesinstalado = false;
+  falhaDeLeitura = null;
   rows = {
     organizations: [
       { id: ORG, legal_name: "Escritório Teste", display_name: "Teste", dpo_email: null },
@@ -191,4 +197,11 @@ describe("LGPD: honorários no pedido de acesso (ADR-0002 D8)", () => {
     const payload = await collectExportData(request);
     expect(payload.honorarios_contratos.map((c) => c.id)).toEqual([CONTRATO]);
   });
+  it.each(["honorarios_contratos", "honorarios_parcelas"])(
+    "módulo instalado e %s ilegível → o export falha e é retentado, nunca sai incompleto como se fosse completo",
+    async (tabela) => {
+      falhaDeLeitura = tabela;
+      await expect(collectExportData(request)).rejects.toThrow(/honorarios_.*_load_failed/);
+    },
+  );
 });

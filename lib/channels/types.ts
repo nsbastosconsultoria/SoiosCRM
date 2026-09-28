@@ -161,6 +161,30 @@ export interface OutboundEnvelope extends ChannelTenantScope {
 }
 
 /**
+ * Uma conversão (hoje, a venda) no vocabulário neutro que o canal traduz — ver
+ * `ChannelAdapter.reportConversion`.
+ */
+export interface ChannelConversionInput extends ChannelTenantScope {
+  sessionRef: string;
+  /** Id da conversa NO provedor — o vínculo mais forte com o clique do anúncio. */
+  providerConversationId: string | null;
+  /** Só dígitos (E.164 sem `+`). Reforço de casamento, nunca o único. */
+  phone: string | null;
+  event: "Purchase";
+  /** Chave de deduplicação na plataforma: o mesmo id nunca conta duas vezes. */
+  eventId: string;
+  occurredAt: Date;
+  valueCents: number;
+  currency: string;
+}
+
+/** O desfecho já classificado pelo canal, que é quem lê a resposta crua. */
+export type ChannelConversionResult =
+  | { outcome: "ok"; detail?: string }
+  | { outcome: "retry"; detail: string; retryInMs?: number }
+  | { outcome: "rejected"; detail: string };
+
+/**
  * O tradutor de formato de UM canal — e nada mais.
  *
  * Adapter NÃO decide se pode enviar: janela de 24h, cap diário, horário
@@ -265,6 +289,22 @@ export interface ChannelAdapter {
    * conhece `contract_hash` — isso é de quem sincroniza.
    */
   templates?: ChannelTemplateOps;
+
+  /**
+   * Reporta uma venda à plataforma de anúncios PELO CANAL, quando o canal
+   * intermediado já tem a ponte configurada do lado dele (o conjunto de dados
+   * da plataforma ligado ao número, na tela do provedor).
+   *
+   * Existe porque, nesse arranjo, quem guarda o vínculo com o anúncio é o
+   * canal: o CRM não precisa de token nem de dataset próprios para a venda
+   * chegar. Quem chama (`lib/conversoes/`, via `conversao-pelo-canal.ts`) testa
+   * a presença do método em vez de perguntar QUAL provider é — o lint de canal
+   * proíbe o nome fora daqui.
+   *
+   * NUNCA lança: devolve o desfecho classificado. A diferença entre "tente de
+   * novo" e "precisa de gente" é do canal, que é quem lê a resposta crua.
+   */
+  reportConversion?(input: ChannelConversionInput): Promise<ChannelConversionResult>;
 
   /**
    * Acende o "digitando…" na conversa do cliente.
@@ -435,9 +475,24 @@ export interface ChannelTemplateOps {
   update(input: ChannelTenantScope & {
     sessionRef: string;
     name: string;
+    /**
+     * OBRIGATÓRIO: com variantes de idioma, o PATCH por nome do provedor
+     * intermediado exige `language` no corpo (changelog de 28/08/2026) — sem ele
+     * a chamada falha, ou pior, edita a variante errada. Um modelo sem variantes
+     * aceita o idioma que ele tem, então mandar sempre é o caminho sem armadilha.
+     */
+    language: string;
     patch: Partial<Pick<ChannelTemplateDraft, "components" | "category">>;
   }): Promise<ChannelTemplate>;
+  /**
+   * ⚠️ `language` é OBRIGATÓRIO aqui por segurança, não por exigência da API:
+   * no provedor intermediado, DELETE por nome SEM idioma apaga TODAS as
+   * variantes (changelog de 28/08/2026). A assinatura obriga quem chama (a
+   * gestão de modelos da tela, `lib/channels/gestao-de-modelos.ts`) a dizer
+   * QUAL variante morre — apagar todas de uma vez é decisão que merece um
+   * método próprio, não um parâmetro esquecido.
+   */
   remove(
-    input: ChannelTenantScope & { sessionRef: string; name: string; language?: string },
+    input: ChannelTenantScope & { sessionRef: string; name: string; language: string },
   ): Promise<void>;
 }

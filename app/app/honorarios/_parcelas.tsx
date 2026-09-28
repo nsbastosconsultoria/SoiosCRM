@@ -7,7 +7,7 @@
  * `financial_entry_id`. Por isso pagar pede uma CONTA, a mesma lista do
  * catálogo financeiro usada em Faturamento.
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { useT } from "@/hooks/i18n/useT";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { apiClient } from "@/lib/api/client";
 import { formatCents, parseReaisToCents } from "@/lib/money";
+import { randomId } from "@/lib/random-id";
 
 type Parcela = {
   id: string;
@@ -67,10 +68,31 @@ export function Parcelas({
     onError: showApiError,
   });
 
+  // Uma chave por (parcela, conta) enquanto o pagamento não termina: o segundo
+  // clique, ou o retry depois de a rede cair, leva a MESMA chave e o servidor
+  // devolve o recibo do primeiro em vez de lançar de novo no caixa.
+  const chavesDoPagamento = useRef(new Map<string, string>());
+  const chaveDoPagamento = (id: string) => {
+    const alvo = `${id}:${contaId}`;
+    let chave = chavesDoPagamento.current.get(alvo);
+    if (!chave) {
+      chave = randomId();
+      chavesDoPagamento.current.set(alvo, chave);
+    }
+    return chave;
+  };
+
   const pagar = useMutation({
     mutationFn: (id: string) =>
-      apiClient.post(`/api/v1/honorarios/parcelas/${id}/pagar`, { account_id: contaId }),
-    onSuccess: recarregar,
+      apiClient.post(
+        `/api/v1/honorarios/parcelas/${id}/pagar`,
+        { account_id: contaId },
+        { idempotencyKey: chaveDoPagamento(id) },
+      ),
+    onSuccess: (_resposta, id) => {
+      chavesDoPagamento.current.delete(`${id}:${contaId}`);
+      return recarregar();
+    },
     onError: showApiError,
   });
 

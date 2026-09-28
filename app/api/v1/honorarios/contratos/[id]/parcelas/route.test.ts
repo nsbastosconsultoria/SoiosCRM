@@ -127,4 +127,19 @@ describe("POST /api/v1/honorarios/contratos/[id]/parcelas", () => {
 
     expect(res.status).toBe(422);
   });
+
+  it("contrato de outra organização (a RLS recusa, 42501) → 422, não 500", async () => {
+    autorizadoComo("manager");
+    vi.mocked(createClient).mockResolvedValue(
+      fakeSupabase({ data: null, error: { code: "42501" } }) as never,
+    );
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      postReq({ numero: 1, vencimento: "2026-10-01", valor_cents: 50000 }),
+      params,
+    );
+
+    expect(res.status).toBe(422);
+  });
 });

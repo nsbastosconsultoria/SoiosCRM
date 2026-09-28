@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { requestExtensionApi } from "@/components/extensions/api-client";
+import { useT } from "@/hooks/i18n/useT";
 import { randomId } from "@/lib/random-id";
 
 interface ModuloCatalogo {
@@ -35,6 +36,7 @@ interface ListagemDeModulos {
  * de `ExtensionsManager` (catálogo remoto, versões, reverter) — nada disso existe para módulo.
  */
 export function ModulosManager({ inicial }: { inicial: ListagemDeModulos }) {
+  const t = useT();
   const [estado, setEstado] = useState(inicial);
   const [instalando, setInstalando] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -77,17 +79,17 @@ export function ModulosManager({ inicial }: { inicial: ListagemDeModulos }) {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-semibold">{modulo.nome}</h3>
+                  <h3 className="text-base font-semibold">{t(modulo.nome)}</h3>
                   {instalado ? (
                     <Badge variant={instalado.estado === "ativo" ? "success" : "destructive"}>
-                      {instalado.estado === "ativo" ? "Instalado" : "Suspenso"}
+                      {instalado.estado === "ativo" ? t("Instalado") : t("Suspenso")}
                     </Badge>
                   ) : null}
                 </div>
-                <p className="mt-1 max-w-xl text-sm text-text-muted">{modulo.descricao}</p>
+                <p className="mt-1 max-w-xl text-sm text-text-muted">{t(modulo.descricao)}</p>
                 {instalado?.motivo_suspensao ? (
                   <p className="mt-1 text-xs text-destructive">
-                    Suspenso: {instalado.motivo_suspensao}
+                    {t("Suspenso")}: {instalado.motivo_suspensao}
                   </p>
                 ) : null}
               </div>
@@ -98,7 +100,7 @@ export function ModulosManager({ inicial }: { inicial: ListagemDeModulos }) {
                   disabled={instalando === modulo.slug}
                   data-testid={`instalar-${modulo.slug}`}
                 >
-                  {instalando === modulo.slug ? "Instalando…" : "Instalar"}
+                  {instalando === modulo.slug ? t("Instalando…") : t("Instalar")}
                 </Button>
               )}
             </div>
