@@ -68,6 +68,10 @@ export function FormularioDeSmtp({
     from_name: nomeDoRemetente,
   });
   const [ocupado, iniciar] = useTransition();
+  // Qual dos dois botões está esperando. Com um `ocupado` só, "Testar conexão"
+  // deixava o botão Salvar escrito "Salvando…" enquanto o servidor não
+  // respondia — e quem olhava achava que tinha salvo sem querer.
+  const [acao, setAcao] = useState<"testar" | "salvar" | null>(null);
   /**
    * Só os campos de TEXTO. `security` tem tipo próprio e sai do `<select>` como
    * `string`; escrevê-lo por aqui obrigaria a alargar o estado para `string` e a
@@ -82,6 +86,7 @@ export function FormularioDeSmtp({
 
   const testar = () =>
     iniciar(async () => {
+      setAcao("testar");
       const r = await checkSmtp();
       if (r.ok) {
         toast.success(t("Servidor de e-mail conectado e autenticado."));
@@ -101,6 +106,7 @@ export function FormularioDeSmtp({
 
   const salvar = () =>
     iniciar(async () => {
+      setAcao("salvar");
       const r = await updateSmtp(form);
       if (!r.ok) {
         toast.error(t(r.error));
@@ -250,10 +256,10 @@ export function FormularioDeSmtp({
               disabled={ocupado}
               onClick={testar}
             >
-              {t("Testar conexão")}
+              {ocupado && acao === "testar" ? t("Testando…") : t("Testar conexão")}
             </Button>
             <Button type="button" data-testid="smtp-salvar" disabled={ocupado} onClick={salvar}>
-              {ocupado ? t("Salvando…") : t("Salvar")}
+              {ocupado && acao === "salvar" ? t("Salvando…") : t("Salvar")}
             </Button>
           </div>
         </div>
