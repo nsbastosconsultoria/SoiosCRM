@@ -34,6 +34,9 @@ vi.mock("next/headers", () => ({
 vi.mock("@/app/actions/auth/signOut", () => ({ signOut: async () => {} }));
 vi.mock("@/lib/branding/saida", () => ({ emailDeSuporte: async () => "suporte@exemplo.com" }));
 vi.mock("@/lib/branding", () => ({ branding: () => ({ name: "Produto" }) }));
+vi.mock("@/lib/branding/servidor", () => ({
+  brandingDoServidor: async () => ({ name: "Produto", logoUrl: null, initial: "P" }),
+}));
 vi.mock("@/lib/auth/rate-limit", () => ({
   authRateLimited: async () => false,
   AUTH_LIMITS: { invite_accept: {} },
