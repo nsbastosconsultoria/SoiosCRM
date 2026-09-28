@@ -302,10 +302,14 @@ check "sem linha no banco, cai no .env do CRM (como lib/email/config.ts)" \
   bash -c '[ "$1" -eq 0 ] && grep -qx "SMTP_HOST=\"smtp.env.com\"" "$2"' _ "$rc" "$SB/.env"
 check "sem nome de remetente, usa o nome da instalação" grep -qx 'SMTP_SENDER_NAME="DeskcommCRM"' "$SB/.env"
 
+# Linha da tela sem servidor e sem remetente é o que sobra quando o dono apaga
+# os campos — e a tela promete que apagar volta ao arquivo. O app faz isso desde
+# lib/email/config.ts; o kit tratava a linha como "e-mail desligado" e as duas
+# pontas discordavam.
 env_sb_inicial
 SMTP_HOST=smtp.env.com SMTP_FROM_EMAIL=a@env.com PSQL_SMTP='\x1f587\x1f\x1f\x1f\x1f\n' smtp; rc=$?
-check "linha da tela VAZIA prevalece sobre o .env (e-mail desligado, rc=1)" test "$rc" -ne 0
-check "e o .env do Supabase fica intacto" grep -qx 'SMTP_HOST=supabase-mail' "$SB/.env"
+check "linha da tela VAZIA volta ao .env do CRM, como o app (rc=0)" \
+  bash -c '[ "$1" -eq 0 ] && grep -qx "SMTP_HOST=\"smtp.env.com\"" "$2"' _ "$rc" "$SB/.env"
 
 env_sb_inicial
 PSQL_SMTP='smtp.loja.com\x1f587\x1fu\x1fs\x1f\x1f\n' smtp; rc=$?

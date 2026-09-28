@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #
 # Sobe os e-mails de ACESSO (criar conta e recuperar senha) com a marca da
-# instalação — assunto, corpo, cor do botão — e configura Site URL / Redirect
-# URLs, que são pré-requisito do link funcionar.
+# instalação — assunto, corpo, cor do botão —, o SERVIDOR que os envia (o SMTP
+# de /admin/email, quando há um) e configura Site URL / Redirect URLs, que são
+# pré-requisito do link funcionar.
 #
 #   bash marca-emails.sh                      # lê ../.env e sobe
 #   bash marca-emails.sh --render-em /tmp/x   # só renderiza, não sobe nada
@@ -383,6 +384,49 @@ if [ -n "$APP_URL" ]; then
   done
 fi
 
+# ── 4b. O servidor que envia: o SMTP de /admin/email ───────────────────────
+#
+# Sem isto, na nuvem do Supabase, o remetente dos e-mails de acesso era o que
+# alguém tivesse posto à mão no painel (ou o remetente embutido do Supabase,
+# "Supabase Auth", com limite baixo de envio) — e trocar o servidor em
+# /admin/email mudava convite e LGPD, mas nunca a confirmação de conta.
+#
+# A regra de qual SMTP vale é `resolver_smtp_da_instalacao` (_common.sh), a
+# MESMA do Supabase próprio e de lib/email/config.ts. Três desfechos:
+#   enviado   — servidor + remetente, e senha quando há usuário: vai no PATCH;
+#   sem_senha — há usuário mas a senha não pôde ser lida (cifra indisponível,
+#               ou gravada sem senha): mandar vazio DERRUBARIA o envio que o
+#               Supabase já faz, então não mexe e avisa;
+#   sem_smtp  — o CRM não tem servidor: o Supabase segue como está.
+smtp_do_banco() {
+  [ -n "${SUPABASE_DB_ADMIN_URL:-}${SUPABASE_DB_URL:-}" ] || return 1
+  command -v docker >/dev/null 2>&1 || return 1
+  pg_container -e PGCONNECT_TIMEOUT=10 -i postgres:17-alpine \
+    psql "$(url_do_schema)" -X -tA -F "$(printf '\037')" \
+    -c "$SQL_SMTP_DA_INSTALACAO" </dev/null 2>/dev/null
+}
+
+SMTP_ESTADO="sem_smtp"
+CAMPOS_SMTP=""
+linha_smtp="$(smtp_do_banco)" || linha_smtp=""
+if resolver_smtp_da_instalacao "$linha_smtp"; then
+  if [ -n "$SMTP_R_USUARIO" ] && [ -z "$SMTP_R_SENHA" ]; then
+    SMTP_ESTADO="sem_senha"
+  else
+    SMTP_ESTADO="enviado"
+    case "$SMTP_R_PORTA" in ''|*[!0-9]*) SMTP_R_PORTA=587;; esac
+    SMTP_NOME_ENVIADO="${SMTP_R_NOME:-$APP_NOME}"
+    # `smtp_port` é STRING no contrato da Management API, não número.
+    CAMPOS_SMTP=",
+  \"smtp_admin_email\": \"$(json_escape "$SMTP_R_REMETENTE")\",
+  \"smtp_host\": \"$(json_escape "$SMTP_R_HOST")\",
+  \"smtp_port\": \"$SMTP_R_PORTA\",
+  \"smtp_user\": \"$(json_escape "$SMTP_R_USUARIO")\",
+  \"smtp_pass\": \"$(json_escape "$SMTP_R_SENHA")\",
+  \"smtp_sender_name\": \"$(json_escape "$SMTP_NOME_ENVIADO")\""
+  fi
+fi
+
 # ── 5. Sobe ────────────────────────────────────────────────────────────────
 corpo="{
   \"mailer_subjects_confirmation\": \"$(json_escape "Confirme seu e-mail — $APP_NOME")\",
@@ -390,7 +434,7 @@ corpo="{
   \"mailer_templates_confirmation_content\": \"$(json_escape "$HTML_CONFIRM")\",
   \"mailer_templates_recovery_content\": \"$(json_escape "$HTML_RECOVERY")\",
   \"site_url\": \"$(json_escape "$SITE_NOVO")\",
-  \"uri_allow_list\": \"$(json_escape "$ALLOW_NOVO")\"
+  \"uri_allow_list\": \"$(json_escape "$ALLOW_NOVO")\"$CAMPOS_SMTP
 }"
 
 resposta="$(api PATCH "/projects/$REF/config/auth" "$corpo")"
@@ -408,6 +452,26 @@ if grep -qF "$MARCADOR" <<<"$depois"; then
   c_dim "    botão:    $ACCENT sobre texto $ACCENT_FG"
   [ "$SITE_NOVO" = "$SITE_ATUAL" ] || c_dim "    site url: $SITE_NOVO"
   [ "$ALLOW_NOVO" = "$ALLOW_ATUAL" ] || c_dim "    redirect: $ALLOW_NOVO"
+
+  # O SMTP também se prova pela RELEITURA, pelo mesmo motivo do Site URL
+  # abaixo. A senha não se confere (nem se imprime): host e remetente de volta
+  # provam que o PATCH pegou esta parte.
+  case "$SMTP_ESTADO" in
+    enviado)
+      if [ "$(json_str "$depois" smtp_host)" = "$SMTP_R_HOST" ] \
+         && [ "$(json_str "$depois" smtp_admin_email)" = "$SMTP_R_REMETENTE" ]; then
+        c_dim "    remetente: $SMTP_NOME_ENVIADO <$SMTP_R_REMETENTE> por $SMTP_R_HOST:$SMTP_R_PORTA"
+      else
+        c_ylw "  ⚠ mandei o servidor de e-mail de /admin/email, mas a releitura não o trouxe de volta"
+        c_ylw "    — confira em Authentication › SMTP Settings no painel do Supabase."
+      fi;;
+    sem_senha)
+      c_ylw "  ⚠ o servidor de e-mail de /admin/email tem usuário, mas não consegui ler a senha:"
+      c_ylw "    não mexi no remetente do Supabase. Digite a senha de novo em /admin/email e rode"
+      c_ylw "    este script outra vez.";;
+    *)
+      c_dim "    remetente: sem servidor em /admin/email — o do Supabase ficou como estava";;
+  esac
 
   # O MARCADOR prova os MODELOS, e só. O que faz o link do e-mail levar a algum
   # lugar é o `site_url` — outro campo, do mesmo PATCH, que pode não ter pegado.

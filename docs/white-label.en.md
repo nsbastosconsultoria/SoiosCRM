@@ -1,4 +1,4 @@
-<!-- traduzido-de: docs/white-label.md@d082afef8e15 -->
+<!-- traduzido-de: docs/white-label.md@9cc9938a82e7 -->
 
 [🇧🇷 Português](white-label.md) · 🇺🇸 English · [🇪🇸 Español](white-label.es.md)
 
@@ -102,6 +102,8 @@ bash hostgator-setup-kit/marca-emails.sh
 ```
 
 It uploads the subject and the body of both e-mails with **your** name and **your** color, and on top of that configures the link's return address (which no script configured before, and which is a prerequisite for the link to work at all). `install.sh` calls it by itself, right after creating the Supabase project; `update.sh` calls it too, so that an old installation receives this on its first update.
+
+**The sender goes along.** If the e-mail server is filled in at **Admin mode › E-mail** (or in the `SMTP_*` variables of the `.env`), the script writes that same server into Supabase: account confirmation and password reset start going out through your server, with your sender, instead of Supabase's built-in sender ("Supabase Auth", with a low sending limit). With no server configured, the Supabase sender stays as it is. If the server has a username but the password could not be read, the script does not touch it either — sending without a password would break the delivery that already works — and tells you to type the password again on the screen.
 
 **If it does not have the Supabase API access key** (`SUPABASE_ACCESS_TOKEN`), it does not fail and does not take the installation down: it prints exactly what to do by hand in the Supabase dashboard and exits successfully. That is the case of whoever created the project from the dashboard and pasted the credentials, instead of letting the installer create it.
 

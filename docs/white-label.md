@@ -101,6 +101,8 @@ bash hostgator-setup-kit/marca-emails.sh
 
 Ele sobe o assunto e o corpo dos dois e-mails com o **seu** nome e a **sua** cor, e de quebra configura o endereço de retorno do link (que nenhum script configurava antes, e é pré-requisito do link funcionar). O `install.sh` o chama sozinho, logo depois de criar o projeto Supabase; o `update.sh` também o chama, para que uma instalação antiga receba isso na primeira atualização.
 
+**O remetente vai junto.** Se o servidor de e-mail estiver preenchido em **Modo administrador › E-mail** (ou nas variáveis `SMTP_*` do `.env`), o script grava esse mesmo servidor no Supabase: a confirmação de conta e a nova senha passam a sair pelo seu servidor, com o seu remetente, em vez do remetente embutido do Supabase ("Supabase Auth", com limite baixo de envio). Sem servidor configurado, o remetente do Supabase fica como está. Se o servidor tem usuário mas a senha não pôde ser lida, o script também não mexe — mandar sem senha derrubaria o envio que já funciona — e avisa para digitar a senha de novo na tela.
+
 **Se ele não tiver a chave de acesso da API do Supabase** (`SUPABASE_ACCESS_TOKEN`), ele não falha e não derruba a instalação: imprime exatamente o que fazer à mão no painel do Supabase e sai com sucesso. Esse é o caso de quem criou o projeto pelo painel e colou as credenciais, em vez de deixar o instalador criá-lo.
 
 > ⚠️ **Se for fazer à mão, atenção ao caractere.** O link do template precisa levar `&token_hash=`, com **`&`**, nunca `?`. Com `?` o endereço fica com dois pontos de interrogação, o sistema perde o token e o usuário cai numa tela dizendo que o link expirou — quando o problema é o template. Nesse caso o sistema agora **nomeia a causa** em vez de dizer só "link inválido".
