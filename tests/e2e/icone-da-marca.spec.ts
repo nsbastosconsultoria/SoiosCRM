@@ -88,11 +88,11 @@ test.describe("o ícone e o título carregam a marca da instalação", () => {
     const marcaNoTitulo = casou?.[1] ?? "";
     expect(marcaNoTitulo.length).toBeGreaterThan(0);
 
-    // Cruza DUAS resoluções independentes: o título vem de `generateMetadata`
-    // (que lê `platform_branding` no banco) e o texto sob o "Entrar" vem de
-    // `branding()` (que lê o `.env`). Divergirem é defeito de verdade — foi
-    // por não cruzar isso que "trocar o nome pela tela e a aba não acompanhar"
-    // passou despercebido antes.
+    // O título vem de `generateMetadata` e o texto sob o "Entrar" vem de
+    // `brandingDoServidor()`; os dois leem `platform_branding` acima do `.env`.
+    // Divergirem é defeito de verdade — foi por não cruzar isso que "trocar o
+    // nome pela tela e a aba não acompanhar" passou despercebido antes, e o
+    // texto do login lendo só o `.env` era a mesma divergência do outro lado.
     await expect(page.getByText(marcaNoTitulo, { exact: true }).first()).toBeVisible();
   });
 });

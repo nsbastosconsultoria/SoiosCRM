@@ -1930,7 +1930,7 @@
   "Confira os campos: algum valor não está no formato esperado.": "请检查字段：某个值的格式不符合预期。",
   "Marca salva.": "品牌已保存。",
   "Nome do sistema": "系统名称",
-  "Deixe em branco para voltar ao nome padrão. Este nome já aparece no título da aba do navegador, nos menus laterais, nos e-mails que o sistema envia (para as empresas que não definiram um nome próprio), no aplicativo de verificação em duas etapas e no arquivo de códigos de recuperação que o usuário baixa. Ainda NÃO chega às telas de entrada e cadastro nem às da configuração inicial: essas continuam com o nome gravado no arquivo de instalação do servidor até a próxima atualização da stack.": "留空以恢复默认名称。此名称已显示在浏览器标签页标题、侧边菜单、系统发送的邮件（针对未设置自定义名称的企业）、两步验证应用以及用户下载的恢复代码文件中。但尚未应用到登录和注册页面以及初始配置页面：这些页面仍使用服务器安装文件中记录的名称，直到下次技术栈更新。",
+  "Deixe em branco para voltar ao nome padrão. Este nome aparece no título da aba do navegador, nos menus laterais, nas telas de entrada, cadastro e configuração inicial, nos e-mails que o sistema envia (para as empresas que não definiram um nome próprio), no aplicativo de verificação em duas etapas e no arquivo de códigos de recuperação que o usuário baixa. Os e-mails de confirmação de conta e de nova senha ficam gravados no Supabase e só mudam quando o kit de instalação os grava de novo — o que acontece a cada atualização.": "留空以恢复默认名称。此名称显示在浏览器标签页标题、侧边菜单、登录、注册和初始配置页面、系统发送的邮件（针对未设置自定义名称的企业）、两步验证应用以及用户下载的恢复代码文件中。账户确认邮件和重设密码邮件保存在 Supabase 中，只有在安装工具包重新写入时才会更改——每次更新时都会进行。",
   "Cor da marca": "品牌颜色",
   "Escolher a cor visualmente": "可视化选择颜色",
   "Use um código de cor como #7a5cd6.": "请使用类似 #7a5cd6 的颜色代码。",
