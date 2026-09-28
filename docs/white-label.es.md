@@ -1,4 +1,4 @@
-<!-- traduzido-de: docs/white-label.md@af68c76ce1f4 -->
+<!-- traduzido-de: docs/white-label.md@9f834abbf72c -->
 
 [🇧🇷 Português](white-label.md) · [🇺🇸 English](white-label.en.md) · 🇪🇸 Español
 
@@ -42,7 +42,7 @@ El `install.sh` pregunta **dos** de ellas y las graba: el `APP_NAME` (Enter mant
 
 > El color se pide con validador: solo pasa `#` + 6 dígitos. Es más estrecho de lo que acepta la pantalla, y es a propósito — los **correos de acceso** (confirmación de cuenta y recuperación de contraseña) leen esa clave del `.env`, y solo reconocen esa forma. Un `#abc` o un `7a5cd6` pintaría la interfaz con tu color y dejaría el verde del producto en el primer correo que abre tu cliente.
 
-> ⚠️ **Cambiar el color por la pantalla después NO reescribe los correos de acceso.** Su texto vive dentro de Supabase (GoTrue), no en el CRM, y quien lo empuja hasta allí es el `marca-emails.sh` — que lee el **`.env`**, no la base de datos. Para que los correos acompañen un color cambiado en `/admin/marca`: ajusta también el `APP_ACCENT_HEX` en el `.env` y ejecuta `bash hostgator-setup-kit/marca-emails.sh`. Por eso importa la entrevista del instalador: es el único momento en que las dos puntas nacen iguales sin que nadie necesite saber esto.
+> ⚠️ **Cambiar el nombre o el color por la pantalla NO reescribe los correos de acceso al instante.** Su texto vive dentro de Supabase (GoTrue), no en el CRM, y quien lo empuja hasta allí es el `marca-emails.sh`. Lee la marca de la instalación en la **base de datos** (lo que guardaste en `/admin/marca`) y solo usa el `.env` cuando la base no responde o no tiene marca guardada. Para que los correos acompañen un cambio hecho por la pantalla, ejecuta `bash hostgator-setup-kit/marca-emails.sh` (con `SUPABASE_ACCESS_TOKEN` exportado) — o espera la próxima actualización, porque el `update.sh` lo ejecuta cada vez. Para saber de dónde leyó, la línea de progreso dice `lida do banco` (base de datos) o `lida do .env`.
 
 Qué son exactamente esas variables: **semilla y piso de rollback.**
 
