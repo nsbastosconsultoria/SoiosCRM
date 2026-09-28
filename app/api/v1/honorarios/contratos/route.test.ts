@@ -1,7 +1,7 @@
 /**
  * GET/POST /api/v1/honorarios/contratos — módulo opcional de advocacia (ADR-0002).
  *
- * Ler exige `viewer`; criar exige `manager` (mesma RLS da migration 0398: dinheiro não é coisa
+ * Ler exige `viewer`; criar exige `manager` (mesma RLS da migration 0480: dinheiro não é coisa
  * que `agent` configure). Um 42P01 (tabela ausente — módulo não instalado) vira uma mensagem
  * clara, nunca um 500 cru.
  */
@@ -61,6 +61,7 @@ function fakeSupabase(resultado: { data: unknown; error: { code?: string } | nul
     },
     insert: () => builder,
     single: () => Promise.resolve(resultado),
+    maybeSingle: () => Promise.resolve({ data: null, error: null }),
   };
   return { filtros, client: { from: () => builder } };
 }
@@ -144,5 +145,24 @@ describe("POST /api/v1/honorarios/contratos", () => {
     const res = await POST(postReq({ modelo: "exito" }));
 
     expect(res.status).toBe(422);
+  });
+  it("lead de outra organização → 422, e o contrato não é gravado", async () => {
+    autorizadoComo("manager");
+    const { client, filtros } = fakeSupabase({ data: { id: "c1" }, error: null });
+    const from = vi.fn(client.from);
+    vi.mocked(createClient).mockResolvedValue({ from } as never);
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      postReq({
+        modelo: "fixo",
+        valor_fixo_cents: 500000,
+        lead_id: "99999999-9999-4999-8999-999999999999",
+      }),
+    );
+
+    expect(res.status).toBe(422);
+    expect(filtros).toContainEqual({ coluna: "organization_id", valor: ORG_ID });
+    expect(from).not.toHaveBeenCalledWith("honorarios_contratos");
   });
 });

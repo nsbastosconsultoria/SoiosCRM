@@ -30,14 +30,11 @@ import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
  * para que `tests/e2e/marca-logo.spec.ts` continue medindo "a fachada está sem
  * `<img>`" como "sem logo do revendedor".
  *
- * O NOME sai de `brandingDoServidor()` dentro de cada página. Ele saía de
- * `branding()`, que só lê o `.env`, e o argumento era que
- * `tests/e2e/icone-da-marca.spec.ts` cruzava o título da aba (banco) contra o
- * texto sob o "Entrar" (arquivo). Só que uma instalação que salvava o nome em
- * `/admin/marca` sem mexer no `.env` — o caminho que a própria tela ensina —
- * via as duas fontes divergirem, que é exatamente o defeito que aquela spec
- * chama de "defeito de verdade". Hoje as duas leem a mesma pilha, e a spec
- * guarda que o título e o texto continuam concordando.
+ * O NOME continua saindo de `branding()` dentro de cada página — não é descuido,
+ * está medido em `tests/e2e/icone-da-marca.spec.ts:64-77`: aquela spec cruza duas
+ * resoluções independentes (o título da aba, que lê o banco, contra o texto sob
+ * o "Entrar", que lê o `.env`). Trocar o texto para este mesmo resolvedor
+ * deixaria a spec verde medindo nada.
  */
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const marca = await marcaDaSaida(null);
@@ -62,8 +59,8 @@ export default async function PublicLayout({ children }: { children: React.React
                 <img> em vez de next/image pelo mesmo motivo da barra lateral: a URL
                 é de quem hospeda e o `next/image` exige allowlist de domínios
                 fechada em BUILD — a imagem pré-buildada do self-host recusaria o
-                domínio do operador. Altura fixa e largura livre para não distorcer
-                arte de proporção desconhecida.
+                domínio do operador. Altura máxima de 80 px e largura máxima de 192 px, sem distorcer
+                arte de proporção desconhecida nem ampliar arquivos pequenos.
 
                 O `alt` é o nome DESTA resolução (`marca.nome`), e não o de
                 `branding()`: é a legenda da imagem que está ali, e nomeá-la com a
@@ -89,8 +86,8 @@ export default async function PublicLayout({ children }: { children: React.React
                     alt={marca.nome}
                     className={
                       marca.logoDarkUrl
-                        ? "h-10 w-auto max-w-[12rem] object-contain dark:hidden"
-                        : "h-10 w-auto max-w-[12rem] object-contain"
+                        ? "h-auto max-h-20 w-auto max-w-[12rem] object-contain dark:hidden"
+                        : "h-auto max-h-20 w-auto max-w-[12rem] object-contain"
                     }
                   />
                 ) : (
@@ -102,7 +99,7 @@ export default async function PublicLayout({ children }: { children: React.React
                     data-testid="logo-escuro-da-fachada"
                     src={marca.logoDarkUrl}
                     alt={marca.nome}
-                    className="hidden h-10 w-auto max-w-[12rem] object-contain dark:block"
+                    className="hidden h-auto max-h-20 w-auto max-w-[12rem] object-contain dark:block"
                   />
                 ) : null}
               </div>

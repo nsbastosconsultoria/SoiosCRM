@@ -8,6 +8,222 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
 
 ## [Não lançado]
 
+## [1.60.0] — 2026-09-28
+
+### Adicionado
+
+- **O ícone enviado em Marca também identifica o aplicativo instalado** O campo de ícone da instalação passa a usar a mesma imagem na aba do navegador e no app instalado no celular, com tamanhos de 192 e 512 pixels. Sem imagem própria, mantém o desenho da marca. PNG ou JPG até 512 KB, sem editar arquivos no servidor. Crédito: @vitorlacerdadigital.
+
+  Contribuição de @vitorlacerdadigital (#1848).
+
+- **Use uma chave OpenRouter para preparar o acervo de conhecimento** O acervo aceita uma chave OpenRouter cadastrada em IA › Credenciais ou na instalação (`OPENROUTER_API_KEY`) para indexar e consultar documentos com o mesmo modelo de embedding. Em IA › Conhecimento, o aviso de chave faltando permite cadastrá-la sem sair da página. A OpenRouter só entra quando não há chave OpenAI nem gateway: quem já usa OpenAI continua com a configuração anterior.
+
+  Contribuição de @obrunogonzaga (#1854).
+
+- **A empresa passa a ter proposta comercial, do rascunho da IA ao PDF que o cliente recebe no WhatsApp** Nova tela Propostas. É módulo opcional, desligado por padrão, com duas chaves: quem
+  administra o servidor liga "Propostas comerciais" em /admin/sistema › Módulos
+  opcionais (com ela desligada, nenhuma empresa vê a tela, o menu nem as ferramentas
+  do agente), e cada empresa liga a dela em Configurações › Propostas. Ligada, o assistente que conversa com o cliente levanta o briefing antes
+  de rascunhar — objetivo, entregas, o que o cliente já tem e os acessos,
+  responsabilidades, prazo, quem decide e orçamento, e uma referência —, formulando as
+  perguntas com as palavras de cada pedido (serve para site, automação ou projeto sem
+  nicho), mostra um resumo e só cria o rascunho depois que o cliente confirma. O
+  rascunho abre um aviso na Central, aparece em destaque na tela de quem está com o
+  CRM aberto e entra no Radar como "proposta esperando revisão"; nada sai para o
+  cliente sem uma pessoa revisar. A empresa escolhe os modelos em Configurações ›
+  Propostas › Modelos: pode desligar os que vêm com o sistema, editar, criar os dela
+  e importar o PDF ou o texto que já usa — a IA divide em seções, troca por campos o
+  que muda de um cliente e de um projeto para outro, e mostra o que o modelo vai pedir
+  antes de salvar. No editor, "Preencher com a conversa" sugere valores para os campos
+  em aberto (você confirma cada um), cada seção pode ser reescrita, e "Ver como o
+  cliente recebe" abre o PDF exatamente como ele vai chegar. O envio exige modelo
+  confirmado e preços definidos, grava o que foi digitado antes de enviar, numera a
+  proposta por organização e ano, e manda o PDF pelo WhatsApp da empresa, com a marca
+  dela. Anonimizar um contato (LGPD) também apaga do armazenamento o PDF das propostas
+  dele, e o relatório de acesso aos dados passa a listá-las. Nada exige ação de quem
+  opera a instalação: quem não liga o módulo não vê diferença nenhuma.
+
+  Contribuição de @paulolimajr77 (#1832).
+
+- **A venda que veio de anúncio pode ir para a Meta pelo próprio canal intermediado, atrás de uma chave que vem desligada** Contribuição de @jmpo (#1819).
+
+  Quando o número de WhatsApp está conectado por um canal intermediado que já
+  liga o conjunto de dados da Meta ao número (na tela do próprio provedor), a
+  venda fechada no CRM — botão Ganhar, arrasto no quadro ou mover em lote —
+  pode ser reportada por esse canal: o evento `Purchase` sai com o valor, a
+  moeda, o telefone e o id da conversa, e o provedor completa o vínculo com o
+  clique do anúncio.
+
+  **Vem desligado.** Nada muda na atualização: o envio só acontece depois que um
+  administrador liga **Enviar vendas pelo canal da conversa** em Configurações ›
+  Conversões. Com a chave desligada, nenhum dado da venda sai para o provedor e
+  a venda segue na pendência "sem conexão" de sempre.
+
+  Com a chave ligada, o canal só entra quando a organização não tem conexão
+  direta com a Meta; quem já configurou a conexão direta segue por ela. A venda
+  sai por um caminho só, e a resposta do canal é lida por inteiro — um evento
+  recusado dentro de uma resposta de sucesso aparece como recusa na tela de
+  conversões, não como enviado.
+
+### Alterado
+
+- **O menu mostra quantos casos e quantas conversas esperam uma pessoa** «Casos» passa a aparecer no menu lateral do grupo de IA, com um número vermelho
+  quando há casos em que a IA espera uma pessoa. Antes a tela ficava atrás de
+  «Ver tudo em IA», e o caso só era visto por quem fosse procurar. O item «Inbox»
+  ganha o mesmo número para as conversas que esperam uma pessoa (a aba Fila) —
+  as que a IA passou para a equipe. Sem nada esperando, não aparece número.
+
+  Para o menu continuar cabendo na tela de um notebook, «Roteadores» — que se
+  configura poucas vezes — passa a ficar em «Ver tudo em IA».
+
+  Contribuição de @jmpo (#1817).
+
+- **Um gate novo compara o tipo da coluna no banco com o tipo declarado no TypeScript** O repositório ganhou um invariante novo, tests/invariants/tipo-de-coluna-x-typescript.test.ts,
+  que compara o TIPO de cada coluna lido do supabase/baseline.sql com o tipo declarado
+  na interface do TypeScript, nulidade incluída, e impede que o tipo de uma linha venha
+  através de as unknown as, que é o que desliga a checagem do compilador na hora em que
+  o dado entra. Ele é o irmão do vocabulario-banco-x-typescript, que compara o CHECK:
+  juntos cobrem as duas metades do contrato entre o banco e o código. A cobertura
+  inicial é a view ai_provider_credentials_safe contra a interface CredentialRow,
+  que é onde nasceu o achado da issue #533. Nada é transcrito de um lado para o
+  outro: o banco sai do baseline versionado e o TypeScript sai do próprio arquivo da
+  interface, e toda falha de extração passa a recusar em vez de devolver lista vazia.
+  Dois defeitos reais que o gate reprovara foram corrigidos junto: a coluna
+  api_key_last4 é NOT NULL no baseline e estava declarada como anulável no TypeScript,
+  e os três as unknown as CredentialRow[] das telas de Credenciais e de Agentes viraram
+  a asserção verificável as CredentialRow[], que o TypeScript confere. Não há ação
+  para quem opera a VPS.
+
+  Contribuição de @webtecnica (#1850).
+
+- **Os testes do envio de mensagem usam um dublê só** Os quatro testes do `sendMessageHandler` que ainda montavam o banco à mão passam a usar o dublê compartilhado, e a lista de exceções do gate que exige isso fica vazia: dublê novo feito à mão reprova. Nada muda no produto nem para quem opera.
+
+  Contribuição de @webtecnica (#1843, issue #286).
+
+- **Todo identificador que sai para um serviço de fora tem o limite do serviço conferido em teste** Um registro único lista as fronteiras (nome de sessão do WAHA, chave no Storage, `Idempotency-Key`, cabeçalhos do webhook de saída, sessão WaCalls, `external_id`), cada uma com o limite ou a forma que o serviço impõe e a fonte. O limite do WAHA vem da mesma constante que o código usa, e uma varredura reprova um envio novo para o Storage ou uma chave de idempotência nova que fique fora do registro. Nada muda no produto nem para quem opera.
+
+  Contribuição de @webtecnica (#1851, issue #686).
+
+### Corrigido
+
+- **A resposta enviada pelo CRM não aparece mais duas vezes na conversa** Quando o WhatsApp devolvia o eco de uma mensagem enviada pelo CRM (pelo atendente ou pela IA) quase ao mesmo tempo em que o envio era confirmado, a mesma frase podia aparecer duas vezes na conversa. O eco agora é registrado com o mesmo identificador do envio, e o banco recusa a segunda linha. Mensagens duplicadas antes desta versão continuam no histórico. Nenhuma ação é necessária no servidor.
+
+  Contribuição de @webtecnica (#1855).
+
+- **As telas de convite, de erro e as páginas legais declaram o idioma em que estão escritas** Sete telas já apareciam traduzidas, mas diziam ao navegador que estavam em português: o convite para entrar na equipe, as páginas legais, as de acesso negado (403 e a do painel da instalação), a de erro interno (500), a de conta suspensa e a de acesso revogado. Para quem usa o sistema em espanhol, o leitor de tela lia o texto com a pronúncia do português, e o navegador oferecia traduzir "do português" uma página que já estava em espanhol. No convite, era a primeira tela que o convidado via. Agora essas telas declaram o idioma do texto, como as demais já faziam. Não há nada a fazer na atualização.
+
+  Contribuição de @FabioMundoDigital (#1853).
+
+- **O app instalado usa o nome configurado na marca da instalação** O diálogo de instalação do aplicativo no navegador passa a ler o nome configurado na instalação, em vez de manter o nome da compilação da imagem. A correção preserva as configurações existentes e não exige editar arquivos no servidor. Crédito: @vitorlacerdadigital.
+
+  Contribuição de @vitorlacerdadigital (#1847, fecha #1845).
+
+- **O vigia de saúde ignora a sessão de teste do e2e em vez de vigiá-la como conexão** Os seeds do e2e gravam em `channel_sessions` e nada apaga a linha, então entre uma suíte e outra a conexão de teste continua lá, parada. O cron de saúde varre a tabela, pergunta ao transporte e, com `STOPPED` entre os status que avisam, abria um aviso na Central de quem opera — resíduo de teste virando alarme permanente numa instalação de verdade. A faixa do topo anunciava o mesmo caso, dizendo que nenhuma mensagem entra nem sai por aquela conexão.
+
+  Agora os dois caminhos reconhecem a categoria antes de agir: o cron conta a linha como ignorada sem perguntar nada a ela, e a faixa não a anuncia. A lista é a MESMA que a limpeza de fim de suíte apaga, e mora em `lib/channels/sessoes-e2e.ts` — num só lugar, para não haver uma cópia envelhecendo ao lado da outra. Quem não está na lista continua vigiado e anunciado como sempre, inclusive quando está mesmo caído.
+
+  Este fragmento não cobre a limpeza do resíduo que já existe em instalação (é o script do PR #1051) nem o religamento de sessão parada.
+
+  Contribuição de @webtecnica (#1844, issue #1032).
+
+## [1.59.0] — 2026-09-28
+
+### Adicionado
+
+- **Automação e follow-up ganham o lembrete interno, que cria tarefa para a equipe sem mandar mensagem ao cliente, e os gatilhos por tempo** As regras de automação têm uma ação nova, Criar tarefa. Ela aceita título com
+  o nome do contato e do negócio, prazo em dias, responsável (o dono do negócio
+  ou uma pessoa escolhida) e prioridade. O responsável recebe o aviso no
+  navegador, e a tarefa aparece na linha do tempo do negócio. Os fluxos de
+  follow-up ganham o nó Lembrete interno, que faz o mesmo sem enviar nada ao
+  cliente. Também ganham a opção Somente interno, que impede a publicação de um
+  fluxo com qualquer nó que mande mensagem. Há dois gatilhos novos: N dias sem
+  mensagem (da equipe, do cliente ou de qualquer lado) e N dias na mesma etapa.
+  Os dois disparam uma vez por episódio, voltam a valer quando chega mensagem
+  nova ou o card muda de etapa, e podem ser configurados para respeitar um
+  compromisso marcado na agenda. O aviso de data do funil volta a disparar quando
+  a data do negócio muda e passa a olhar só negócios abertos. O que já foi
+  avisado antes da atualização não é avisado de novo. Não é preciso fazer nada
+  na instalação.
+
+  Contribuição de @webtecnica (#1683, fecha #1540).
+
+- **O servidor pode falar com o Supabase por um endereço só dele** Quem tem o Supabase na mesma rede da instalação — Kong, Supabase self-host —
+  passa a poder declarar `SUPABASE_SERVER_URL=http://kong:8000` no `.env`. Aí o
+  app, o middleware e o worker do agente falam com o banco pelo caminho curto, e o
+  navegador continua na URL pública: o endpoint interno deixa de precisar estar
+  publicado na internet só para o servidor chegar nele.
+
+  Vazio é o padrão, e vazio é o que toda instalação já faz — nada muda para quem
+  não preencher. O valor tem de ser um endereço http(s) absoluto; se não for, o
+  servidor avisa no log e volta a usar a URL pública, em vez de derrubar a
+  instalação. É runtime puro: trocar o valor não pede rebuild da imagem.
+
+  Contribuição de @webtecnica (#1786, fecha #1082).
+
+### Alterado
+
+- **README em inglês volta a acompanhar o português e o CONTRIBUTING ganha versão em inglês** A decisão do mantenedor de 16/09/2026 (#890) manda `README.md` e `CONTRIBUTING.md` serem
+  mantidos em inglês ao lado das versões em português, e ela fecha dois buracos medidos:
+  `README.en.md` estava atrás do `README.md` em dois lugares — o parágrafo dos guias do
+  assistente de instalação (`scripts/instalar-guias.sh`, `.agents/skills/`) e a seção
+  `📁 Estrutura` —, e `CONTRIBUTING.en.md` não existia. Os dois parágrafos foram
+  traduzidos para o inglês sem mudar o conteúdo: comandos, caminhos de arquivo e
+  identificadores ficaram iguais, e a árvore de diretórios da seção `📁 Structure`
+  mantém os mesmos comentários por diretório. `CONTRIBUTING.en.md` é a tradução integral
+  de `CONTRIBUTING.md` (234 linhas), e ambos ganharam o seletor de idioma no topo, no
+  mesmo formato do `README.md`; os dois links para o CONTRIBUTING dentro do
+  `README.en.md` passaram a apontar para a versão em inglês. Nenhum outro arquivo mudou:
+  a seção `🧹 Desinstalar` e o comentário das extensões do Postgres continuam fora do
+  inglês — drift pré-existente, fora dos dois itens que a decisão nomeou.
+
+  Contribuição de @webtecnica (#1841, issue #890).
+
+- **O lint da suíte passa a rodar o ESLint 10, e sai a versão que o registro do npm aposentou** O `pnpm lint`, executado pelo check obrigatório `verify`, rodava o ESLint 9.39.5, marcado como sem suporte pelo registro do npm. Agora roda o 10.11.0, que produz as mesmas mensagens, arquivo por arquivo, sem nenhuma regra mudada; o `AGENTS.md` declara a major nova e um teste passa a conferi-la. O ESLint não roda no produto: nada muda na imagem nem para quem opera a instalação.
+
+  Levantamento de @melgarafael (#297). Contribuição de @in100tiva (#1840).
+
+### Corrigido
+
+- **No faturamento, cada moeda tem o seu bloco em vez de uma soma entre moedas** Quando o período tinha comandas ou lançamentos em moedas diferentes, a tela de
+  Faturamento somava tudo e escrevia o resultado em real: R$ 150,00 e 200,00 €
+  apareciam como "R$ 350,00" nos cartões Entrou e Saldo, no faturado e nas listas
+  por forma de pagamento, serviço, cliente e comissão, e o ticket médio misturava
+  as duas moedas. Agora cada moeda tem o seu bloco, com os seus cartões, o seu
+  ticket médio e as suas listas, sem conversão, e a moeda da organização vem
+  primeiro. Os lançamentos do período e os lançamentos recorrentes
+  (Configurações › Financeiro) passam a mostrar cada valor na moeda da própria
+  linha, em vez de sempre em real. A separação é preventiva: as comandas, os
+  lançamentos e as recorrências criados pela tela ainda nascem em real, então no
+  uso normal os valores continuam saindo em real, como antes; a mistura só
+  aparece com dado gravado em outra moeda por fora das telas. Numa organização
+  configurada em outra moeda, o período sem movimento mostra o zero na moeda
+  dela. O relatório que a tela lê (/api/v1/reports/financeiro) ganha o campo
+  por_moeda, com os mesmos totais separados por moeda, e os campos que já
+  existiam não mudam. Não exige ação de quem opera a instalação.
+
+  Levantamento de @franceschini-lucas (#1531).
+
+  Contribuição de @in100tiva (#1839).
+
+- **"Sair da lista de espera" e "meu filho não me liga mais" deixam de virar bloqueio** Duas frases de rotina gravavam `is_blocked` sem que a pessoa tivesse pedido
+  descadastro. A primeira é o falso positivo que o freio do #1805 consertou em
+  "me tira/remove da lista" — só que o irmão dela, "sair da lista", ficou de fora:
+  "quero sair da lista de espera" é paciente querendo ser chamado, e "lista de
+  presentes" é compra. As duas regras leem hoje a mesma lista de listas de envio,
+  de modo que "sair da lista de transmissão" continua bloqueando.
+
+  A segunda é `liga`, que é imperativo informal ("não me liga mais" = ordem) e
+  também 3ª pessoa do indicativo ("meu filho não me liga mais" = relato). O que
+  separa as duas é o sujeito, e ele vem antes de "não me": havendo sujeito
+  explícito de 3ª pessoa — pronome (`ele`), ou nome com determinante (`meu filho`,
+  `a doutora`, `meu antigo chefe`) — a frase deixa de ser tratada como pedido.
+  Sem sujeito, a ordem continua bloqueando como antes, e "a partir de amanhã não
+  me mande mais" também, porque ali vem uma preposição, não um sujeito. O
+  sujeito precisa abrir a mensagem ou a frase: numa mensagem sem pontuação como
+  "vou bloquear o numero não me liga mais", o pedido continua bloqueando.
+
+  Contribuição de @webtecnica (#1825).
+
 ## [1.58.1] — 2026-09-28
 
 ### Corrigido
@@ -9002,7 +9218,9 @@ Primeira versão marcada do DeskcommCRM. O projeto vinha sendo desenvolvido publ
 
 - **Node 22 é obrigatório para desenvolvimento.** A suíte de invariantes instancia o cliente do Supabase, que exige o `WebSocket` global — nativo apenas a partir do Node 22. Isso não afeta quem apenas hospeda: a VPS roda a imagem pronta.
 
-[Não lançado]: https://github.com/melgarafael/DeskcommCRM/compare/v1.58.1...HEAD
+[Não lançado]: https://github.com/melgarafael/DeskcommCRM/compare/v1.60.0...HEAD
+[1.60.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.59.0...v1.60.0
+[1.59.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.58.1...v1.59.0
 [1.58.1]: https://github.com/melgarafael/DeskcommCRM/compare/v1.58.0...v1.58.1
 [1.58.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.57.0...v1.58.0
 [1.57.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.56.1...v1.57.0

@@ -19,7 +19,12 @@ import type {
   ChaveDeOrcamentoDaInstalacao,
   ComportamentoDaInstalacao,
 } from "@/lib/instalacao/comportamento";
-import type { ModuloOpcional, ModuloPorFlag } from "@/lib/instalacao/modulos";
+import type { ModuloOpcional, MODULOS_OPCIONAIS_POR_FLAG } from "@/lib/instalacao/modulos";
+
+/** Só os módulos que esta tela liga/desliga — nunca "honorarios" (módulo de
+ * tabela, ADR-0002): `updateModuloDaInstalacao` não aceita esse valor, e o tipo
+ * aqui existe pra isso dar erro em build, não silenciosamente em runtime. */
+type ModuloPorFlag = (typeof MODULOS_OPCIONAIS_POR_FLAG)[number];
 
 /**
  * Cada interruptor salva na hora, sem botão de confirmar — mesmo desenho do
@@ -83,11 +88,7 @@ export function FormularioDeComportamento({ inicial }: { inicial: ComportamentoD
             onValueChange={(v) => trocar("orcamento_de_ia", v as ChaveDeOrcamentoDaInstalacao)}
             disabled={pendente}
           >
-            <SelectTrigger
-              id="orcamento-de-ia"
-              className="w-[200px]"
-              aria-label={t("Proteção de gasto de IA")}
-            >
+            <SelectTrigger id="orcamento-de-ia" className="w-[200px]" aria-label={t("Proteção de gasto de IA")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -132,10 +133,7 @@ export function FormularioDeComportamento({ inicial }: { inicial: ComportamentoD
           <Select
             value={valores.divulgacao_de_pagamento}
             onValueChange={(v) =>
-              trocar(
-                "divulgacao_de_pagamento",
-                v as ComportamentoDaInstalacao["divulgacao_de_pagamento"],
-              )
+              trocar("divulgacao_de_pagamento", v as ComportamentoDaInstalacao["divulgacao_de_pagamento"])
             }
             disabled={pendente}
           >
@@ -189,12 +187,7 @@ export function FormularioDeComportamento({ inicial }: { inicial: ComportamentoD
  * `.env`). Mesmo desenho do cartão de cima: salva no clique, volta no erro.
  */
 /** Cada módulo, como ele aparece aqui. O texto diz o que ligar ABRE, não só o nome. */
-const MODULOS_NA_TELA: ReadonlyArray<{
-  modulo: ModuloPorFlag;
-  id: string;
-  rotulo: string;
-  descricao: string;
-}> = [
+const MODULOS_NA_TELA: ReadonlyArray<{ modulo: ModuloPorFlag; id: string; rotulo: string; descricao: string }> = [
   {
     modulo: "banco_externo",
     id: "modulo-banco-externo",
@@ -208,6 +201,20 @@ const MODULOS_NA_TELA: ReadonlyArray<{
     rotulo: "Fluxos de atendimento",
     descricao:
       "Ligado, cada empresa pode montar roteiros de perguntas que a IA conduz durante a conversa (nome, CPF, interesse…), e as respostas aparecem na ficha do cliente. Desligado, a tela, o menu e o roteiro no atendimento da IA somem.",
+  },
+  {
+    modulo: "propostas",
+    id: "modulo-propostas",
+    rotulo: "Propostas comerciais",
+    descricao:
+      "Ligado, cada empresa pode ligar em Configurações › Propostas o módulo de proposta comercial: a IA levanta o que o cliente precisa, monta a proposta pelos modelos da empresa e o PDF sai pelo WhatsApp. Desligado, nenhuma empresa vê a tela, o menu nem as ferramentas do agente.",
+  },
+  {
+    modulo: "crm_b2b",
+    id: "modulo-crm-b2b",
+    rotulo: "Empresas e pessoas (venda para empresas)",
+    descricao:
+      "Ligado, cada empresa ganha no CRM o cadastro de Empresas (razão social e CNPJ, com os dados públicos preenchidos pela BrasilAPI), as Pessoas que decidem dentro delas, com vários telefones, e a importação de planilha CSV ou Excel. Consultar um CNPJ manda o número para a BrasilAPI. Desligado, as telas e o menu somem.",
   },
 ];
 
@@ -248,10 +255,7 @@ export function FormularioDeModulos({ ligados }: { ligados: readonly ModuloOpcio
       </CardHeader>
       <CardContent className="space-y-4">
         {MODULOS_NA_TELA.map((m) => (
-          <div
-            key={m.modulo}
-            className="flex items-start justify-between gap-4 rounded-lg border p-4"
-          >
+          <div key={m.modulo} className="flex items-start justify-between gap-4 rounded-lg border p-4">
             <div className="space-y-1">
               <Label htmlFor={m.id} className="text-base">
                 {t(m.rotulo)}

@@ -171,14 +171,31 @@ describe("total da coluna do funil", () => {
     expect(semNbsp(total.textContent ?? "")).toBe("5000,00 € + R$ 1.000,00");
   });
 
-  it("empate no número de negócios cai em ordem alfabética do código", () => {
+  it("conta negócios, não soma valores: a moeda com mais negócios vem primeiro mesmo valendo menos", () => {
+    // Ordenar pela soma compararia centavos de moedas diferentes — a regra
+    // descartada. Aqui a moeda com mais negócios é a de MENOR soma, e só a
+    // contagem põe o real na frente.
     montar([
-      lead({ id: "e1", currency: "USD", value_cents: 10_000 }),
-      lead({ id: "e2", currency: "BRL", value_cents: 20_000 }),
+      lead({ id: "c1", currency: "EUR", value_cents: 900_000 }),
+      lead({ id: "c2", currency: "BRL", value_cents: 10_000 }),
+      lead({ id: "c3", currency: "BRL", value_cents: 10_000 }),
+      lead({ id: "c4", currency: "BRL", value_cents: 10_000 }),
     ]);
 
-    const total = screen.getByText((texto) => semNbsp(texto).includes("200,00"));
-    expect(semNbsp(total.textContent ?? "")).toBe("R$ 200,00 + $100.00");
+    const total = screen.getByText((texto) => semNbsp(texto).includes("300,00"));
+    expect(semNbsp(total.textContent ?? "")).toBe("R$ 300,00 + 9000,00 €");
+  });
+
+  it("empate no número de negócios cai em ordem alfabética do código", () => {
+    // A primeira no alfabeto é a de MENOR valor: desempatar pela soma daria
+    // o dólar primeiro.
+    montar([
+      lead({ id: "e1", currency: "USD", value_cents: 20_000 }),
+      lead({ id: "e2", currency: "BRL", value_cents: 10_000 }),
+    ]);
+
+    const total = screen.getByText((texto) => semNbsp(texto).includes("100,00"));
+    expect(semNbsp(total.textContent ?? "")).toBe("R$ 100,00 + $200.00");
   });
 
   it("⭐ peso e dólar escrevem '$': cada total leva o código da moeda", () => {
@@ -193,18 +210,24 @@ describe("total da coluna do funil", () => {
   });
 
   it("⭐ o ponderado com duas moedas separa igual, na mesma ordem do total", () => {
+    // A primeira (EUR, mais negócios) NÃO é a primeira no alfabeto nem a de
+    // maior soma: um ponderado que ordenasse sozinho, pelo alfabeto ou pela
+    // própria soma, sairia com o real na frente e quem lê casaria as parcelas
+    // pela posição errada.
     montar(
       [
-        lead({ id: "w1", currency: "BRL", value_cents: 500_000 }),
-        lead({ id: "w2", currency: "EUR", value_cents: 500_000 }),
+        lead({ id: "w1", currency: "EUR", value_cents: 10_000 }),
+        lead({ id: "w2", currency: "EUR", value_cents: 10_000 }),
+        lead({ id: "w3", currency: "EUR", value_cents: 10_000 }),
+        lead({ id: "w4", currency: "BRL", value_cents: 900_000 }),
       ],
       { ...etapa, win_probability: 50 } as Stage,
     );
 
     const ponderado = screen.getByText((texto) => semNbsp(texto).includes("ponderado"));
-    expect(semNbsp(ponderado.textContent ?? "")).toBe("· ponderado R$ 2.500,00 + 2500,00 €");
+    expect(semNbsp(ponderado.textContent ?? "")).toBe("· ponderado 150,00 € + R$ 4.500,00");
     expect(semNbsp(ponderado.parentElement?.textContent ?? "")).toBe(
-      "R$ 5.000,00 + 5000,00 €· ponderado R$ 2.500,00 + 2500,00 €",
+      "300,00 € + R$ 9.000,00· ponderado 150,00 € + R$ 4.500,00",
     );
   });
 

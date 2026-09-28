@@ -176,6 +176,36 @@ export interface SaleRow {
 }
 
 /**
+ * Proposta comercial SOBRE a pessoa.
+ *
+ * A migration 0477 liga `destinatario_nome`, `briefing_json` e
+ * `resumo_comercial` à cascata de anonimização, e este bloco é a outra
+ * metade — o que se apaga a pedido do titular é o que se entrega a pedido
+ * dele.
+ */
+export interface ProposalRow {
+  id: string;
+  numero: number | null;
+  ano: number | null;
+  titulo: string;
+  status: string;
+  total_cents: number;
+  moeda: string;
+  valid_until: string | null;
+  sent_at: string | null;
+  decided_at: string | null;
+  destinatario_nome: string | null;
+  resumo_comercial: string | null;
+  /**
+   * Houve um PDF gerado e enviado. O ARQUIVO não vai no pacote — mesma regra
+   * de `has_media` das mensagens: o titular o recebeu no WhatsApp, e a
+   * anonimização o expurga do Storage (0477). O caminho interno não sai.
+   */
+  tem_pdf: boolean;
+  created_at: string;
+}
+
+/**
  * Tarefa combinada SOBRE a pessoa (migration 0210).
  *
  * ⚠️ ESTE BLOCO NASCEU COM A OUTRA METADE, e não depois dela. A migration liga o
@@ -514,6 +544,7 @@ export interface ExportPayload {
   checkpoints: CheckpointRow[];
   appointments: AppointmentRow[];
   sales: SaleRow[];
+  proposals: ProposalRow[];
   tasks: TaskRow[];
   webhook_captures: CaptureRow[];
   audit_log_extract: AuditRow[];
@@ -600,6 +631,41 @@ export interface ExportPayload {
     decided_at: string | null;
     motivo_recusa: string | null;
   }>;
+  /**
+   * Empresas e pessoas (migrations 0448/0449, metade B2B do #1621): a PESSOA
+   * para quem o contato aponta, os vínculos dela com empresas e as linhas de
+   * planilha que falaram dela. A 0449 redige as três quando o titular pede
+   * anonimização; o que se apaga a pedido dele é o que se entrega a pedido dele
+   * (Art. 18 II). Opcional como `reply_drafts`: o tipo é montado à mão nos
+   * testes de PDF, e quem vigia o esquecimento é
+   * `tests/unit/lgpd-exporta-o-que-redige.test.ts`, que lê o catálogo.
+   */
+  b2b?: {
+    pessoa: {
+      id: string;
+      full_name: string;
+      email: string | null;
+      notes: string | null;
+      created_at: string;
+    } | null;
+    vinculos: Array<{
+      company_id: string;
+      job_title: string | null;
+      department: string | null;
+      is_decision_maker: boolean;
+      notes: string | null;
+    }>;
+    linhas_importadas: Array<{
+      id: string;
+      batch_id: string;
+      row_number: number;
+      status: string;
+      raw_data: unknown;
+      normalized_data: unknown;
+      error: string | null;
+      created_at: string;
+    }>;
+  };
   reply_drafts?: Array<{
     id: string;
     status: string;
@@ -934,12 +1000,12 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
       )
       .eq("organization_id", organizationId)
       .in("lead_id", leadIds);
+    // Qualquer OUTRO erro lança: o worker marca a tentativa como falha e tenta de
+    // novo, em vez de entregar ao titular um export sem o contrato como se fosse
+    // completo (ADR-0002 D8 — seção de módulo ilegível nunca sai como completa).
     if (error) {
       if (error.code !== "42P01") {
-        logger.warn("[lgpd-export-worker] honorarios contratos load failed", {
-          request_id: requestId,
-          error: error.message,
-        });
+        throw new Error(`honorarios_contratos_load_failed: ${error.message}`);
       }
     } else if (data) {
       honorarios_contratos = data;
@@ -952,10 +1018,7 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
           .in("contrato_id", contratoIds)
           .order("numero", { ascending: true });
         if (erroParcelas) {
-          logger.warn("[lgpd-export-worker] honorarios parcelas load failed", {
-            request_id: requestId,
-            error: erroParcelas.message,
-          });
+          throw new Error(`honorarios_parcelas_load_failed: ${erroParcelas.message}`);
         } else if (parcelas) {
           honorarios_parcelas = parcelas;
         }
@@ -1092,6 +1155,79 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
       });
     } else if (data) {
       sales = data;
+    }
+  }
+
+  // Propostas comerciais — contact_id direto em crm_proposals. A 0477
+  // acrescentou destinatario_nome/briefing_json/resumo_comercial à cascata de
+  // redação; este bloco é a outra metade — sem ele, o titular pediria acesso
+  // e receberia um relatório que não menciona nenhuma proposta que recebeu.
+  let proposals: ProposalRow[] = [];
+  if (contactId) {
+    const { data, error } = await admin
+      .from("crm_proposals")
+      .select(
+        "id, numero, ano, titulo, status, total_cents, moeda, valid_until, sent_at, decided_at, destinatario_nome, resumo_comercial, pdf_path, created_at",
+      )
+      .eq("organization_id", organizationId)
+      .eq("contact_id", contactId)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (error) {
+      logger.warn("[lgpd-export-worker] proposals load failed", {
+        request_id: requestId,
+        error: error.message,
+      });
+    } else if (data) {
+      proposals = data.map(({ pdf_path, ...p }) => ({ ...p, tem_pdf: Boolean(pdf_path) }));
+    }
+  }
+
+  // Empresas e pessoas (0448/0449) — ver o comentário do campo `b2b` no tipo.
+  // A pessoa vem de `contacts.person_id`; as linhas de planilha casam pelo
+  // contato OU pela pessoa, o MESMO escopo da redação da 0449. Erro lança:
+  // um relatório sem este bloco diria ao titular que não guardamos o que
+  // guardamos.
+  let b2b: ExportPayload["b2b"];
+  if (contactId) {
+    const { data: vinculo, error: eVinculo } = await admin
+      .from("contacts")
+      .select("person_id")
+      .eq("organization_id", organizationId)
+      .eq("id", contactId)
+      .maybeSingle();
+    if (eVinculo) throw eVinculo;
+    const personId = vinculo?.person_id ?? null;
+    let pessoa: NonNullable<ExportPayload["b2b"]>["pessoa"] = null;
+    let vinculos: NonNullable<ExportPayload["b2b"]>["vinculos"] = [];
+    if (personId) {
+      const { data: p, error: eP } = await admin
+        .from("people")
+        .select("id, full_name, email, notes, created_at")
+        .eq("organization_id", organizationId)
+        .eq("id", personId)
+        .maybeSingle();
+      if (eP) throw eP;
+      pessoa = p;
+      const { data: v, error: eV } = await admin
+        .from("company_people")
+        .select("company_id, job_title, department, is_decision_maker, notes")
+        .eq("organization_id", organizationId)
+        .eq("person_id", personId)
+        .limit(500);
+      if (eV) throw eV;
+      vinculos = v ?? [];
+    }
+    const { data: linhas, error: eL } = await admin
+      .from("import_rows")
+      .select("id, batch_id, row_number, status, raw_data, normalized_data, error, created_at")
+      .eq("organization_id", organizationId)
+      .or(personId ? `contact_id.eq.${contactId},person_id.eq.${personId}` : `contact_id.eq.${contactId}`)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (eL) throw eL;
+    if (pessoa || vinculos.length > 0 || (linhas ?? []).length > 0) {
+      b2b = { pessoa, vinculos, linhas_importadas: linhas ?? [] };
     }
   }
 
@@ -1611,6 +1747,7 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
     checkpoints,
     appointments,
     sales,
+    proposals,
     tasks,
     webhook_captures,
     audit_log_extract,
@@ -1629,6 +1766,7 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
     campaign_suppressions,
     conversation_drafts,
     contact_field_proposals,
+    b2b,
   };
 }
 
@@ -1660,6 +1798,7 @@ function emptyPayload(
     checkpoints: [],
     appointments: [],
     sales: [],
+    proposals: [],
     tasks: [],
     webhook_captures: [],
     audit_log_extract: [],

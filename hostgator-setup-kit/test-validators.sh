@@ -1325,38 +1325,6 @@ else
     "$(grep -o 'background: [^;]*;' "$ME_TMP/torto/confirmation.html" 2>/dev/null | head -2 | tr '\n' ' ')"; fail=1
 fi
 
-# (6b) O BANCO manda, o .env é semente — a mesma precedência do app. Antes, o
-#      script lia só o `.env`: a instalação trocava o nome em `/admin/marca` e o
-#      primeiro e-mail do cliente seguia dizendo "Confirme seu e-mail —
-#      DeskcommCRM", rodasse o script quantas vezes fosse. Um `docker` falso no
-#      PATH faz o papel do `psql` efêmero: o caso roda no CI sem Postgres.
-mkdir -p "$ME_TMP/bin"
-cat > "$ME_TMP/bin/docker" <<'FAKE'
-#!/usr/bin/env bash
-[ -n "${FAKE_DOCKER_FALHA:-}" ] && exit 2
-printf 'Marca do Banco\037#1d4ed8\n'
-FAKE
-chmod +x "$ME_TMP/bin/docker"
-SUPABASE_ACCESS_TOKEN= APP_NAME='Marca do Env' APP_ACCENT_HEX='#0b3d2e' \
-  SUPABASE_DB_URL='postgresql://x@y/z' PATH="$ME_TMP/bin:$PATH" \
-  bash ./marca-emails.sh --env /dev/null --render-em "$ME_TMP/banco" >/dev/null 2>&1
-if grep -q 'Sua conta no Marca do Banco' "$ME_TMP/banco/confirmation.html" 2>/dev/null \
-   && grep -q '#1d4ed8' "$ME_TMP/banco/confirmation.html"; then
-  printf '  ✓ nome e cor de platform_branding vencem o .env\n'
-else
-  printf '  ✗ o banco não venceu o .env: %s\n' \
-    "$(grep -o 'Sua conta no [^.]*' "$ME_TMP/banco/confirmation.html" 2>/dev/null)"; fail=1
-fi
-# E o banco que não responde não derruba nada: volta ao .env, calado.
-SUPABASE_ACCESS_TOKEN= APP_NAME='Marca do Env' FAKE_DOCKER_FALHA=1 \
-  SUPABASE_DB_URL='postgresql://x@y/z' PATH="$ME_TMP/bin:$PATH" \
-  bash ./marca-emails.sh --env /dev/null --render-em "$ME_TMP/semBanco" >/dev/null 2>&1
-if grep -q 'Sua conta no Marca do Env' "$ME_TMP/semBanco/confirmation.html" 2>/dev/null; then
-  printf '  ✓ banco fora do ar cai no .env\n'
-else
-  printf '  ✗ banco fora do ar não caiu no .env\n'; fail=1
-fi
-
 rm -rf "$ME_TMP"
 
 # (7) O VALIDADOR da cor, no install.sh — a outra ponta dos casos (4)-(6).

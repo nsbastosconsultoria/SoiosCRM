@@ -5,7 +5,7 @@
  * instala `honorarios` em `/admin/modulos`. Enquanto não instalado, o Postgres devolve 42P01
  * (tabela inexistente) — traduzido aqui para uma mensagem clara, nunca um 500 cru.
  *
- * ⚠️ CLIENT DE SESSÃO. A RLS da migration 0398 já exige `manager`+ para escrever; a rota cobra
+ * ⚠️ CLIENT DE SESSÃO. A RLS da migration 0480 já exige `manager`+ para escrever; a rota cobra
  * o mesmo degrau por clareza de mensagem, não como segunda régua de autoridade.
  */
 import { randomUUID } from "node:crypto";
@@ -90,6 +90,24 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   const supabase = await createClient();
+
+  // A FK de `lead_id` é conferida pelo dono da tabela, por cima da RLS: sem esta
+  // leitura (com a sessão, recortada pela RLS) o contrato aceitaria o lead de
+  // outra organização.
+  if (lido.data.lead_id) {
+    const { data: lead } = await supabase
+      .from("crm_leads")
+      .select("id")
+      .eq("id", lido.data.lead_id)
+      .eq("organization_id", authz.org.orgId)
+      .maybeSingle();
+    if (!lead) {
+      return fail("validation_failed", "Lead inválido para esta organização.", 422, {
+        requestId,
+      });
+    }
+  }
+
   const { data, error } = await supabase
     .from("honorarios_contratos")
     .insert({

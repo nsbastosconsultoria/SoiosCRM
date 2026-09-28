@@ -89,7 +89,9 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
     if (moduloNaoInstalado(error)) {
       return fail("module_not_installed", MODULO_NAO_INSTALADO, 409, { requestId });
     }
-    if (error.code === "23503") {
+    // 23503: o contrato não existe. 42501: existe, mas é de outra organização — a RLS da
+    // migration 0480 recusa a parcela que aponta para ele (o `manager` já foi cobrado acima).
+    if (error.code === "23503" || error.code === "42501") {
       return fail("validation_failed", "Contrato inválido para esta organização.", 422, {
         requestId,
       });

@@ -1,4 +1,4 @@
-<!-- traduzido-de: docs/white-label.md@9f834abbf72c -->
+<!-- traduzido-de: docs/white-label.md@6a25e768d53e -->
 
 [🇧🇷 Português](white-label.md) · 🇺🇸 English · [🇪🇸 Español](white-label.es.md)
 
@@ -18,7 +18,7 @@ The color is **derived**, not applied raw: one hex yields eleven shades in both 
 
 **The logo too.** On the same screen you **upload the file** — PNG or JPG, up to 512 KB. It goes to your own installation's storage and takes effect right away, with no restart and without you hosting an image anywhere. Fixed height, free width, so that artwork of any proportion is not distorted; with no logo, the name shows up as text.
 
-**And the browser tab icon (favicon).** Right below the logo, the **Tab icon (favicon)** field takes a square image — PNG or JPG, up to 512 KB, ideally 64×64 or larger. It shows up in the browser tab of every screen of the installation, sign-in included. With no icon of your own, the tab shows the first letter of the name on the brand color; removing the icon goes back to that drawing. The icon belongs to the installation, not to each organization: there is only one tab. The installed-app icon (the browser manifest) remains the drawn one.
+**And the application and browser icon.** Below the logo, this field accepts a square PNG or JPG up to 512 KB, preferably 512×512 or larger. The same image identifies browser tabs, including login, and the installed app. The manifest supplies 192×192 and 512×512 PNGs, rendered from the bounded installation file in Storage; arbitrary URLs are never fetched. Without a valid file, the product symbol or brand initial remains. Removing the file restores that drawing. This is installation branding, not per-organization branding. Browsers may cache an existing installation; reinstall the app to check a new icon.
 
 The file is accepted **by its bytes, not by its extension**. Renaming an `.svg` to `.png` fools nothing: the system reads the content, refuses it and says why. This is not fussiness — SVG is XML and can carry script, which would run if someone opened the image directly by its address, in a bucket that is public by necessity.
 
@@ -42,7 +42,7 @@ APP_ACCENT_HEX=#7a5cd6
 
 > The color is asked with a validator: only `#` + 6 digits gets through. That is narrower than what the screen accepts, and deliberately so — the **access e-mails** (account confirmation and password recovery) read this key from the `.env`, and they recognize that form only. A `#abc` or a `7a5cd6` would paint the interface with your color and leave the product's green in the first e-mail your client opens.
 
-> ⚠️ **Changing the name or color from the screen does NOT rewrite the access e-mails right away.** Their text lives inside Supabase (GoTrue), not in the CRM, and what pushes it there is `marca-emails.sh`. It reads the installation brand from the **database** (what you saved in `/admin/marca`) and falls back to the `.env` only when the database does not answer or has no brand saved. For the e-mails to follow a change made on the screen, run `bash hostgator-setup-kit/marca-emails.sh` (with `SUPABASE_ACCESS_TOKEN` exported) — or wait for the next update, since `update.sh` runs it every time. To check where it read from, the progress line says `lida do banco` (database) or `lida do .env`.
+> ⚠️ **Changing the color from the screen afterwards does NOT rewrite the access e-mails.** Their text lives inside Supabase (GoTrue), not in the CRM, and what pushes it there is `marca-emails.sh` — which reads the **`.env`**, not the database. For the e-mails to follow a color changed in `/admin/marca`: adjust `APP_ACCENT_HEX` in the `.env` as well and run `bash hostgator-setup-kit/marca-emails.sh`. This is why the installer interview matters: it is the only moment when both ends are born identical without anyone having to know about this.
 
 What these variables are, exactly: **seed and rollback floor.**
 

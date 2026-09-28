@@ -30,6 +30,7 @@ function payload(): ExportPayload {
     activities: [],
     appointments: [],
     sales: [],
+    proposals: [],
     tasks: [],
     webhook_captures: [],
     audit_log_extract: [],

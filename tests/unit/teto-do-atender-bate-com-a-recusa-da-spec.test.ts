@@ -4,8 +4,8 @@
  * ## O defeito que este teste encurta
  *
  * O caso de recusa de `tests/e2e/capacidades-do-agente.spec.ts` clica em
- * "Atender" e espera `/faltam? 1 vaga/`. A aritmética é o seed da spec (9,
- * todas FORA do pacote) somado às 17 do pacote: 26 contra o teto de 25. Quando
+ * "Atender" e espera `/faltam? 1 vaga/`. A aritmética é o seed da spec (11,
+ * todas FORA do pacote) somado às 17 do pacote: 28 contra o teto de 27. Quando
  * uma ferramenta nova entra em `atender` — a #1684 fez exatamente isso — a
  * recusa na tela vira "faltam 2 vagas" e quem repara é o e2e, uns 20 minutos
  * depois, longe da mudança que causou o problema.
@@ -24,10 +24,12 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { TOOL_CATALOG } from "@/lib/mcp/tools/catalogo";
-import { deModuloDesligado } from "@/lib/mcp/tools/catalog";
+import { TOOL_CATALOG, deModuloDesligado } from "@/lib/mcp/tools/catalogo";
 import { IDS_DO_HARNESS } from "@/lib/mcp/tools/ferramentas-do-harness";
-import { TETO_TOOLS_POR_AGENTE, vagasExigidasPeloPacote } from "@/lib/mcp/tools/selecao-por-pacote";
+import {
+  TETO_TOOLS_POR_AGENTE,
+  vagasExigidasPeloPacote,
+} from "@/lib/mcp/tools/selecao-por-pacote";
 
 const SPEC_DA_E2E = join(process.cwd(), "tests/e2e/capacidades-do-agente.spec.ts");
 
@@ -61,22 +63,21 @@ function toolsDoSeedDaSpec(): string[] {
  * acusaria uma recusa que a tela não mostra. As outras duas metades da junção
  * já têm dono: entrada × handler em `catalogo-servido.test.ts`, e a lista de
  * harness em `capacidade-do-harness-nao-e-oferecida.test.ts`.
- *
- * E a rota também tira o que é de MÓDULO OPCIONAL desligado (`deModuloDesligado`).
- * A e2e roda numa instalação fresca, onde nenhum módulo está ligado — então a
- * conta usa `[]` como ligados, igual à tela que a spec clica. Sem isto, as duas
- * capacidades de honorários (em "atender", mas só com o módulo instalado)
- * entrariam na soma e acusariam "faltam 3 vagas" que a tela não mostra.
  */
-const CATALOGO_DA_TELA = TOOL_CATALOG.filter((entrada) => !deModuloDesligado(entrada.name, [])).map(
-  (entrada) => ({
-    ...entrada,
-    marcavel: !IDS_DO_HARNESS.has(entrada.name),
-  }),
-);
+const CATALOGO_DA_TELA = TOOL_CATALOG.filter(
+  // A spec roda numa instalação nova, sem módulo opcional instalado: a rota
+  // tira do catálogo servido o que é de módulo desligado (`deModuloDesligado`),
+  // e as capacidades de honorários (#1578) não entram na conta da tela.
+  (entrada) => !deModuloDesligado(entrada.name, []),
+).map((entrada) => ({
+  ...entrada,
+  marcavel: !IDS_DO_HARNESS.has(entrada.name),
+}));
 
 const SEED = toolsDoSeedDaSpec();
-const EM_ATENDER = CATALOGO_DA_TELA.filter((c) => c.pacotes.includes("atender")).map((c) => c.name);
+const EM_ATENDER = CATALOGO_DA_TELA.filter((c) => c.pacotes.includes("atender")).map(
+  (c) => c.name,
+);
 
 describe("ligar Atender com o seed da spec excede o teto em exatamente uma vaga", () => {
   it("leu o seed da spec (guarda de vacuidade)", () => {
@@ -97,7 +98,7 @@ describe("ligar Atender com o seed da spec excede o teto em exatamente uma vaga"
 
   it("nenhuma ferramenta do seed está DENTRO de Atender", () => {
     // Se uma entrasse, a união seria menor que a soma e a aritmética da spec
-    // (9 + 17) deixaria de descrever o que a tela faz ao clicar.
+    // (11 + 17) deixaria de descrever o que a tela faz ao clicar.
     for (const ferramenta of SEED) {
       expect(
         EM_ATENDER.includes(ferramenta),

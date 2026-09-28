@@ -1,7 +1,8 @@
 import Link from "next/link";
 
-import { brandingDoServidor } from "@/lib/branding/servidor";
+import { branding } from "@/lib/branding";
 import { createClient } from "@/lib/supabase/server";
+import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
 import { idiomaDoVisitante } from "@/lib/i18n/idiomaAnonimo";
 import { traduzir } from "@/lib/i18n/dicionario";
 
@@ -13,8 +14,8 @@ import { traduzir } from "@/lib/i18n/dicionario";
  * coluna de cartão. Aqui a medida é de texto corrido.
  */
 export default async function LegalLayout({ children }: { children: React.ReactNode }) {
-  const marca = await brandingDoServidor();
-  // Fora da árvore de `app/app/layout.tsx` — sem `IdiomaProvider`, então
+  const marca = branding();
+  // Fora da árvore de `app/app/layout.tsx` — sem o `IdiomaProvider` de lá, então
   // resolve o idioma direto, como as páginas filhas (`privacy`/`terms`).
   const supabase = await createClient();
   const {
@@ -25,20 +26,22 @@ export default async function LegalLayout({ children }: { children: React.ReactN
   );
 
   return (
-    <div className="min-h-screen bg-muted/40">
-      <header className="border-b bg-background">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-4 px-6 py-4">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">{marca.name}</p>
-          <Link href="/login" className="text-sm underline underline-offset-2">
-            {traduzir("Voltar", idioma)}
-          </Link>
-        </div>
-      </header>
-      <main className="mx-auto w-full max-w-3xl px-6 py-10">
-        <article className="space-y-6 rounded-lg border bg-background p-8 text-sm leading-relaxed">
-          {children}
-        </article>
-      </main>
-    </div>
+    <IdiomaProvider locale={idioma}>
+      <div className="min-h-screen bg-muted/40">
+        <header className="border-b bg-background">
+          <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-4 px-6 py-4">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">{marca.name}</p>
+            <Link href="/login" className="text-sm underline underline-offset-2">
+              {traduzir("Voltar", idioma)}
+            </Link>
+          </div>
+        </header>
+        <main className="mx-auto w-full max-w-3xl px-6 py-10">
+          <article className="space-y-6 rounded-lg border bg-background p-8 text-sm leading-relaxed">
+            {children}
+          </article>
+        </main>
+      </div>
+    </IdiomaProvider>
   );
 }

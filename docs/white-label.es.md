@@ -1,4 +1,4 @@
-<!-- traduzido-de: docs/white-label.md@9f834abbf72c -->
+<!-- traduzido-de: docs/white-label.md@6a25e768d53e -->
 
 [🇧🇷 Português](white-label.md) · [🇺🇸 English](white-label.en.md) · 🇪🇸 Español
 
@@ -18,7 +18,7 @@ El color es **derivado**, no aplicado en crudo: de un hex salen once tonos en lo
 
 **El logo también.** En la misma pantalla **subes el archivo** — PNG o JPG, hasta 512 KB. Va al almacenamiento de tu propia instalación y pasa a valer al instante, sin reiniciar nada y sin que tengas que alojar la imagen en ningún sitio. Altura fija y ancho libre, para no deformar un arte de cualquier proporción; sin logo, el nombre aparece como texto.
 
-**Y el ícono de la pestaña (favicon).** Justo debajo del logo, el campo **Ícono de la pestaña (favicon)** recibe una imagen cuadrada — PNG o JPG, hasta 512 KB, preferiblemente de 64×64 o mayor. Aparece en la pestaña del navegador de todas las pantallas de la instalación, incluido el acceso. Sin ícono propio, la pestaña muestra la inicial del nombre sobre el color de la marca; quitar el ícono vuelve a ese dibujo. El ícono es de la instalación, no de cada organización: la pestaña es una sola. El ícono de app instalada (el manifiesto del navegador) sigue siendo el dibujado.
+**Y el ícono de la aplicación y del navegador.** Debajo del logo, este campo acepta un PNG o JPG cuadrado de hasta 512 KB, preferiblemente 512×512 o mayor. La misma imagen aparece en las pestañas, incluido el acceso, y en la aplicación instalada. El manifiesto ofrece PNG de 192×192 y 512×512, renderizados desde el archivo limitado de la instalación en Storage; nunca se buscan URL arbitrarias. Sin archivo válido, conserva el símbolo del producto o la inicial de la marca. Quitar el archivo restaura ese dibujo. Es la marca de la instalación, no de cada organización. El navegador puede guardar una instalación anterior en caché; reinstala la aplicación para comprobar un nuevo ícono.
 
 El archivo se acepta **por sus bytes, no por su extensión**. Renombrar un `.svg` a `.png` no engaña: el sistema lee el contenido, lo rechaza y dice por qué. Esto no es quisquillosidad — SVG es XML y puede llevar script, que se ejecutaría si alguien abriera la imagen directamente por su dirección, en un bucket que es público por necesidad.
 
@@ -42,7 +42,7 @@ El `install.sh` pregunta **dos** de ellas y las graba: el `APP_NAME` (Enter mant
 
 > El color se pide con validador: solo pasa `#` + 6 dígitos. Es más estrecho de lo que acepta la pantalla, y es a propósito — los **correos de acceso** (confirmación de cuenta y recuperación de contraseña) leen esa clave del `.env`, y solo reconocen esa forma. Un `#abc` o un `7a5cd6` pintaría la interfaz con tu color y dejaría el verde del producto en el primer correo que abre tu cliente.
 
-> ⚠️ **Cambiar el nombre o el color por la pantalla NO reescribe los correos de acceso al instante.** Su texto vive dentro de Supabase (GoTrue), no en el CRM, y quien lo empuja hasta allí es el `marca-emails.sh`. Lee la marca de la instalación en la **base de datos** (lo que guardaste en `/admin/marca`) y solo usa el `.env` cuando la base no responde o no tiene marca guardada. Para que los correos acompañen un cambio hecho por la pantalla, ejecuta `bash hostgator-setup-kit/marca-emails.sh` (con `SUPABASE_ACCESS_TOKEN` exportado) — o espera la próxima actualización, porque el `update.sh` lo ejecuta cada vez. Para saber de dónde leyó, la línea de progreso dice `lida do banco` (base de datos) o `lida do .env`.
+> ⚠️ **Cambiar el color por la pantalla después NO reescribe los correos de acceso.** Su texto vive dentro de Supabase (GoTrue), no en el CRM, y quien lo empuja hasta allí es el `marca-emails.sh` — que lee el **`.env`**, no la base de datos. Para que los correos acompañen un color cambiado en `/admin/marca`: ajusta también el `APP_ACCENT_HEX` en el `.env` y ejecuta `bash hostgator-setup-kit/marca-emails.sh`. Por eso importa la entrevista del instalador: es el único momento en que las dos puntas nacen iguales sin que nadie necesite saber esto.
 
 Qué son exactamente esas variables: **semilla y piso de rollback.**
 

@@ -92,6 +92,25 @@ const PROVA_PROPRIA: readonly Excecao[] = [
   { tabela: "event_service_origins", razao: "tests/invariants/service-event-origin.test.ts — recibo server-only, authenticated sem leitura/escrita, RPC rejeita tenant B real" },
   { tabela: "platform_support_sessions", razao: "tests/invariants/suporte-temporario.test.ts — grant por sessão, readonly e nenhuma escrita direta authenticated" },
   {
+    tabela: "crm_proposal_counters",
+    razao:
+      "tests/invariants/proposta-contador-e-server-side.test.ts — server-side " +
+      "only (RLS ligada, zero policies, revoke all de anon/authenticated, " +
+      "migration 0466): authenticated e anon barrados com `permission denied` " +
+      "em leitura e escrita, não zero linhas. Não entra em TABLES pelo mesmo " +
+      "motivo do eixo de anúncios: lá o caso viraria `permission denied` e a " +
+      "'correção' natural seria abrir policy — expondo pelo PostgREST o " +
+      "contador que decide a numeração jurídica da proposta (D9).",
+  },
+  {
+    tabela: "proposal_templates",
+    razao:
+      "tests/invariants/proposta-templates-isolamento-entre-organizacoes.test.ts " +
+      "— isolamento cross-org com `countAs` real (membro da org A não vê a " +
+      "cópia de modelo da org B) + `writeCountAs` provando o piso de papel na " +
+      "escrita (viewer barrado, agent permitido), migration 0471 (M0).",
+  },
+  {
     tabela: "webhook_lead_captures",
     razao:
       "tests/invariants/historico-de-captacao-rls.test.ts prova isolamento " +

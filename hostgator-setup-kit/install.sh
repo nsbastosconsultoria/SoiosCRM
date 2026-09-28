@@ -1214,15 +1214,15 @@ case "$AI_PROVIDER" in
 esac
 
 # A chave da OpenAI é pedida À PARTE quando ela NÃO é o provedor de conversa,
-# porque dois pontos do sistema dependem dela mesmo assim: ouvir áudio (o
-# Whisper é da OpenAI) e indexar a base de conhecimento. Sem esta linha, quem
+# porque ouvir áudio ainda depende dela (o Whisper é da OpenAI). A base de
+# conhecimento também aceita a chave OpenRouter, com o mesmo modelo fixo. Sem esta linha, quem
 # escolhe OpenRouter instala achando que está completo e descobre semanas depois
 # que o agente nunca ouviu um áudio — que é exatamente o defeito já visto em
 # produção, com a chave certa no .env e indo para o endpoint errado.
 if [ "$AI_PROVIDER" = "openai" ]; then
   CAMPO_OPENAI_EXTRA=""
 else
-  CAMPO_OPENAI_EXTRA="OPENAI_API_KEY|Chave da OpenAI — só para ouvir áudios e usar a base de conhecimento (Enter pula: dá para cadastrar depois pela tela, em IA › Credenciais)||v_openai|secret|opcional"
+  CAMPO_OPENAI_EXTRA="OPENAI_API_KEY|Chave da OpenAI — para ouvir áudios; a base de conhecimento aceita OpenRouter (Enter pula: dá para cadastrar depois pela tela, em IA › Credenciais)||v_openai|secret|opcional"
 fi
 
 # ── A versão que esta instalação vai rodar ───────────────────────────────────
@@ -1643,7 +1643,7 @@ esac
   printf '# imagem pública para trocar o texto por logo na sidebar. Ver lib/branding.ts.\n'
   printf '# APP_ACCENT_HEX é a SEMENTE da cor: o banco (platform_branding) manda depois\n'
   printf '# da primeira leitura. Nos e-mails de acesso depende da topologia: na NUVEM do\n'
-  printf '# Supabase quem empurra é o marca-emails.sh, que lê o banco e cai para cá;\n'
+  printf '# Supabase quem empurra é o marca-emails.sh, lendo daqui, e o banco não alcança;\n'
   printf '# num Supabase PRÓPRIO o GoTrue busca /email-templates/ do app, que resolve a\n'
   printf '# marca pelo banco — e aí trocar em Configurações > Marca chega ao e-mail.\n'
   # Normaliza a escolha do idioma ANTES de gravar: o campo aceita "1"/"2"

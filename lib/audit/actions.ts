@@ -69,6 +69,9 @@ export const AUDIT_ACTIONS = [
    * depois é "a varredura das 9h rodou e quanta coisa saiu dela".
    */
   "lead.data_do_funil_emitida",
+  // #1540 — a varredura dos gatilhos por TEMPO (silêncio e etapa parada)
+  // emitindo. Assim como a de data do funil, a linha guarda a RODADA.
+  "lead.gatilho_de_tempo_emitido",
   "lgpd.anonymize_executed",
   // A cascata retomando o que uma execução interrompida não terminou (#310).
   "lgpd.anonymize_catchup",
@@ -275,6 +278,7 @@ export const AUDIT_ACTIONS = [
   "leads.bulk_assigned",
   "attendant.availability_changed",
   "routing.config_changed",
+  "proposals.config_changed",
   // Mudar a régua do abandono (spec 16 §5.2) muda como TODO período passa a ser
   // lido — é mutação relevante, não preferência de exibição.
   "metrics.atrito_regua_changed",
@@ -684,6 +688,45 @@ export const AUDIT_ACTIONS = [
   "crm_task.created",
   "crm_task.updated",
   "crm_task.deleted",
+
+  // A proposta comercial. Rascunho, edição, ajuste pelo assistente, envio e
+  // decisão do cliente — cada um muda o que o negócio vale ou o que foi
+  // oferecido, e é disputa comum entre quem atende e quem fecha.
+  "proposal.drafted",
+  "proposal.edited",
+  "proposal.assistant_applied",
+  "proposal.sent",
+  "proposal.revised",
+  // Edição manual de seção do documento pelo canvas.
+  "proposal.documento_editado",
+  // Campo do documento preenchido pela tela — grava no briefing; o metadata
+  // leva só o CAMINHO, nunca o valor digitado.
+  "proposal.documento_campo_preenchido",
+  // Confirmação do modelo do documento pela tela (a IA sugere, uma pessoa
+  // confirma; limpa template_slug_sugerido).
+  "proposal.modelo_confirmado",
+  "proposal.discarded",
+  "proposal.aceita",
+  "proposal.recusada",
+  // Cron de vencimento — lote, sem resourceId de uma linha só.
+  "proposal.expired_batch",
+  // Últimos dois sinais do laço de retorno — cron em lote.
+  "proposal.promise_not_created_batch",
+  "proposal.acceptance_rate_batch",
+  // Cron proposta-travada: proposta presa em `enviando` voltou a rascunho
+  // sozinha — mesmo padrão de "message.recover_stuck_run".
+  "proposal.recovered_from_stuck",
+  // Aviso ao número da equipe quando a IA rascunha (sem tabela de entrega:
+  // a baixa do evento é a trava). Metadata leva ids e o destino MASCARADO.
+  "proposal.aviso_whatsapp_enviado",
+  "proposal.aviso_whatsapp_falhou",
+
+  // Modelos de proposta da empresa — o texto que vai para todo cliente;
+  // quem mudou e quando é o que se disputa depois.
+  "proposal_template.saved",
+  "proposal_template.deactivated",
+  "proposal_template.imported",
+
   "organization.switched",
   // Chamada originada via /api/v1/calls (módulo VoIP, migration 0347).
   // Só o CREATE é auditado aqui — status/transcript são atualizados pelo
@@ -713,6 +756,13 @@ export const AUDIT_ACTIONS = [
   // porque toda leitura de `admin/` é auditada neste repo — e porque aqui o
   // operador enxerga o agente publicado na organização de outra pessoa.
   "platform_admin.tenant_agents_viewed",
+  // Desligar/religar um modelo de proposta da plataforma na tela de Modelos.
+  // Guarda em `organizations.settings.proposals.modelos_ocultos`; o metadata
+  // leva só o slug. Duas ações, e não um campo no metadata de
+  // `proposal_template.saved`: "quem desligou este modelo?" filtra por
+  // `action`, nunca por metadata.
+  "proposal_template.hidden",
+  "proposal_template.shown",
   "extension.catalog_admitted",
   "extension.installed",
   "extension.install_failed",
@@ -925,6 +975,20 @@ export const AUDIT_ACTIONS = [
   // o dado que importa quando alguém pergunta "por que este cliente voltou a
   // receber?".
   "contact.unblocked",
+  // "Enviar vendas pelo canal da conversa" (doc 76, PR #1819): ligar faz o
+  // valor da venda e o telefone do cliente saírem para o provedor do canal.
+  "conversions.report_via_channel_updated",
+
+  // CRM B2B fase 1 — companies / people / import (migration 0239)
+  "companies.created",
+  "companies.updated",
+  "companies.enriched",
+  "people.created",
+  "people.updated",
+  "company_people.linked",
+  "company_people.updated",
+  "contacts.person_linked",
+  "imports.companies_people",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

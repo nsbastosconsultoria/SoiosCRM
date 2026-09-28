@@ -105,49 +105,8 @@ instrua_e_saia() {
   exit 0
 }
 
-# ── 1. A marca: o BANCO manda, o .env é semente ────────────────────────────
+# ── 1. A marca, lida do .env da instalação ─────────────────────────────────
 [ -f "$ENV_FILE" ] && load_env "$ENV_FILE"
-
-# A mesma precedência do app (`lib/branding/instalacao.ts`, CLAUDE.md "O banco
-# está ACIMA do `.env`"): `platform_branding` é o que a tela `/admin/marca`
-# grava, e `APP_NAME`/`APP_ACCENT_HEX` são só a semente da primeira leitura.
-#
-# Até aqui este script lia SÓ o `.env`, e o desfecho era o que um revendedor
-# reportou: a instalação inteira com o nome dele, trocado pela tela, e o PRIMEIRO
-# e-mail que o cliente dele abre ("Confirme seu e-mail — DeskcommCRM") com o nome
-# do produto, porque o `.env` nunca teve `APP_NAME` preenchido.
-#
-# É a camada da INSTALAÇÃO (`id = 1`), não a da organização: é a mesma que
-# `marcaDaSaida(null)` usa na rota `/email-templates/*` do caminho self-hosted —
-# confirmar conta acontece antes de haver organização a que atribuir a pessoa.
-#
-# Falha FECHADA para o `.env`: sem connection string, sem docker, banco fora do
-# ar, tabela ainda inexistente (instalação anterior à migration da marca) ou
-# linha vazia — tudo cai no comportamento anterior, calado. Este script nunca
-# derruba quem o chama (ver cabeçalho), e ler a marca não é motivo para isso.
-marca_do_banco() {
-  [ -n "${SUPABASE_DB_ADMIN_URL:-}${SUPABASE_DB_URL:-}" ] || return 1
-  command -v docker >/dev/null 2>&1 || return 1
-  # `</dev/null`: o `docker run -i` leria o stdin de quem chama — e o
-  # `update.sh` pode estar sendo alimentado por pipe.
-  pg_container -e PGCONNECT_TIMEOUT=10 -i postgres:17-alpine \
-    psql "$(url_do_schema)" -X -tA -F "$(printf '\037')" \
-    -c "select coalesce(btrim(app_name), ''), coalesce(accent_hex, '')
-          from public.platform_branding where id = 1" </dev/null 2>/dev/null
-}
-
-ORIGEM_DA_MARCA=".env"
-if linha_marca="$(marca_do_banco)" && [ -n "$linha_marca" ]; then
-  IFS="$(printf '\037')" read -r nome_do_banco accent_do_banco <<<"$linha_marca"
-  if [ -n "${nome_do_banco//[[:space:]]/}" ]; then
-    APP_NAME="$nome_do_banco"; ORIGEM_DA_MARCA="banco"
-  fi
-  # O CHECK de `platform_branding` já garante `#` + 6 dígitos minúsculos; o
-  # `case` do passo abaixo confere de novo, e um valor torto cai no piso.
-  if [ -n "${accent_do_banco:-}" ]; then
-    APP_ACCENT_HEX="$accent_do_banco"; ORIGEM_DA_MARCA="banco"
-  fi
-fi
 
 APP_NOME="${APP_NAME:-}"
 [ -n "${APP_NOME//[[:space:]]/}" ] || APP_NOME="DeskcommCRM"
@@ -164,17 +123,17 @@ APP_URL="${NEXT_PUBLIC_APP_URL:-}"
 # teórica: o revendedor punha o nome dele na instalação e recebia o VERDE DO
 # PRODUTO no primeiro e-mail que o cliente dele abria, em ~100% das instalações.
 #
-# ⚠️ LIMITE QUE PERMANECE: quem trocar nome ou cor pela tela `/admin/marca` não
-# vê os e-mails de acesso mudarem NA HORA — eles são texto estático dentro do
-# GoTrue e só mudam quando este script roda de novo (o `update.sh` o roda a cada
-# atualização). Isto é INERENTE ao mecanismo: o GoTrue guarda o texto, não uma
-# referência ao nosso resolvedor.
+# ⚠️ LIMITE QUE PERMANECE: quem trocar a cor DEPOIS, pela tela `/admin/marca`,
+# NÃO vê os e-mails de acesso acompanharem — eles são texto estático dentro do
+# GoTrue e só mudam quando este script roda de novo. O que a entrevista conserta
+# é o ponto de partida (a cor da instalação nasce certa); a defasagem posterior
+# continua de pé.
 #
-# O que ler do banco (passo 1) resolve é o OUTRO defeito, o pior: antes, rodar o
-# script de novo regravava o valor do `.env` — que ninguém atualiza depois da
-# instalação — e a marca trocada pela tela nunca chegava ao e-mail, rodasse o
-# script quantas vezes fosse. Agora cada execução empurra a marca que a tela
-# mostra.
+# Esta defasagem é INERENTE ao mecanismo, não a esta escolha de fonte: o GoTrue
+# guarda o texto do e-mail, não uma referência ao nosso resolvedor. Trocar o
+# `.env` pelo banco como origem mudaria QUAL valor velho fica gravado, não o
+# fato de ele ficar. Quem mexer aqui esperando "ler do banco resolve" precisa
+# saber disso antes de escrever a primeira linha.
 ACCENT="${APP_ACCENT_HEX:-}"
 case "$ACCENT" in
   \#[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]) ;;
@@ -290,7 +249,7 @@ if [ -n "$RENDER_EM" ]; then
   mkdir -p "$RENDER_EM" || instrua_e_saia "não consegui escrever em $RENDER_EM"
   printf '%s\n' "$HTML_CONFIRM"  > "$RENDER_EM/confirmation.html"
   printf '%s\n' "$HTML_RECOVERY" > "$RENDER_EM/recovery.html"
-  c_grn "✓ modelos renderizados em $RENDER_EM (marca: $APP_NOME, accent: $ACCENT, lida do $ORIGEM_DA_MARCA)"
+  c_grn "✓ modelos renderizados em $RENDER_EM (marca: $APP_NOME, accent: $ACCENT)"
   c_dim "  Isto e so o HTML renderizado -- NAO aponte GOTRUE_MAILER_TEMPLATES_* para estes arquivos."
   c_dim "  Num Supabase proprio, aponte para a rota do app, que resolve a marca pelo BANCO:"
   c_dim "    GOTRUE_MAILER_TEMPLATES_CONFIRMATION=${NEXT_PUBLIC_APP_URL:-https://SEU_DOMINIO}/email-templates/confirmation"
@@ -345,7 +304,7 @@ json_escape() {
          printf "%s%s", (NR>1 ? "\\n" : ""), $0 }' <<<"$1"
 }
 
-step "Configurando os e-mails de acesso (marca: $APP_NOME, lida do $ORIGEM_DA_MARCA)"
+step "Configurando os e-mails de acesso (marca: $APP_NOME)"
 
 atual="$(api GET "/projects/$REF/config/auth")"
 case "$atual" in

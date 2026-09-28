@@ -27,10 +27,7 @@ import { describe, expect, it, vi } from "vitest";
 import { runFollowupTick, type AdminClient, type FollowupJobRequest } from "@/lib/followup/engine";
 import type { FlowGraph } from "@/lib/followup/graph-schema";
 import type { EnrollmentRow } from "@/lib/followup/node-handlers";
-import {
-  FOLGA_DEPOIS_DO_RETORNO_MS,
-  reavaliarDepoisDoRetorno,
-} from "@/lib/followup/retorno-segura-o-fluxo";
+import { FOLGA_DEPOIS_DO_RETORNO_MS, reavaliarDepoisDoRetorno } from "@/lib/followup/retorno-segura-o-fluxo";
 import { runSilenceSweep, type SilenceSweepDb } from "@/lib/followup/silence-sweep";
 
 const AGORA = new Date("2026-09-25T15:00:00.000Z");
@@ -41,13 +38,7 @@ describe("varredura de silêncio", () => {
     const insert = vi.fn(async () => ({ inserted: true }));
     const db: SilenceSweepDb = {
       loadActiveSilencePointers: async () => [
-        {
-          id: "ptr",
-          organization_id: "org",
-          active_version_id: "v1",
-          threshold_minutes: 60,
-          segments: [],
-        },
+        { id: "ptr", organization_id: "org", active_version_id: "v1", threshold_minutes: 60, segments: [] },
       ],
       loadSilentContactIds: async () => ["contato-com-retorno", "outro"],
       loadContatosComRetornoVivo: async () => comRetorno,
@@ -79,30 +70,10 @@ describe("varredura de silêncio", () => {
 describe("inscrição que já andava", () => {
   const GRAFO: FlowGraph = {
     nodes: [
-      {
-        id: "oferta",
-        type: "action",
-        label: "Oferta",
-        position: { x: 0, y: 0 },
-        config: { mode: "text", body: "oi" },
-      },
-      {
-        id: "fim",
-        type: "end",
-        label: "Fim",
-        position: { x: 0, y: 0 },
-        config: { outcome: "exhausted" },
-      },
+      { id: "oferta", type: "action", label: "Oferta", position: { x: 0, y: 0 }, config: { mode: "text", body: "oi" } },
+      { id: "fim", type: "end", label: "Fim", position: { x: 0, y: 0 }, config: { outcome: "exhausted" } },
     ],
-    edges: [
-      {
-        id: "oferta-fim",
-        source: "oferta",
-        target: "fim",
-        priority: 0,
-        condition: { type: "always" },
-      },
-    ],
+    edges: [{ id: "oferta-fim", source: "oferta", target: "fim", priority: 0, condition: { type: "always" } }],
   };
 
   function loja(seguraAte: string | null) {
@@ -132,8 +103,7 @@ describe("inscrição que já andava", () => {
     const db: AdminClient = {
       retornoQueSeguraOFluxo: async () => seguraAte,
       async claimDueEnrollments() {
-        return enrollment.next_eval_at !== null &&
-          Date.parse(enrollment.next_eval_at) <= AGORA.getTime()
+        return enrollment.next_eval_at !== null && Date.parse(enrollment.next_eval_at) <= AGORA.getTime()
           ? [{ ...enrollment }]
           : [];
       },
@@ -152,8 +122,7 @@ describe("inscrição que já andava", () => {
       insertDeadInboxItem: async () => undefined,
       persistirRespostaFollowup: async () => undefined,
     };
-    const tick = () =>
-      runFollowupTick({ db, clock: () => AGORA, enqueueJob: async (j) => void jobs.push(j) });
+    const tick = () => runFollowupTick({ db, clock: () => AGORA, enqueueJob: async (j) => void jobs.push(j) });
     return { enrollment, eventos, jobs, tick };
   }
 
@@ -176,9 +145,7 @@ describe("inscrição que já andava", () => {
   });
 
   it("a regra devolve um dia depois do retorno — o tempo de a pessoa responder", () => {
-    expect(Date.parse(reavaliarDepoisDoRetorno(RETORNO)) - Date.parse(RETORNO)).toBe(
-      FOLGA_DEPOIS_DO_RETORNO_MS,
-    );
+    expect(Date.parse(reavaliarDepoisDoRetorno(RETORNO)) - Date.parse(RETORNO)).toBe(FOLGA_DEPOIS_DO_RETORNO_MS);
     expect(FOLGA_DEPOIS_DO_RETORNO_MS).toBe(24 * 3_600_000);
   });
 });

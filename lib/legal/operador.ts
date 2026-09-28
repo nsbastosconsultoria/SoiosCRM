@@ -14,7 +14,7 @@
  */
 import { env } from "@/lib/env";
 import { valorDaInstalacao } from "@/lib/instalacao/config";
-import { brandingDoServidor } from "@/lib/branding/servidor";
+import { branding } from "@/lib/branding";
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -71,7 +71,7 @@ export function urlDePoliticaSegura(valor: unknown): string | null {
  * mudar a assinatura.
  */
 const SEM_SESSAO = async (): Promise<Operador> => ({
-  sistema: (await brandingDoServidor()).name,
+  sistema: branding().name,
   nome: null,
   razaoSocial: null,
   cnpj: null,
@@ -107,7 +107,7 @@ export async function resolverOperador(): Promise<Operador> {
 
   // Falha de leitura não pode apagar o documento da tela: o texto do produto
   // vale para todo mundo, e o que se perde é só a personalização.
-  if (error || !data) return { ...(await SEM_SESSAO()), sistema: (await brandingDoServidor()).name };
+  if (error || !data) return { ...(await SEM_SESSAO()), sistema: branding().name };
 
   const org = data as {
     display_name: string | null;
@@ -118,7 +118,7 @@ export async function resolverOperador(): Promise<Operador> {
   };
 
   return {
-    sistema: (await brandingDoServidor()).name,
+    sistema: branding().name,
     nome: org.display_name?.trim() || null,
     razaoSocial: org.legal_name?.trim() || null,
     cnpj: org.cnpj?.trim() || null,

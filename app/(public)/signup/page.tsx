@@ -3,7 +3,7 @@ import Link from "next/link";
 import { EntrarComGoogle } from "@/components/auth/EntrarComGoogle";
 import { SignupForm } from "@/components/auth/SignupForm";
 import { Button } from "@/components/ui/button";
-import { brandingDoServidor } from "@/lib/branding/servidor";
+import { branding } from "@/lib/branding";
 import { verifyInviteToken } from "@/lib/auth/invite-token";
 import { modoDeCadastro } from "@/lib/auth/politica-de-cadastro";
 import { createClient } from "@/lib/supabase/server";
@@ -52,7 +52,6 @@ export default async function SignupPage({
     (user?.user_metadata?.locale as string | undefined) ?? null,
   );
   const t = (texto: string) => traduzir(texto, idioma);
-  const marca = await brandingDoServidor();
 
   // Convite VÁLIDO passa em qualquer modo — é o ponto inteiro do convite.
   const modo = convite ? null : await modoDeCadastro();
@@ -89,7 +88,7 @@ export default async function SignupPage({
         <p className="text-sm text-muted-foreground">
           {convite
             ? t("Crie sua senha para entrar na empresa que te convidou")
-            : `${t("Comece a usar o")} ${marca.name} ${t("em minutos")}`}
+            : `${t("Comece a usar o")} ${branding().name} ${t("em minutos")}`}
         </p>
         {modo === "com_aprovacao" && (
           <p className="text-sm text-muted-foreground">

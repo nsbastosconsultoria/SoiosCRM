@@ -248,19 +248,19 @@ export function FormularioDaMarca({
           (`useMarcaDaInstalacao`, alimentado pelo layout raiz), então continuam
           mostrando o banco, e os dois lados concordam.
 
-          E envelheceu uma QUARTA: os server components que sobravam em
-          `branding()` (login, cadastro, casca e boas-vindas da configuração
-          inicial, `/get-started` e o texto legal) liam só o `.env`, e o texto
-          abaixo prometia que se acertariam "na próxima atualização da stack" —
-          nada no kit copia o nome do banco para o `.env`, então não se
-          acertavam nunca. Passaram a `brandingDoServidor()`
-          (`lib/branding/servidor.ts`), que lê o banco acima do `.env`. Nenhum
-          client component chama `branding()` (catraca em
-          `tests/unit/marca-sem-divergencia-de-hidratacao.test.tsx`).
+          Medido AGORA, sobre os call sites de `branding()`: nenhum é client
+          component (há catraca em
+          `tests/unit/marca-sem-divergencia-de-hidratacao.test.tsx`); os que
+          sobram são server components (login, cadastro, casca e boas-vindas da
+          configuração inicial, mais o texto legal) e leem `process.env` direto.
+          São esses que continuam no arquivo de instalação — e o login segue ali
+          de propósito, porque `tests/e2e/icone-da-marca.spec.ts` cruza o título
+          da aba (banco) contra o texto do login (arquivo) e a spec mediria nada
+          se os dois viessem da mesma fonte.
         */}
         <p className="text-xs text-text-muted">
           {t(
-            "Deixe em branco para voltar ao nome padrão. Este nome aparece no título da aba do navegador, nos menus laterais, nas telas de entrada, cadastro e configuração inicial, nos e-mails que o sistema envia (para as empresas que não definiram um nome próprio), no aplicativo de verificação em duas etapas e no arquivo de códigos de recuperação que o usuário baixa. Os e-mails de confirmação de conta e de nova senha ficam gravados no Supabase e só mudam quando o kit de instalação os grava de novo — o que acontece a cada atualização.",
+            "Deixe em branco para voltar ao nome padrão. Este nome já aparece no título da aba do navegador, nos menus laterais, nos e-mails que o sistema envia (para as empresas que não definiram um nome próprio), no aplicativo de verificação em duas etapas e no arquivo de códigos de recuperação que o usuário baixa. Ainda NÃO chega às telas de entrada e cadastro nem às da configuração inicial: essas continuam com o nome gravado no arquivo de instalação do servidor até a próxima atualização da stack.",
           )}
         </p>
       </Card>
