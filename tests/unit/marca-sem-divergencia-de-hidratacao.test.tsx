@@ -240,13 +240,16 @@ describe("catraca: `branding()` é server-only", () => {
     // A guarda contra o erro NOVO que o corte por bloco introduz: se o regex de
     // `/* … */` engolisse código, esta lista esvaziaria e a catraca ficaria verde
     // por cegueira — o mesmo defeito que ela existe para impedir, do lado do
-    // instrumento. Estes quatro são servidores e DEVEM chamar `branding()`.
-    const esperados = [
-      "app/(public)/login/page.tsx",
-      "app/(public)/signup/page.tsx",
-      "app/onboarding/layout.tsx",
-      "lib/legal/operador.ts",
-    ];
+    // instrumento.
+    //
+    // Login, cadastro, onboarding e texto legal chamavam `branding()` direto e
+    // eram os controles daqui. Passaram a `brandingDoServidor()`, que lê o
+    // banco: com `branding()` eles mostravam o `APP_NAME` do `.env` e ignoravam
+    // a marca salva em `/admin/marca`. Nenhum call site de servidor resta; o
+    // controle vira a própria DEFINIÇÃO em `lib/branding.ts`
+    // (`export function branding(): …`), que é código e não comentário — se o
+    // corte engolir código, ela some da varredura e este caso reprova.
+    const esperados = ["lib/branding.ts"];
     const vistos = varridos.filter(chamaBranding).map((f) => relativoEmBarraNormal(RAIZ, f));
     expect(esperados.filter((e) => !vistos.includes(e))).toEqual([]);
   });

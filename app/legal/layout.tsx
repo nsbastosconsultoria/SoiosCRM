@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { branding } from "@/lib/branding";
+import { brandingDoServidor } from "@/lib/branding/servidor";
 import { createClient } from "@/lib/supabase/server";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
 import { idiomaDoVisitante } from "@/lib/i18n/idiomaAnonimo";
@@ -14,7 +14,7 @@ import { traduzir } from "@/lib/i18n/dicionario";
  * coluna de cartão. Aqui a medida é de texto corrido.
  */
 export default async function LegalLayout({ children }: { children: React.ReactNode }) {
-  const marca = branding();
+  const marca = await brandingDoServidor();
   // Fora da árvore de `app/app/layout.tsx` — sem o `IdiomaProvider` de lá, então
   // resolve o idioma direto, como as páginas filhas (`privacy`/`terms`).
   const supabase = await createClient();
