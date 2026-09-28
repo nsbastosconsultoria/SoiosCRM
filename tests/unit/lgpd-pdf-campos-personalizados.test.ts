@@ -30,6 +30,8 @@ function payload(): ExportPayload {
     messages_count_total: 0,
     messages_recent: [],
     leads: [],
+    honorarios_contratos: [],
+    honorarios_parcelas: [],
     orders: [],
     activities: [],
     appointments: [],
@@ -64,7 +66,7 @@ function payload(): ExportPayload {
     demandas: [],
     campaign_recipients: [],
     campaign_suppressions: [],
-  appointment_notices: [
+    appointment_notices: [
       {
         id: "aviso-aberto",
         ref_id: "compromisso-confirmado",
@@ -111,14 +113,21 @@ async function rendered(data: ExportPayload) {
 
 it("o PDF lista as respostas pelo rótulo da pergunta, e o CPF só na linha do documento", async () => {
   const data = payload();
-  const custom_fields = { cpf: "52998224725", modelo_interesse: "XRE 300", cidade_natal: "Uberaba" };
+  const custom_fields = {
+    cpf: "52998224725",
+    modelo_interesse: "XRE 300",
+    cidade_natal: "Uberaba",
+  };
   const { campos, cpfInformado } = camposLegiveis(
     custom_fields,
     perguntasDosGrafos([
       {
         nodes: [
           { type: "collect", config: { key: "cpf", label: "Seu CPF", type: "cpf" } },
-          { type: "collect", config: { key: "modelo_interesse", label: "Qual modelo te interessa?", type: "select" } },
+          {
+            type: "collect",
+            config: { key: "modelo_interesse", label: "Qual modelo te interessa?", type: "select" },
+          },
         ],
       },
     ]),
@@ -155,5 +164,6 @@ it("o PDF lista as respostas pelo rótulo da pergunta, e o CPF só na linha do d
     "Informado na conversa",
   ])
     expect(pdf.text).toContain(valor);
-  for (const valor of ["modelo_interesse", "cidade_natal", "52998224725", "Seu CPF"]) expect(pdf.text).not.toContain(valor);
+  for (const valor of ["modelo_interesse", "cidade_natal", "52998224725", "Seu CPF"])
+    expect(pdf.text).not.toContain(valor);
 });

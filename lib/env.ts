@@ -135,10 +135,13 @@ const schema = z.object({
   // instaláveis (import/install) usam `pg` cru (mesmo pool do agent-engine).
   SUPABASE_DB_URL: required("SUPABASE_DB_URL"),
   /**
-   * A conexão de DDL do KIT (install.sh/update.sh/backup.sh), não do app —
-   * declarada aqui só porque o `docker-compose.prod.yml` entrega o `.env`
-   * inteiro ao app e ao worker (`env_file`), e uma chave que chega ao processo
-   * merece estar no contrato em vez de ser um desconhecido tolerado.
+   * A conexão de DDL do KIT (install.sh/update.sh/backup.sh), não do app.
+   * O `docker-compose.prod.yml` entrega o `.env` inteiro ao app, ao worker e
+   * ao voice-agent (`env_file`), e desde o #1680 sobrescreve esta chave com
+   * vazio no `environment:` deles — no processo ela chega vazia. A declaração
+   * fica porque quem roda fora desse compose (dev local, `next start` à mão)
+   * ainda a recebe do `.env`, e uma chave que chega ao processo merece estar no
+   * contrato em vez de ser um desconhecido tolerado.
    *
    * NENHUM código de app pode lê-la: ela é o DONO do banco quando a instalação
    * é num Supabase próprio, e `SUPABASE_DB_URL` é a role menor de propósito
@@ -219,6 +222,11 @@ const schema = z.object({
   TRANSCRIPTION_API_KEY: z.string().optional().default(""),
   TRANSCRIPTION_BASE_URL: z.string().optional().default(""),
   TRANSCRIPTION_MODEL: z.string().optional().default(""),
+  // Idiomas esperados no áudio, ISO-639-1 separados por vírgula ("es" ou
+  // "pt,es"). Vazio = o serviço detecta sozinho. Vale com a chave acima E com a
+  // da OpenAI da organização — assim como `TRANSCRIPTION_MODEL`. Leitura
+  // tolerante em `idiomasDaTranscricao` (grafia errada não derruba o worker).
+  TRANSCRIPTION_LANGUAGES: z.string().optional().default(""),
   // Endereço da API do Jev (TypeSafe AI). Vazio é ausente: vale
   // https://api.typesafe.ai. Existe para o dublê do e2e — a CHAVE nunca vem
   // daqui, é por organização (BYOK). Quem lê é `baseDaApiDoJev()`, em
@@ -399,6 +407,28 @@ const schema = z.object({
    * respondendo 500 a tudo. Padrão 365, piso 90, decisão do dono (PR #1577).
    */
   PROSPECCAO_RETENTION_DAYS: z.string().optional().default(""),
+  /**
+   * Observações do Jev (migration 0421): o par Jev × mecanismo de hoje que o
+   * cartão compara, sem texto de cliente. `z.string()` pela MESMA razão das
+   * irmãs acima — quem interpreta é `lib/retencao/politica.ts`. Padrão 90, piso
+   * 30 (a janela da concordância).
+   */
+  JEV_OBSERVACOES_RETENTION_DAYS: z.string().optional().default(""),
+  /**
+   * Rascunho sugerido por integração JÁ VENCIDO (`conversation_drafts`,
+   * migration 0419, issue #1686). `z.string()` pela MESMA razão das irmãs
+   * acima — quem interpreta é `lib/retencao/politica.ts`, onde lixo resolve
+   * para o lado seguro. Padrão 30, piso 7, contados do `expires_at` (a linha
+   * só responde enquanto a janela dela está aberta).
+   */
+  DRAFT_RETENTION_DAYS: z.string().optional().default(""),
+  /**
+   * Candidatos ao golden set (migration 0428, issue #1695): rótulo de near-miss
+   * e de divergência, sem texto de cliente. `z.string()` pela MESMA razão das
+   * irmãs acima — quem interpreta é `lib/retencao/politica.ts`. Padrão 90, piso
+   * 30 (a janela em que um near-miss ainda é curável).
+   */
+  GOLDEN_CANDIDATES_RETENTION_DAYS: z.string().optional().default(""),
 
   // LGPD export (S-08.04)
   LGPD_SIGNING_KEY: z.string().optional().default(""),
@@ -455,6 +485,20 @@ const schema = z.object({
    * dos webhooks da Meta (#1426), permitindo isolar a interface interna/VPN da URL pública.
    */
   META_WEBHOOK_BASE_URL: z.string().optional().default(""),
+  /**
+   * Base (host) da Graph API do canal oficial, e a do eixo de anúncio (#817).
+   *
+   * `optional().default("")` e NÃO validada como URL aqui, por dois motivos
+   * medidos. Primeiro: o valor recusável é o que fecha a fenda, e a validação
+   * deste arquivo acontece no IMPORT do Next — um `z.string().url()` reprovaria
+   * TODAS as telas, com o contêner `healthy` e nada dizendo o porquê, exatamente
+   * o modo de falha que `diasDeRetencao` (lá em cima) registra e evita. Segundo:
+   * a decisão é do MANTENEDOR, não do boot — quem escreve no `.env` de uma VPS
+   * pode trocar o binário, então o que importa é que o erro de digitação não
+   * derrube o envio, e é o que `graph-base.ts` faz (host real + aviso no log).
+   */
+  META_GRAPH_BASE_URL: z.string().optional().default(""),
+  META_ADS_GRAPH_BASE_URL: z.string().optional().default(""),
 
   // Marca da instalação (white-label) — ver lib/branding.ts.
   // Sem prefixo NEXT_PUBLIC_ de propósito: essas seriam queimadas no bundle

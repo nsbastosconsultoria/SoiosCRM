@@ -65,6 +65,7 @@ export const MODULOS_OPCIONAIS_POR_FLAG = [
   "banco_externo",
   "fluxos_atendimento",
 ] as const satisfies readonly ModuloOpcional[];
+export type ModuloPorFlag = (typeof MODULOS_OPCIONAIS_POR_FLAG)[number];
 
 /** A linha de cada módulo por FLAG em `platform_config`. O formato é o da CHECK da 0341.
  * Não inclui os módulos de tabela — esses vêm de `modulos_instalados`. */

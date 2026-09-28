@@ -19,7 +19,7 @@ import type {
   ChaveDeOrcamentoDaInstalacao,
   ComportamentoDaInstalacao,
 } from "@/lib/instalacao/comportamento";
-import type { ModuloOpcional } from "@/lib/instalacao/modulos";
+import type { ModuloOpcional, ModuloPorFlag } from "@/lib/instalacao/modulos";
 
 /**
  * Cada interruptor salva na hora, sem botão de confirmar — mesmo desenho do
@@ -83,7 +83,11 @@ export function FormularioDeComportamento({ inicial }: { inicial: ComportamentoD
             onValueChange={(v) => trocar("orcamento_de_ia", v as ChaveDeOrcamentoDaInstalacao)}
             disabled={pendente}
           >
-            <SelectTrigger id="orcamento-de-ia" className="w-[200px]" aria-label={t("Proteção de gasto de IA")}>
+            <SelectTrigger
+              id="orcamento-de-ia"
+              className="w-[200px]"
+              aria-label={t("Proteção de gasto de IA")}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -128,7 +132,10 @@ export function FormularioDeComportamento({ inicial }: { inicial: ComportamentoD
           <Select
             value={valores.divulgacao_de_pagamento}
             onValueChange={(v) =>
-              trocar("divulgacao_de_pagamento", v as ComportamentoDaInstalacao["divulgacao_de_pagamento"])
+              trocar(
+                "divulgacao_de_pagamento",
+                v as ComportamentoDaInstalacao["divulgacao_de_pagamento"],
+              )
             }
             disabled={pendente}
           >
@@ -182,7 +189,12 @@ export function FormularioDeComportamento({ inicial }: { inicial: ComportamentoD
  * `.env`). Mesmo desenho do cartão de cima: salva no clique, volta no erro.
  */
 /** Cada módulo, como ele aparece aqui. O texto diz o que ligar ABRE, não só o nome. */
-const MODULOS_NA_TELA: ReadonlyArray<{ modulo: ModuloOpcional; id: string; rotulo: string; descricao: string }> = [
+const MODULOS_NA_TELA: ReadonlyArray<{
+  modulo: ModuloPorFlag;
+  id: string;
+  rotulo: string;
+  descricao: string;
+}> = [
   {
     modulo: "banco_externo",
     id: "modulo-banco-externo",
@@ -205,7 +217,7 @@ export function FormularioDeModulos({ ligados }: { ligados: readonly ModuloOpcio
   const [erro, setErro] = useState<string | null>(null);
   const [pendente, startTransition] = useTransition();
 
-  function trocar(modulo: ModuloOpcional, valor: boolean) {
+  function trocar(modulo: ModuloPorFlag, valor: boolean) {
     setErro(null);
     const alternar = (ligar: boolean) =>
       setEstado((atual) => {
@@ -236,7 +248,10 @@ export function FormularioDeModulos({ ligados }: { ligados: readonly ModuloOpcio
       </CardHeader>
       <CardContent className="space-y-4">
         {MODULOS_NA_TELA.map((m) => (
-          <div key={m.modulo} className="flex items-start justify-between gap-4 rounded-lg border p-4">
+          <div
+            key={m.modulo}
+            className="flex items-start justify-between gap-4 rounded-lg border p-4"
+          >
             <div className="space-y-1">
               <Label htmlFor={m.id} className="text-base">
                 {t(m.rotulo)}

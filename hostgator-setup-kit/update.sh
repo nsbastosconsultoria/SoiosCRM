@@ -43,6 +43,17 @@ recusar_projeto_de_outra_arvore || die "Atualização interrompida para não que
 # "já está na versão mais recente" sairia sem entregar a troca.
 if [ "${SINGLE_SERVER:-0}" = "1" ]; then
   recusar_supabase_de_outra_arvore || die "Atualização interrompida para não mexer no Supabase de outra instalação."
+  # A porta direta do GoTrue acompanha o `signup_mode` da instalação (#1653).
+  # Antes do SMTP de propósito: é o caminho que roda MESMO quando o update não
+  # tem nada a atualizar (a saída "você já está na versão mais recente" fica
+  # mais abaixo), então quem trocou "só convite" na tela e rodou o update leva
+  # o `DISABLE_SIGNUP` no mesmo comando — e é ele que fecha
+  # `POST /auth/v1/signup` para quem tem a anon key. Esta chamada roda com o
+  # kit ANTERIOR ao checkout; a da versão nova fica dentro de
+  # `atualizar_supabase_single_server` (_common.sh), mais abaixo.
+  if sincronizar_signup_mode_do_gotrue; then
+    dc_supabase up -d --no-deps auth >/dev/null 2>&1 || c_ylw "⚠ Não consegui reiniciar o auth do Supabase com o modo de cadastro (#1653)."
+  fi
   if sincronizar_smtp_do_gotrue; then
     dc_supabase up -d --no-deps auth >/dev/null 2>&1 || c_ylw "⚠ Não consegui reiniciar o auth do Supabase com o SMTP do CRM."
   else
@@ -216,6 +227,9 @@ source "$KIT_DIR/manutencao.sh"
 # Single-server: o Supabase vai para a versão pinada no código novo ANTES do
 # banco (o passo 4 pausa peças dele, e um `up` depois as religaria).
 if [ "${SINGLE_SERVER:-0}" = "1" ]; then
+  # Esta função também sincroniza o modo de cadastro com o GoTrue (#1653). A
+  # chamada mora DENTRO dela, e não numa linha aqui, porque é o corpo dela que
+  # o update.sh antigo executa na atualização que traz o conserto.
   atualizar_supabase_single_server || die "O Supabase desta VPS não subiu (erro acima). NÃO mexi no banco do CRM."
 fi
 
@@ -350,6 +364,35 @@ if [ -f supabase/baseline.sql ]; then
   # cima de decisão deliberada, e falso positivo derruba a confiança no aviso
   # inteiro. Vale a ÚLTIMA operação de cada regra no arquivo: quem termina
   # criada é esperada; quem termina apagada, não.
+  #
+  # ── E A COMPARAÇÃO RODA EM ORDEM DE BYTES, SEMPRE ─────────────────────────
+  #
+  # ⛔ `sort` e `comm` precisam concordar na ordenação. No GNU coreutils os dois
+  # seguem o mesmo locale e concordam (medido: Ubuntu 20.04–25.10, Debian 12,
+  # AlmaLinux 8/9 dão 0 em C, C.UTF-8, en_US e pt_BR). No Ubuntu 26.04, que troca
+  # o coreutils pelo uutils (Rust, 0.8.0), o `sort` ordena pelo locale e o `comm`
+  # compara BYTES: sob en_US/pt_BR.UTF-8, `orgs_select` cai entre `org_guardrail_*`
+  # e `org_voice_calls_*`, o `comm` perde o passo — "comm: file 2 is not in
+  # sorted order" na stderr — e o que devolve depois é lixo.
+  #
+  # MEDIDO numa instalação real, 2026-09-28: com as 114 regras TODAS no banco, a
+  # comparação acusou 2 faltando (`org_voice_calls_admin_write` e
+  # `org_voice_calls_select`). O alarme falso faz o script tentar recriar as
+  # duas, o banco responde "already exists", a conferência seguinte tropeça no
+  # mesmo erro de ordenação — e a atualização PARA, deixando o aviso de
+  # manutenção de pé. O CRM passou 8 horas em 503 com o banco íntegro, e a tela
+  # mandava o dono procurar regra que nunca faltou.
+  #
+  # A cura é forçar o locale da comparação para `C`, que é ordem de bytes: aí o
+  # `sort` produz exatamente o que o `comm` espera, em qualquer ambiente.
+  #
+  # ⚠️ `LC_COLLATE=C` NÃO basta, e a diferença custa uma sessão de depuração:
+  # o POSIX dá precedência a `LC_ALL` sobre `LC_COLLATE`, então basta alguém
+  # exportar `LC_ALL=…UTF-8` — systemd, um `docker exec`, o terminal de quem
+  # roda o update à mão — para o pin virar enfeite e o defeito voltar inteiro.
+  # MEDIDO, com as 114 regras reais: `LC_ALL=C` devolve 0 em qualquer condição;
+  # `LC_COLLATE=C` devolve 0 com `LC_ALL` vazio e 2 com `LC_ALL` preenchido.
+  # `LC_ALL=C` vale só para os comandos abaixo — não alcança as mensagens.
   esperadas="$(awk '
     match($0, /drop policy if exists "?[a-zA-Z0-9_]+"? on public\.[a-zA-Z0-9_]+/) {
       linha = substr($0, RSTART, RLENGTH); acao = "drop"
@@ -362,13 +405,13 @@ if [ -f supabase/baseline.sql ]; then
       estado[linha] = acao; acao = ""
     }
     END { for (k in estado) if (estado[k] == "create") print k }
-  ' supabase/baseline.sql | sort -u)"
+  ' supabase/baseline.sql | LC_ALL=C sort -u)"
 
   existentes="$(pg_container -i postgres:17-alpine psql "$(url_do_schema)" -t -A -F'|' -c \
     "select p.polname, c.relname from pg_policy p join pg_class c on c.oid=p.polrelid
-       join pg_namespace n on n.oid=c.relnamespace where n.nspname='public';" 2>/dev/null | sort -u)"
+       join pg_namespace n on n.oid=c.relnamespace where n.nspname='public';" 2>/dev/null | LC_ALL=C sort -u)"
 
-  faltando="$(comm -23 <(printf '%s\n' "$esperadas") <(printf '%s\n' "$existentes") || true)"
+  faltando="$(LC_ALL=C comm -23 <(printf '%s\n' "$esperadas") <(printf '%s\n' "$existentes") || true)"
 
   if [ -n "$faltando" ]; then
     # ── RECRIAR AS QUE FALTAM, NUNCA REAPLICAR O ARQUIVO ─────────────────────
@@ -422,8 +465,10 @@ if [ -f supabase/baseline.sql ]; then
 
     existentes="$(pg_container -i postgres:17-alpine psql "$(url_do_schema)" -t -A -F'|' -c \
       "select p.polname, c.relname from pg_policy p join pg_class c on c.oid=p.polrelid
-         join pg_namespace n on n.oid=c.relnamespace where n.nspname='public';" 2>/dev/null | sort -u)"
-    faltando="$(comm -23 <(printf '%s\n' "$esperadas") <(printf '%s\n' "$existentes") || true)"
+         join pg_namespace n on n.oid=c.relnamespace where n.nspname='public';" 2>/dev/null | LC_ALL=C sort -u)"
+    # Mesma ordenação da primeira conferência, e pelo mesmo motivo: `LC_ALL=C`
+    # é o que faz `sort` e `comm` concordarem. Ver o bloco acima.
+    faltando="$(LC_ALL=C comm -23 <(printf '%s\n' "$esperadas") <(printf '%s\n' "$existentes") || true)"
   fi
 
   if [ -n "$faltando" ]; then
@@ -642,6 +687,12 @@ step "Conferindo se o app voltou no ar"
 ok=""
 wait_app_healthy 20 3 >/dev/null && ok=1
 if [ -n "$ok" ]; then
+  # O marcador que a guarda de ARM lê (#1778). Instalação ARM nova é recusada,
+  # então toda instalação ARM que existe veio de antes do marcador e só seria
+  # reconhecida pelo contêiner — que um `down` sem `-v` apaga. Gravar aqui, com
+  # o app saudável, fecha esse caso a partir desta atualização. Falhar em
+  # gravar não desfaz nada: a guarda segue caindo no sinal do contêiner.
+  marcar_instalacao_feita "$TARGET_TAG" || true
   if [ -n "$BANCO_INCOMPLETO" ]; then
     c_ylw "⚠ App no ar e saudável, mas o banco NÃO terminou limpo — o que fazer está no fim desta saída."
   else
