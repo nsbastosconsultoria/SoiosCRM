@@ -6,7 +6,8 @@ import { Stepper } from "./_components/Stepper";
 import { OutrasOrganizacoes } from "./_components/OutrasOrganizacoes";
 import { SkipToEnd } from "./_components/SkipToEnd";
 import { SimboloDoProduto } from "@/components/branding/MarcaDoProduto";
-import { branding, marcaEhADoProduto } from "@/lib/branding";
+import { marcaEhADoProduto } from "@/lib/branding";
+import { brandingDoServidor } from "@/lib/branding/servidor";
 import { passosVisiveis } from "@/lib/onboarding/passos";
 import { env } from "@/lib/env";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
@@ -33,7 +34,7 @@ export default async function OnboardingLayout({ children }: { children: React.R
   }));
 
   const isDev = process.env.NODE_ENV !== "production";
-  const marca = branding();
+  const marca = await brandingDoServidor();
 
   return (
     <IdiomaProvider locale={user.idioma}>

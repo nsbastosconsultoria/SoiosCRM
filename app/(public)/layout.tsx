@@ -30,11 +30,14 @@ import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
  * para que `tests/e2e/marca-logo.spec.ts` continue medindo "a fachada está sem
  * `<img>`" como "sem logo do revendedor".
  *
- * O NOME continua saindo de `branding()` dentro de cada página — não é descuido,
- * está medido em `tests/e2e/icone-da-marca.spec.ts:64-77`: aquela spec cruza duas
- * resoluções independentes (o título da aba, que lê o banco, contra o texto sob
- * o "Entrar", que lê o `.env`). Trocar o texto para este mesmo resolvedor
- * deixaria a spec verde medindo nada.
+ * O NOME sai de `brandingDoServidor()` dentro de cada página. Ele saía de
+ * `branding()`, que só lê o `.env`, e o argumento era que
+ * `tests/e2e/icone-da-marca.spec.ts` cruzava o título da aba (banco) contra o
+ * texto sob o "Entrar" (arquivo). Só que uma instalação que salvava o nome em
+ * `/admin/marca` sem mexer no `.env` — o caminho que a própria tela ensina —
+ * via as duas fontes divergirem, que é exatamente o defeito que aquela spec
+ * chama de "defeito de verdade". Hoje as duas leem a mesma pilha, e a spec
+ * guarda que o título e o texto continuam concordando.
  */
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const marca = await marcaDaSaida(null);
