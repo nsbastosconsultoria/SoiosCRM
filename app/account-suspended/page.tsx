@@ -6,6 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
 import { normalizarIdioma } from "@/lib/i18n/idiomas";
 import { traduzir } from "@/lib/i18n/dicionario";
+import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
+import { avisoDeCobranca } from "@/lib/cobranca/aviso";
+import { formatarData, formatarValor } from "@/lib/cobranca/formato";
 
 export const metadata = {
   title: "Conta suspensa",
@@ -33,6 +36,24 @@ export default async function AccountSuspendedPage() {
     (user?.user_metadata?.locale as string | undefined) ?? null,
   );
 
+  // SUSPENSA POR FALTA DE PAGAMENTO (módulo `cobranca`): a tela diz qual fatura e como pagar —
+  // é a única coisa que tira a conta daqui. Lido com o cliente da SESSÃO: a RLS da provisionadora
+  // deixa o membro ler a assinatura e as faturas da própria organização, e só elas. Suspensa à
+  // mão (ou sem o módulo), `avisoDeCobranca` devolve null e a tela fica como sempre foi.
+  //
+  // `loadAuthUser` falha ALTO de propósito quando o banco oscila; aqui o quadro é acessório, e
+  // a tela de conta suspensa não pode virar 500 por causa dele.
+  const aviso = await (async () => {
+    if (!user) return null;
+    try {
+      const authUser = await loadAuthUser();
+      const org = authUser ? await resolveActiveOrg(authUser) : null;
+      return org ? await avisoDeCobranca(supabase, org.orgId) : null;
+    } catch {
+      return null;
+    }
+  })();
+
   return (
     <IdiomaProvider locale={idioma}>
       <main className="flex min-h-screen items-center justify-center p-8">
@@ -56,6 +77,29 @@ export default async function AccountSuspendedPage() {
                 idioma,
               )}
             </p>
+          )}
+          {aviso && (
+            <div
+              className="space-y-1 rounded-md border bg-muted/40 p-4 text-left text-sm"
+              data-testid="conta-suspensa-fatura"
+            >
+              <p className="font-medium">
+                {traduzir("Suspensa por falta de pagamento.", idioma)}
+              </p>
+              <p className="text-muted-foreground">
+                {traduzir("Fatura de", idioma)} {formatarValor(aviso.valorCents, aviso.moeda)}
+                {", "}
+                {traduzir("venceu em", idioma)} {formatarData(aviso.vencimento)}.
+              </p>
+              {aviso.instrucao && (
+                <p className="break-all">
+                  {traduzir("Como pagar", idioma)}: <span className="font-mono">{aviso.instrucao}</span>
+                </p>
+              )}
+              <p className="text-muted-foreground">
+                {traduzir("O acesso volta assim que o pagamento for registrado.", idioma)}
+              </p>
+            </div>
           )}
           <div className="pt-2">
             <Button asChild variant="outline">

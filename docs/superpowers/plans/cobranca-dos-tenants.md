@@ -1,6 +1,6 @@
 # Plano — cobrança dos tenants
 
-- **Status:** proposta, aguardando as decisões da seção final antes da Fase 1
+- **Status:** Fase 1 (cobrança manual) implementada em 2026-09-29 — ver "Fase 1 — o que foi entregue"; Fase 2 aguarda a escolha do gateway
 - **Data:** 2026-09-29
 - **Medido em:** `main` do fork em `4d3442c6`
 - **Destino (DoD 18):** módulo opcional. Se nenhuma instalação o ligar, a operação comum continua
@@ -137,11 +137,33 @@ Cada limite nasce em modo **avisar**, no mesmo desenho do `AI_BUDGET_ENFORCEMENT
 - **Nota fiscal fica fora do escopo.** NFS-e é outra integração, com configuração fiscal por
   município (o Asaas oferece, mas como produto à parte).
 
-## Decisões pendentes (antes da Fase 1)
+## Decisões
 
-1. **Gateway:** Asaas, Mercado Pago ou Stripe?
-2. **Carência e suspensão:** quantos dias de carência? Suspenso, o tenant perde só a tela ou a IA
-   também para de responder no WhatsApp?
-3. **Teste grátis:** existe? Quantos dias?
-4. **Onde vive o código:** só no fork ou contribuído ao DeskcommCRM original?
-5. **Cobrança por uso de IA:** entra agora (Fase 5) ou só planos fixos?
+Tomadas pelo dono em 2026-09-29, antes da Fase 1:
+
+| # | Pergunta | Decisão |
+|---|---|---|
+| 2 | Carência e efeito da suspensão | **7 dias** de carência. Suspenso por falta de pagamento, o tenant perde **só as telas** — a mesma suspensão manual que já existe; WhatsApp e IA seguem atendendo o cliente final. |
+| 3 | Teste grátis | **Por plano**: cada plano declara `trial_days` (pode ser 0); o primeiro vencimento cai no fim do teste. |
+| 4 | Onde vive o código | **Só no fork Soios.** O custo aceito é a renumeração de migrations quando o upstream for puxado. |
+
+Ainda em aberto, e sem efeito na Fase 1:
+
+1. **Gateway:** Asaas, Mercado Pago ou Stripe? (Fase 2)
+5. **Cobrança por uso de IA:** entra na Fase 5 ou fica só com planos fixos?
+
+## Fase 1 — o que foi entregue
+
+| Peça | Onde |
+|---|---|
+| Módulo `cobranca` (3 tabelas, RLS: só o admin da plataforma escreve; membros leem a própria) | migration `0486`, `fn_cobranca_provisionar()`, apêndice do `baseline.sql` |
+| Regra de estado pura (vencimento, carência de 7 dias, suspender/reativar só o que é da cobrança) | `lib/cobranca/estado.ts` |
+| Aplicação com I/O, compartilhada pelo cron e pelas rotas | `lib/cobranca/aplicar.ts` |
+| Cron diário `cobranca-watcher` (06:10 UTC) | `app/api/v1/cron/cobranca-watcher/route.ts`, `docker/scheduler/entrypoint.sh` |
+| API do admin da plataforma | `app/api/v1/admin/cobranca/` — planos, assinatura por tenant, faturas, baixa e cancelamento |
+| Tela `/admin/cobranca` com porta no menu | `app/admin/(protected)/cobranca/`, `components/admin/AdminSidebar.tsx` |
+| Faixa de carência em `/app` (papel `admin`) e fatura na tela de conta suspensa | `components/app/CobrancaEmAtrasoBanner.tsx`, `app/account-suspended/page.tsx`, `lib/cobranca/aviso.ts` |
+
+Fora da Fase 1, como planejado: `billing_events`, gateway, limites por plano, e-mails de lembrete e
+o portal do tenant (`/app/settings/assinatura`). O campo "Plano" de `/admin/tenants/new` segue sem
+efeito até a Fase 3.

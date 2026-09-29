@@ -22,6 +22,7 @@ import {
   Lock,
   PuzzlePiece,
   Stack,
+  Receipt,
 } from "@/lib/ui/icons";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
@@ -105,6 +106,11 @@ const NAV_ITEMS: NavItem[] = [
   // para Extensões, só que `tests/unit/navegacao-completude.test.ts` não cobre
   // `/admin/**`, então nada acusava.
   { href: "/admin/modulos", label: "Módulos", icon: Stack },
+  // A cobrança dos tenants (módulo `cobranca`, migration 0486). É da INSTALAÇÃO — quem opera a
+  // VPS cobra as empresas que atende —, então mora aqui e não no menu da empresa. Sem o módulo
+  // instalado a tela explica e aponta para Módulos, em vez de sumir: é assim que se descobre
+  // que ela existe.
+  { href: "/admin/cobranca", label: "Cobrança", icon: Receipt },
 ];
 
 interface AdminSidebarProps {

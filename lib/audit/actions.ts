@@ -634,6 +634,18 @@ export const AUDIT_ACTIONS = [
   // O "como pagar" da parcela (link do boleto, Pix copia-e-cola) — migration 0485. O TEXTO não
   // vai para a auditoria: só se passou a existir, e o tamanho.
   "honorarios.parcela_instrucao_alterada",
+  // Módulo opcional de cobrança dos tenants (migration 0486). O suspender/reativar da
+  // organização continua auditado como `tenant.suspended`/`tenant.reactivated` — o mesmo
+  // fato da suspensão manual —, com `origem: "cobranca"` no metadata.
+  "cobranca.plano_criado",
+  "cobranca.plano_alterado",
+  "cobranca.assinatura_criada",
+  "cobranca.assinatura_alterada",
+  "cobranca.assinatura_status_alterado",
+  "cobranca.fatura_criada",
+  "cobranca.fatura_vencida",
+  "cobranca.fatura_paga",
+  "cobranca.fatura_cancelada",
   "fidelidade.ponto_dado",
   "fidelidade.ponto_resgatado",
   "financeiro.recorrencia_gerada",
