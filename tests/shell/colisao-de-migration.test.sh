@@ -72,6 +72,13 @@ export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
 #   2. a descoberta de repositório nunca sobe para fora de "$TMP";
 #   3. identidade por ambiente, não por `git config` (NENHUM teste aqui mede o autor).
 unset $(git rev-parse --local-env-vars)
+# 4. o PR DE VERDADE do CI não entra nos PRs de mentira desta suíte. O gate reconhece o
+#    próprio PR pelo `GITHUB_REF` (refs/pull/N/merge), e os casos montam PRs falsos #7, #8,
+#    #9. Herdado, o GITHUB_REF de um PR real com um desses números tornava o PR falso "o
+#    seu": no PR #8 de um fork, o caso 18 recebia "O seu fica fora: #8" no lugar de
+#    "NÃO MEDIDO: #8" e reprovava com o gate certo. No upstream nunca aparece — os PRs de
+#    lá já passam de 1800 —, e é por isso que precisa estar escrito aqui.
+unset GITHUB_REF
 export GIT_CEILING_DIRECTORIES="$TMP"
 export GIT_AUTHOR_NAME="Teste" GIT_AUTHOR_EMAIL="teste@exemplo.invalid"
 export GIT_COMMITTER_NAME="Teste" GIT_COMMITTER_EMAIL="teste@exemplo.invalid"
