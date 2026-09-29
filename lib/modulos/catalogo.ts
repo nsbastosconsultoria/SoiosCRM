@@ -21,6 +21,14 @@ export const CATALOGO_DE_MODULOS: readonly ModuloCatalogo[] = [
       "Contrato de honorários (fixo, êxito ou misto) e o calendário de parcelas, ligado ao caixa " +
       "do núcleo. Para escritórios de advocacia que cobram por caso.",
   },
+  {
+    slug: "cobranca",
+    nome: "Cobrança dos tenants",
+    descricao:
+      "Planos, assinatura por empresa e faturas, com aviso de atraso e suspensão automática " +
+      "de quem não paga depois da carência. Para quem opera a instalação e cobra as empresas " +
+      "que atende.",
+  },
 ];
 
 export function moduloDoCatalogo(slug: string): ModuloCatalogo | undefined {

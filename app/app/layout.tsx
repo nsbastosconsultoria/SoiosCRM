@@ -20,6 +20,8 @@ import {
   ImpersonateBanner,
 } from "@/components/app/ImpersonateBanner";
 import { ConexaoCaidaBanner } from "@/components/app/ConexaoCaidaBanner";
+import { CobrancaEmAtrasoBanner } from "@/components/app/CobrancaEmAtrasoBanner";
+import { avisoDeCobranca, type AvisoDeCobranca } from "@/lib/cobranca/aviso";
 import { IdiomaProvider } from "@/lib/i18n/IdiomaProvider";
 import { listarConexoesCaidas, type ConexaoCaida } from "@/lib/channels/health";
 import { VoiceCallProvider } from "@/components/voice/VoiceCallContext";
@@ -60,6 +62,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // EPIC-02: gate /app/* on completed onboarding.
   // EPIC-11: gate /app/* on org not being suspended (S-11.08).
   let conexoesCaidas: ConexaoCaida[] = [];
+  // A faixa da carência (módulo `cobranca`). `avisoDeCobranca` nunca lança, e sem o módulo
+  // instalado deixa de consultar por alguns minutos — ver `lib/cobranca/aviso.ts`.
+  let aviso: AvisoDeCobranca | null = null;
   let enrolled = false;
   let needsMfaGate = false;
 
@@ -89,7 +94,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
      *    este layout — a cerca anterior lia o texto-fonte e reprovava esta
      *    refatoração sem que nada tivesse quebrado.
      */
-    const [orgRes, conexoes, isEnrolled, mfaRequired, modulos] = await Promise.all([
+    const [orgRes, conexoes, isEnrolled, mfaRequired, modulos, avisoLido] = await Promise.all([
       admin
         .from("organizations")
         .select("onboarded_at, status, settings")
@@ -105,10 +110,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       ),
       // Da INSTALAÇÃO: decide se a porta de um módulo opcional entra no menu.
       modulosLigados(admin),
+      avisoDeCobranca(admin, activeOrg.orgId),
     ]);
 
     const orgRow = orgRes.data;
     conexoesCaidas = conexoes;
+    aviso = avisoLido;
     enrolled = isEnrolled;
     needsMfaGate = mfaRequired;
 
@@ -254,6 +261,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <EstiloDaMarcaDaOrganizacao css={cssDaOrganizacao} />
         <ImpersonateBanner impersonating={impersonating} />
         <ConexaoCaidaBanner caidas={conexoesCaidas} />
+        <CobrancaEmAtrasoBanner aviso={aviso} />
         {needsMfaGate ? (
           // Gate always mounted for MFA-required roles; it latches the blocking
           // decision client-side so the enroll Server Action's revalidation

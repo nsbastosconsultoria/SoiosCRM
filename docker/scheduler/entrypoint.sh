@@ -127,6 +127,10 @@ CRONS="
 # pagar, e a diferença entre nascer às 5h ou às 17h não muda nada para quem paga.
 # Barato: uma consulta por instalação, e quem não tem molde nenhum sai na hora.
 50 5 * * *|60|api/v1/cron/recurring-entries
+# A COBRANÇA DOS TENANTS (módulo opcional). Diária e depois da virada do dia em
+# São Paulo (06:10 UTC = 03:10 BRT): a carência se conta em dias civis. Sem o
+# módulo instalado, a rota responde modulo_instalado=false numa consulta só.
+10 6 * * *|60|api/v1/cron/cobranca-watcher
 "
 
 # CRONTAB_PATH é ponto de injeção do teste (tests/shell/scheduler-entrypoint.test.sh).
