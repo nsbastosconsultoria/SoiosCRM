@@ -1,4 +1,4 @@
-<!-- traduzido-de: docs/white-label.md@d082afef8e15 -->
+<!-- traduzido-de: docs/white-label.md@9cc9938a82e7 -->
 
 [🇧🇷 Português](white-label.md) · [🇺🇸 English](white-label.en.md) · 🇪🇸 Español
 
@@ -102,6 +102,8 @@ bash hostgator-setup-kit/marca-emails.sh
 ```
 
 Sube el asunto y el cuerpo de los dos correos con **tu** nombre y **tu** color, y de paso configura la dirección de retorno del enlace (que ningún script configuraba antes, y es requisito para que el enlace funcione). El `install.sh` lo llama solo, justo después de crear el proyecto Supabase; el `update.sh` también lo llama, para que una instalación antigua reciba esto en la primera actualización.
+
+**El remitente va junto.** Si el servidor de correo está completado en **Modo administrador › Correo** (o en las variables `SMTP_*` del `.env`), el script graba ese mismo servidor en Supabase: la confirmación de cuenta y la nueva contraseña pasan a salir por tu servidor, con tu remitente, en lugar del remitente integrado de Supabase ("Supabase Auth", con un límite de envío bajo). Sin servidor configurado, el remitente de Supabase queda como está. Si el servidor tiene usuario pero no se pudo leer la contraseña, el script tampoco lo toca — enviarlo sin contraseña rompería el envío que ya funciona — y avisa para escribir la contraseña de nuevo en la pantalla.
 
 **Si no tiene la clave de acceso de la API de Supabase** (`SUPABASE_ACCESS_TOKEN`), no falla y no tumba la instalación: imprime exactamente qué hacer a mano en el panel de Supabase y sale con éxito. Ese es el caso de quien creó el proyecto por el panel y pegó las credenciales, en vez de dejar que lo creara el instalador.
 

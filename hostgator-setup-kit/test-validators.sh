@@ -3497,6 +3497,81 @@ STUB
 ) || fail=1
 rm -rf "$TMP_SITEURL"
 
+# —— O servidor que ENVIA os e-mails de acesso vai junto ——
+#
+# Na nuvem do Supabase o remetente da confirmação de conta era o que alguém pôs à
+# mão no painel: trocar o servidor em /admin/email mudava convite e LGPD, nunca
+# esse e-mail. Agora o `marca-emails.sh` manda o SMTP da instalação no mesmo
+# PATCH. O dublê guarda o corpo do PATCH e o devolve inteiro nos GETs, para os
+# três desfechos: completo vai; usuário sem senha NÃO vai (mandar vazio
+# derrubaria o envio que já funciona); sem SMTP, o Supabase fica como estava.
+TMP_SMTP="$(mktemp -d)"
+(
+  KIT_AQUI="$PWD"
+  mkdir -p "$TMP_SMTP/kit" "$TMP_SMTP/supabase/templates" "$TMP_SMTP/bin"
+  cp "$KIT_AQUI/marca-emails.sh" "$KIT_AQUI/_common.sh" "$KIT_AQUI/_i18n.sh" "$TMP_SMTP/kit/"
+  cp "$KIT_AQUI/../supabase/templates/confirmation.html" \
+     "$KIT_AQUI/../supabase/templates/recovery.html" "$TMP_SMTP/supabase/templates/" || exit 1
+  cat > "$TMP_SMTP/bin/curl" <<'STUB'
+#!/usr/bin/env bash
+ESTADO="$TMPDIR_STUB/estado.json"
+corpo=""; metodo=GET; prev=""
+for a in "$@"; do case "$prev" in -X) metodo="$a";; -d) corpo="$a";; esac; prev="$a"; done
+if [ "$metodo" = PATCH ]; then printf '%s' "$corpo" > "$ESTADO"; printf '{}'; exit 0; fi
+if [ -s "$ESTADO" ]; then cat "$ESTADO"; else printf '{"site_url": "", "uri_allow_list": ""}'; fi
+STUB
+  chmod +x "$TMP_SMTP/bin/curl"
+
+  rodar() {  # rodar <nome do cenário> [VAR=valor...]
+    local nome="$1"; shift
+    rm -f "$TMP_SMTP/estado.json"
+    (cd "$TMP_SMTP/kit" && env PATH="$TMP_SMTP/bin:$PATH" TMPDIR_STUB="$TMP_SMTP" \
+      SUPABASE_ACCESS_TOKEN=sbp_de_teste \
+      NEXT_PUBLIC_SUPABASE_URL=https://abcdefghijklm.supabase.co \
+      NEXT_PUBLIC_APP_URL=https://crm.exemplo.com.br APP_NAME='Loja Teste' \
+      SMTP_HOST= SMTP_PORT= SMTP_USERNAME= SMTP_PASSWORD= SMTP_FROM_EMAIL= SMTP_FROM_NAME= \
+      "$@" bash ./marca-emails.sh --env /dev/null) > "$TMP_SMTP/$nome.out" 2>&1
+  }
+
+  rodar completo SMTP_HOST=smtp.loja.com SMTP_PORT=465 SMTP_USERNAME=contato@loja.com \
+    'SMTP_PASSWORD=p$ss"w\d' SMTP_FROM_EMAIL=nao-responda@loja.com
+  c="$TMP_SMTP/estado.json"
+  if ! grep -q 'CONFERIDOS' "$TMP_SMTP/completo.out"; then
+    printf '  ✗ o dublê não levou o script ao caminho verde — cenário inconclusivo\n'; exit 1
+  fi
+  grep -qF '"smtp_host": "smtp.loja.com"' "$c" \
+    && grep -qF '"smtp_admin_email": "nao-responda@loja.com"' "$c" \
+    && grep -qF '"smtp_user": "contato@loja.com"' "$c" \
+    || { printf '  ✗ o PATCH não levou o SMTP da instalação\n'; exit 1; }
+  grep -qF '"smtp_port": "465"' "$c" \
+    || { printf '  ✗ a porta não foi como STRING (o contrato da API)\n'; exit 1; }
+  grep -qF '"smtp_pass": "p$ss\"w\\d"' "$c" \
+    || { printf '  ✗ a senha com aspa e barra não saiu escapada no JSON\n'; exit 1; }
+  grep -qF '"smtp_sender_name": "Loja Teste"' "$c" \
+    || { printf '  ✗ sem nome de remetente, devia ir o nome da marca\n'; exit 1; }
+  grep -qF 'remetente: Loja Teste <nao-responda@loja.com> por smtp.loja.com:465' "$TMP_SMTP/completo.out" \
+    || { printf '  ✗ a releitura não confirmou o remetente na tela\n'; exit 1; }
+  if grep -qF 'p$ss' "$TMP_SMTP/completo.out"; then
+    printf '  ✗ a senha do SMTP apareceu na saída do script\n'; exit 1
+  fi
+  printf '  ✓ o SMTP de /admin/email vai no PATCH, com porta em texto e senha escapada, e nunca na tela\n'
+
+  rodar sem_senha SMTP_HOST=smtp.loja.com SMTP_USERNAME=contato@loja.com SMTP_FROM_EMAIL=a@loja.com
+  if grep -q '"smtp_' "$c"; then
+    printf '  ✗ usuário sem senha: mandar o SMTP vazio derrubaria o envio que já funciona\n'; exit 1
+  fi
+  grep -q 'não consegui ler a senha' "$TMP_SMTP/sem_senha.out" \
+    || { printf '  ✗ usuário sem senha e a tela não avisa\n'; exit 1; }
+  printf '  ✓ usuário sem senha: não mexe no remetente do Supabase, e avisa\n'
+
+  rodar sem_smtp
+  if grep -q '"smtp_' "$c"; then
+    printf '  ✗ sem SMTP no CRM, o script inventou um\n'; exit 1
+  fi
+  printf '  ✓ sem SMTP no CRM, o remetente do Supabase fica como estava\n'
+) || fail=1
+rm -rf "$TMP_SMTP"
+
 # E a tela final da instalação REPETE o motivo, em vez de descartá-lo: o arquivo
 # de pendência já era escrito e nunca lido.
 if ! grep -q 'PENDENCIA_EMAIL"$' ./install.sh && ! grep -q 'sed .*PENDENCIA_EMAIL' ./install.sh; then

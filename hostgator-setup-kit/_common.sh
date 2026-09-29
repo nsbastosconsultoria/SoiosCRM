@@ -298,35 +298,65 @@ recusar_supabase_de_outra_arvore() {  # recusar_supabase_de_outra_arvore [como r
 # com `\`, `"` e `$` escapados (o Compose os desfaz; medido no install.sh, envq).
 valor_compose() { printf '"%s"' "$(printf '%s' "${1-}" | sed 's/[\\"$]/\\&/g')"; }
 
+# ── O SMTP da instalação, na precedência do app ──────────────────────────────
+#
+# Uma regra só, para os dois caminhos que entregam o SMTP do CRM ao GoTrue: o
+# `.env` do Supabase próprio (`sincronizar_smtp_do_gotrue`, abaixo) e a
+# Management API da nuvem (`marca-emails.sh`). A régua é `lib/email/config.ts`:
+# a linha da tela /admin/email, quando ela tem servidor OU remetente; senão o
+# `.env` do CRM. Linha SEM os dois não é configuração — é o que sobra quando o
+# dono apaga os campos, e a tela promete que apagar "faz o sistema voltar a
+# usar o arquivo". Até aqui o kit tratava essa linha como "e-mail desligado"
+# enquanto o app já voltava ao `.env`: as duas pontas discordavam.
+#
+# A consulta devolve os seis campos separados por \x1f (não é espaço em branco
+# para o `read`, então campo vazio fica vazio em vez de colapsar).
+SQL_SMTP_DA_INSTALACAO="select coalesce(smtp_host,''), smtp_port,
+      coalesce(smtp_username,''),
+      coalesce(case when smtp_password_encrypted is null then '' else public.fn_decrypt_oauth(smtp_password_encrypted) end,''),
+      coalesce(from_email,''), coalesce(from_name,'')
+    from public.platform_smtp_settings where id = 1"
+
+# resolver_smtp_da_instalacao <linha do banco, ou vazio>
+# Preenche SMTP_R_HOST, SMTP_R_PORTA, SMTP_R_USUARIO, SMTP_R_SENHA,
+# SMTP_R_REMETENTE e SMTP_R_NOME. Sai 1 quando o que vale não tem servidor e
+# remetente — o mesmo `isSmtpConfigured` de lib/email/smtp.ts.
+resolver_smtp_da_instalacao() {
+  local linha="${1-}" host="" porta="" usuario="" senha="" remetente="" nome=""
+  if [ -n "$linha" ]; then
+    IFS=$'\x1f' read -r host porta usuario senha remetente nome <<<"$linha"
+  fi
+  if [ -z "${host//[[:space:]]/}" ] && [ -z "${remetente//[[:space:]]/}" ]; then
+    host="${SMTP_HOST:-}"; porta="${SMTP_PORT:-587}"; usuario="${SMTP_USERNAME:-}"
+    senha="${SMTP_PASSWORD:-}"; remetente="${SMTP_FROM_EMAIL:-}"; nome="${SMTP_FROM_NAME:-}"
+  fi
+  SMTP_R_HOST="$(printf '%s' "$host" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  SMTP_R_PORTA="${porta:-587}"
+  SMTP_R_USUARIO="$(printf '%s' "$usuario" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  SMTP_R_SENHA="$senha"
+  SMTP_R_REMETENTE="$(printf '%s' "$remetente" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  SMTP_R_NOME="$(printf '%s' "$nome" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  [ -n "$SMTP_R_HOST" ] && [ -n "$SMTP_R_REMETENTE" ]
+}
+
 # ── O GoTrue manda e-mail pelo SMTP do CRM ───────────────────────────────────
 #
 # O compose oficial aponta o GoTrue para `supabase-mail`, que não existe em
 # produção: "esqueci a senha" e a confirmação de cadastro não chegariam. O SMTP
-# do CRM (#1176) é a fonte, na MESMA precedência de lib/email/config.ts: a
-# linha da tela /admin/email, se existe; senão o .env. Sai 1 (e não toca em
-# nada) quando o CRM não tem SMTP — quem chama avisa o dono.
+# do CRM (#1176) é a fonte, pela regra de `resolver_smtp_da_instalacao`. Sai 1
+# (e não toca em nada) quando o CRM não tem SMTP — quem chama avisa o dono.
 sincronizar_smtp_do_gotrue() {
-  local env_sb sep=$'\x1f' linha="" host porta usuario senha remetente nome
+  local env_sb linha=""
   env_sb="$(dir_do_supabase)/.env"
   [ -f "$env_sb" ] || return 1
-  linha="$(psql_run -tA -F "$sep" -c "select coalesce(smtp_host,''), smtp_port,
-      coalesce(smtp_username,''),
-      coalesce(case when smtp_password_encrypted is null then '' else public.fn_decrypt_oauth(smtp_password_encrypted) end,''),
-      coalesce(from_email,''), coalesce(from_name,'')
-    from public.platform_smtp_settings where id = 1" 2>/dev/null)" || linha=""
-  if [ -n "$linha" ]; then
-    IFS="$sep" read -r host porta usuario senha remetente nome <<<"$linha"
-  else
-    host="${SMTP_HOST:-}"; porta="${SMTP_PORT:-587}"; usuario="${SMTP_USERNAME:-}"
-    senha="${SMTP_PASSWORD:-}"; remetente="${SMTP_FROM_EMAIL:-}"; nome="${SMTP_FROM_NAME:-}"
-  fi
-  [ -n "$host" ] && [ -n "$remetente" ] || return 1
-  set_env_var "$env_sb" SMTP_HOST "$(valor_compose "$host")"
-  set_env_var "$env_sb" SMTP_PORT "${porta:-587}"
-  set_env_var "$env_sb" SMTP_USER "$(valor_compose "$usuario")"
-  set_env_var "$env_sb" SMTP_PASS "$(valor_compose "$senha")"
-  set_env_var "$env_sb" SMTP_ADMIN_EMAIL "$(valor_compose "$remetente")"
-  set_env_var "$env_sb" SMTP_SENDER_NAME "$(valor_compose "${nome:-${APP_NAME:-DeskcommCRM}}")"
+  linha="$(psql_run -tA -F $'\x1f' -c "$SQL_SMTP_DA_INSTALACAO" 2>/dev/null)" || linha=""
+  resolver_smtp_da_instalacao "$linha" || return 1
+  set_env_var "$env_sb" SMTP_HOST "$(valor_compose "$SMTP_R_HOST")"
+  set_env_var "$env_sb" SMTP_PORT "$SMTP_R_PORTA"
+  set_env_var "$env_sb" SMTP_USER "$(valor_compose "$SMTP_R_USUARIO")"
+  set_env_var "$env_sb" SMTP_PASS "$(valor_compose "$SMTP_R_SENHA")"
+  set_env_var "$env_sb" SMTP_ADMIN_EMAIL "$(valor_compose "$SMTP_R_REMETENTE")"
+  set_env_var "$env_sb" SMTP_SENDER_NAME "$(valor_compose "${SMTP_R_NOME:-${APP_NAME:-DeskcommCRM}}")"
 }
 
 # ── `so_convite` fecha o caminho DIRETO do GoTrue (#1653) ────────────────────
