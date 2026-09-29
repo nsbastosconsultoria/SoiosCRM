@@ -70,20 +70,40 @@ const parcelasInputShape = {
 export const crmListHonorariosParcelas: McpToolDefinition<typeof parcelasInputShape> = {
   name: "crm_list_honorarios_parcelas",
   description:
-    "Lista as parcelas de um contrato de honorários, em ordem, com vencimento, valor e status " +
-    "(pendente, pago ou atrasado). Use para responder sobre parcela em aberto, data de " +
-    "vencimento ou confirmar que um pagamento já foi registrado.",
+    "Lista as parcelas de um contrato de honorários, em ordem, com vencimento, valor, status " +
+    "(pendente, pago ou atrasado) e `instrucao_pagamento` — como pagar, do jeito que o " +
+    "escritório cadastrou (link do boleto, Pix copia-e-cola ou linha digitável). Use para " +
+    "responder sobre parcela em aberto, data de vencimento, confirmar que um pagamento já foi " +
+    "registrado ou mandar o boleto. Repasse `instrucao_pagamento` EXATAMENTE como veio, sem " +
+    "encurtar nem reescrever; se vier `null`, não existe boleto ou link oficial cadastrado — " +
+    "diga que o time vai enviar, nunca invente um link, chave Pix ou código.",
   inputSchema: parcelasInputShape,
   category: "read",
   requiresRole: "agent",
   requiresScope: "mcp:read",
   handler: async (input, ctx) => {
-    const { data, error } = await ctx.supabase
-      .from("honorarios_parcelas")
-      .select("id, numero, vencimento, valor_cents, status")
-      .eq("organization_id", ctx.organizationId)
-      .eq("contrato_id", input.contrato_id)
-      .order("numero", { ascending: true });
+    const ler = (colunas: string) =>
+      ctx.supabase
+        .from("honorarios_parcelas")
+        .select(colunas)
+        .eq("organization_id", ctx.organizationId)
+        .eq("contrato_id", input.contrato_id)
+        .order("numero", { ascending: true });
+    let { data, error } = await ler(
+      "id, numero, vencimento, valor_cents, status, instrucao_pagamento",
+    );
+    // 42703: módulo instalado antes da migration 0485 e ainda não reaplicado pela atualização.
+    // Sem a coluna, a instrução é desconhecida — `null`, que a descrição já manda tratar como
+    // "o time vai enviar". Derrubar a leitura inteira calaria vencimento e valor junto.
+    if (error?.code === "42703") {
+      ({ data, error } = await ler("id, numero, vencimento, valor_cents, status"));
+      if (!error) {
+        data = ((data ?? []) as unknown as Record<string, unknown>[]).map((p) => ({
+          ...p,
+          instrucao_pagamento: null,
+        })) as never;
+      }
+    }
 
     if (error) {
       if (ehTabelaInexistente(error)) {

@@ -31,6 +31,8 @@ const criarSchema = z.object({
   valor_cents: z.number().int().min(1),
 });
 
+const COLUNAS_BASE = "id, contrato_id, numero, vencimento, valor_cents, financial_entry_id, status";
+
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
@@ -40,11 +42,16 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
   const { id: contratoId } = await ctx.params;
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("honorarios_parcelas")
-    .select("id, contrato_id, numero, vencimento, valor_cents, financial_entry_id, status")
-    .eq("contrato_id", contratoId)
-    .order("numero", { ascending: true });
+  const ler = (colunas: string) =>
+    supabase
+      .from("honorarios_parcelas")
+      .select(colunas)
+      .eq("contrato_id", contratoId)
+      .order("numero", { ascending: true });
+  let { data, error } = await ler(`${COLUNAS_BASE}, instrucao_pagamento`);
+  // 42703: o app novo subiu antes de a atualização reaplicar o módulo (migration 0485) — a
+  // coluna ainda não existe. A lista das parcelas não pode sumir da tela por isso.
+  if (error?.code === "42703") ({ data, error } = await ler(COLUNAS_BASE));
 
   if (error) {
     if (moduloNaoInstalado(error)) {

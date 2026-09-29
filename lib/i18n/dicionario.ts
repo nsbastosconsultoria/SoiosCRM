@@ -12941,6 +12941,15 @@ export const DICIONARIO: Traducoes = {
   "Conta para receber o pagamento": { es: "Cuenta para recibir el pago" },
   "Nenhuma parcela ainda.": { es: "Todavía no hay cuotas." },
   "Adicionar parcela": { es: "Agregar cuota" },
+  "Como pagar": { es: "Cómo pagar" },
+  "Alterar": { es: "Cambiar" },
+  "Informar como pagar": { es: "Indicar cómo pagar" },
+  "Como pagar esta parcela (link do boleto, Pix copia-e-cola ou linha digitável)": {
+    es: "Cómo pagar esta cuota (enlace del boleto, Pix copia y pega o línea digitable)",
+  },
+  "O assistente envia este texto ao cliente exatamente como está. Deixe em branco para apagar.": {
+    es: "El asistente envía este texto al cliente exactamente como está. Déjalo en blanco para borrarlo.",
+  },
   "Módulos": { es: "Módulos" },
   // ─── Editor de skill, histórico e restauração (recorte do #1130, @vgamkt) ───
   "Informe pelo menos uma palavra-chave de ativação.": { es: "Indica al menos una palabra clave de activación." },
