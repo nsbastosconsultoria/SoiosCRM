@@ -631,6 +631,9 @@ export const AUDIT_ACTIONS = [
   "honorarios.contrato_criado",
   "honorarios.parcela_criada",
   "honorarios.parcela_paga",
+  // O "como pagar" da parcela (link do boleto, Pix copia-e-cola) — migration 0485. O TEXTO não
+  // vai para a auditoria: só se passou a existir, e o tamanho.
+  "honorarios.parcela_instrucao_alterada",
   "fidelidade.ponto_dado",
   "fidelidade.ponto_resgatado",
   "financeiro.recorrencia_gerada",

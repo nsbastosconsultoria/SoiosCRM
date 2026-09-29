@@ -6,8 +6,13 @@
  * a rota cria um `financial_entries` do caixa núcleo e liga por
  * `financial_entry_id`. Por isso pagar pede uma CONTA, a mesma lista do
  * catálogo financeiro usada em Faturamento.
+ *
+ * "Como pagar" (migration 0485) é o texto que o escritório cola — link do
+ * boleto, Pix copia-e-cola ou linha digitável — e que o agente financeiro
+ * repassa ao cliente sem alterar. Só parcela pendente se edita: a paga não
+ * muda, e a RLS da 0480 é quem garante isso.
  */
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
@@ -26,6 +31,8 @@ type Parcela = {
   valor_cents: number;
   financial_entry_id: string | null;
   status: "pendente" | "pago";
+  /** Ausente quando o módulo ainda não foi reaplicado depois da migration 0485. */
+  instrucao_pagamento?: string | null;
 };
 
 type Conta = { id: string; name: string };
@@ -54,7 +61,8 @@ export function Parcelas({
 
   const contas = useQuery({
     queryKey: ["financeiro", "catalogo", "contas"],
-    queryFn: async () => (await apiClient.get<{ data: Conta[] }>("/api/v1/financeiro/catalogo/contas")).data,
+    queryFn: async () =>
+      (await apiClient.get<{ data: Conta[] }>("/api/v1/financeiro/catalogo/contas")).data,
     enabled: podeGerenciar,
   });
 
@@ -91,6 +99,17 @@ export function Parcelas({
       ),
     onSuccess: (_resposta, id) => {
       chavesDoPagamento.current.delete(`${id}:${contaId}`);
+      return recarregar();
+    },
+    onError: showApiError,
+  });
+
+  const [editando, setEditando] = useState<string | null>(null);
+  const salvarInstrucao = useMutation({
+    mutationFn: ({ id, texto }: { id: string; texto: string }) =>
+      apiClient.patch(`/api/v1/honorarios/parcelas/${id}`, { instrucao_pagamento: texto }),
+    onSuccess: () => {
+      setEditando(null);
       return recarregar();
     },
     onError: showApiError,
@@ -136,29 +155,63 @@ export function Parcelas({
         <table className="w-full text-sm">
           <tbody>
             {lista.map((p) => (
-              <tr key={p.id} className="border-b border-border/60" data-testid={`parcela-${p.id}`}>
-                <td className="py-1 text-text-muted">#{p.numero}</td>
-                <td className="py-1">{new Date(p.vencimento).toLocaleDateString(tagDoIdioma)}</td>
-                <td className="py-1 text-right tabular-nums">
-                  {formatCents(p.valor_cents, "BRL")}
-                </td>
-                <td className="py-1 text-right text-xs text-text-muted">
-                  {p.status === "pago" ? t("pago") : t("pendente")}
-                </td>
-                <td className="w-24 py-1 text-right">
-                  {podeGerenciar && p.status === "pendente" ? (
-                    <button
-                      type="button"
-                      disabled={!contaId || pagar.isPending}
-                      onClick={() => pagar.mutate(p.id)}
-                      className="text-xs text-accent disabled:opacity-50"
-                      data-testid={`pagar-parcela-${p.id}`}
-                    >
-                      {t("Pagar")}
-                    </button>
-                  ) : null}
-                </td>
-              </tr>
+              <Fragment key={p.id}>
+                <tr className="border-b border-border/60" data-testid={`parcela-${p.id}`}>
+                  <td className="py-1 text-text-muted">#{p.numero}</td>
+                  <td className="py-1">{new Date(p.vencimento).toLocaleDateString(tagDoIdioma)}</td>
+                  <td className="py-1 text-right tabular-nums">
+                    {formatCents(p.valor_cents, "BRL")}
+                  </td>
+                  <td className="py-1 text-right text-xs text-text-muted">
+                    {p.status === "pago" ? t("pago") : t("pendente")}
+                  </td>
+                  <td className="w-24 py-1 text-right">
+                    {podeGerenciar && p.status === "pendente" ? (
+                      <button
+                        type="button"
+                        disabled={!contaId || pagar.isPending}
+                        onClick={() => pagar.mutate(p.id)}
+                        className="text-xs text-accent disabled:opacity-50"
+                        data-testid={`pagar-parcela-${p.id}`}
+                      >
+                        {t("Pagar")}
+                      </button>
+                    ) : null}
+                  </td>
+                </tr>
+                {editando === p.id ? (
+                  <tr className="border-b border-border/60">
+                    <td colSpan={5} className="py-2">
+                      <EditorDeInstrucao
+                        inicial={p.instrucao_pagamento ?? ""}
+                        salvando={salvarInstrucao.isPending}
+                        onCancelar={() => setEditando(null)}
+                        onSalvar={(texto) => salvarInstrucao.mutate({ id: p.id, texto })}
+                      />
+                    </td>
+                  </tr>
+                ) : p.instrucao_pagamento || (podeGerenciar && p.status === "pendente") ? (
+                  <tr className="border-b border-border/60">
+                    <td colSpan={5} className="pb-2 text-xs text-text-muted">
+                      {p.instrucao_pagamento ? (
+                        <span className="mr-2 break-all" data-testid={`instrucao-parcela-${p.id}`}>
+                          {t("Como pagar")}: {p.instrucao_pagamento}
+                        </span>
+                      ) : null}
+                      {podeGerenciar && p.status === "pendente" ? (
+                        <button
+                          type="button"
+                          onClick={() => setEditando(p.id)}
+                          className="text-accent"
+                          data-testid={`editar-instrucao-${p.id}`}
+                        >
+                          {p.instrucao_pagamento ? t("Alterar") : t("Informar como pagar")}
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ) : null}
+              </Fragment>
             ))}
           </tbody>
         </table>
@@ -234,6 +287,60 @@ function FormularioDeParcela({
       <Button type="submit" disabled={!pode} data-testid="criar-parcela">
         {t("Adicionar parcela")}
       </Button>
+    </form>
+  );
+}
+
+/**
+ * O texto vai como o escritório escreveu — sem máscara nem validação de
+ * formato: link, Pix copia-e-cola e linha digitável são três formas diferentes,
+ * e o agente só repassa. O teto de 1000 caracteres é o do CHECK da 0485.
+ */
+function EditorDeInstrucao({
+  inicial,
+  salvando,
+  onCancelar,
+  onSalvar,
+}: {
+  inicial: string;
+  salvando: boolean;
+  onCancelar: () => void;
+  onSalvar: (texto: string) => void;
+}) {
+  const t = useT();
+  const [texto, setTexto] = useState(inicial);
+  return (
+    <form
+      className="flex flex-col gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!salvando) onSalvar(texto);
+      }}
+    >
+      <label className="flex flex-col gap-1 text-xs text-text-muted">
+        {t("Como pagar esta parcela (link do boleto, Pix copia-e-cola ou linha digitável)")}
+        <textarea
+          value={texto}
+          maxLength={1000}
+          rows={3}
+          data-testid="instrucao-pagamento"
+          onChange={(e) => setTexto(e.target.value)}
+          className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+        />
+      </label>
+      <p className="text-xs text-text-muted">
+        {t(
+          "O assistente envia este texto ao cliente exatamente como está. Deixe em branco para apagar.",
+        )}
+      </p>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={salvando} data-testid="salvar-instrucao">
+          {t("Salvar")}
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancelar}>
+          {t("Cancelar")}
+        </Button>
+      </div>
     </form>
   );
 }

@@ -220,21 +220,18 @@ Mensagens curtas, uma pergunta por vez, sem termos jurídicos sem explicação. 
 
 **Atenção — três coisas que este nicho quebra se você copiar de outro sem ajustar:**
 
-1. **Mencionar "advogado" ou termos jurídicos passa por cima do agente — sempre, sem exceção, e
-   isso NÃO é configurável por agente.** Antes de qualquer LLM rodar, o worker aplica um gate fixo
-   da plataforma (`checkG4Legal`, `lib/ai/handoff/regex.ts`, gatilho G4): se a mensagem do lead
-   casar com `advogad\w*`, `processo judicial`, `justiça`, `juiz\w*`, `reclame aqui`,
-   `denúncia`/`denuncia`, `acionar a justiça`, `órgão regulador`, `defensoria`, `ministério
-   público` ou `procon`, a conversa vai direto para handoff humano — não é um item de
-   `ai_agents.guardrails` (esse jsonb é outra coisa: guardrails *por agente*, 5 tipos, nenhum
-   deles é este). Para a maioria dos nichos isso é sinal raro de reclamação grave contra a própria
-   empresa; **para um escritório de advocacia é o vocabulário normal do dia a dia do cliente** —
-   "quero falar com o advogado", "já entrei com processo", "isso vai parar na justiça" são frases
-   comuns de quem já procura o escritório, não ameaça. Não tem como desligar isso hoje (é gate de
-   plataforma, não de tenant): avise o escritório que boa parte das conversas vai escalar para
-   humano rápido, e desenhe o prompt para o cenário em que a IA faz só a primeira pergunta antes de
-   passar — não uma triagem longa. Se isso incomodar de verdade, é questão de produto a levar ao
-   dono (issue), não algo para contornar no prompt.
+1. **"Advogado", "processo" e "justiça" não derrubam mais o agente — desde que ele esteja
+   PUBLICADO.** Existe um gate fixo de termos jurídicos (`checkG4Legal`, `lib/ai/handoff/regex.ts`,
+   gatilho G4: `advogad\w*`, `processo judicial`, `justiça`, `juiz\w*`, `procon`…) que manda a
+   conversa direto para humano, sem configuração por agente. Mas ele mora só no worker LEGADO
+   (`workers/ai-response-worker.ts`), que desde 07/09 só atende agente **sem versão publicada**
+   (`precisaRecuperarLegado`, `lib/ai/agents/no-ar.ts`). O agente publicado responde pelo
+   `agent-engine`, que não aplica esse gate — para um escritório, onde "quero falar com o
+   advogado" e "já entrei com processo" são o vocabulário normal, isso é o que se quer. **Publique
+   o agente**: um agente que ficou em rascunho cai no legado, e aí o gate volta. Quem decide
+   quando chamar uma pessoa é o prompt (seção "Limites"), com o handoff do próprio agente.
+   Para conferir que o gate continua só no legado sem acreditar neste parágrafo:
+   `git grep -n "checkG4Legal" -- lib workers ':!*.test.*'` (a única chamada é no worker legado).
 2. **"Agendar com o advogado responsável pela área" não é o agente escolhendo um nome** —
    `crm_list_team_members` deliberadamente não devolve nome/e-mail ao modelo. O roteamento certo é
    por **tipo de atendimento** (Agenda › Tipos de atendimento), um por área, cada um com
