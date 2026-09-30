@@ -11,6 +11,7 @@ import { citacaoDaLei, perfilDoPais } from "@/lib/legal/perfil-do-pais";
 import { logger } from "@/lib/logger";
 import { camposLegiveis, perguntasDosGrafos, type CampoLegivel } from "@/lib/lgpd/campos-personalizados";
 import { maskPhone } from "@/lib/lgpd/mask";
+import { phoneLookupVariants } from "@/lib/channels/phone-variants";
 import type { Json } from "@/lib/database.types";
 
 // ---------------------------------------------------------------------------
@@ -118,6 +119,26 @@ export interface CheckpointRow {
   commitments: unknown;
   objections: unknown;
   next_action: string | null;
+  created_at: string;
+}
+
+/**
+ * Vínculo do titular com um grupo de WhatsApp (migration 0482).
+ *
+ * A FK `channel_session_groups.contact_id` só aponta para o CONTATO PLACEHOLDER
+ * do grupo (`contacts.kind = 'whatsapp_group'`), nunca para uma pessoa real — é
+ * por isso que a redação (`fn_lgpd_cascade_redact_contact`) nulifica `subject`
+ * comentando explicitamente que "nulificar não perde nada operacional: número,
+ * conversa e liga/desliga ficam". Este bloco espelha a mesma chave
+ * (`contact_id = p_contact_id`): quando o titular do pedido É o placeholder do
+ * grupo, o Art. 18 II entrega o mesmo `subject` que a anonimização apagaria.
+ */
+export interface ChannelSessionGroupRow {
+  id: string;
+  group_chat_id: string;
+  subject: string | null;
+  enabled: boolean;
+  enabled_at: string | null;
   created_at: string;
 }
 
@@ -608,6 +629,22 @@ export interface ExportPayload {
    * se entrega a pedido dele (Art. 18 II).
    */
   campaign_suppressions: CampaignSuppressionRow[];
+  /**
+   * Grupos de WhatsApp vinculados ao titular (migration 0482) — ver o
+   * docstring de `ChannelSessionGroupRow`. Obrigatório, não opcional, pela
+   * mesma razão de `case_chat_messages`: campo obrigatório faz um caminho de
+   * export novo NÃO COMPILAR se esquecer.
+   */
+  channel_session_groups: ChannelSessionGroupRow[];
+  /**
+   * Mensagens que o titular escreveu em GRUPOS de WhatsApp (migration 0482).
+   * Moram na conversa do placeholder do grupo, não na dele, então
+   * `messages_recent` não as vê. Casadas pelo autor em `metadata.group_sender`
+   * — telefone (grafias com e sem o nono dígito) ou lid (`contacts.wa_lid`) —,
+   * a mesma chave que a anonimização usa em `fn_redigir_conversas_ao_anonimizar`.
+   * Só alcança quem JÁ É contato: o participante sem ficha não tem titular.
+   */
+  group_messages_authored: MessageRow[];
   /** Rascunhos escritos PARA o titular por outro sistema (0419), apagados na
    *  anonimização. Opcional como `reply_drafts`: o tipo é montado à mão nos testes de PDF. */
   conversation_drafts?: Array<{
@@ -617,6 +654,27 @@ export interface ExportPayload {
     source: string;
     consumed_at: string | null;
     created_at: string;
+  }>;
+  /**
+   * Notas internas das conversas do titular (#1863, F3) — o texto que a equipe
+   * escreveu SOBRE ele e a mídia que anexou junto. Sem FK para `contacts` (só
+   * para `conversations`), nenhuma outra leitura alcançaria a tabela; é o mesmo
+   * motivo de `conversation_drafts`. A migration 0483 redige `body`, zera
+   * `media_storage_path`/`media_mime`/`media_size_bytes` e enfileira o arquivo
+   * com o bucket `internal-media` quando ele pede anonimização — o que se apaga
+   * a pedido dele é o que se entrega a pedido dele (Art. 18 II). A mídia vem
+   * como METADADO (caminho, MIME, bytes): o export é `data.json` + `report.pdf`,
+   * e nenhum binário trafega por ele.
+   */
+  conversation_notes?: Array<{
+    id: string;
+    conversation_id: string;
+    body: string;
+    media_storage_path: string | null;
+    media_mime: string | null;
+    media_size_bytes: number | null;
+    created_at: string;
+    created_by_name: string | null;
   }>;
   /** Propostas de campo do contato (0123), também APAGADAS na anonimização. */
   contact_field_proposals?: Array<{
@@ -791,11 +849,12 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
   // Contact snapshot (PII intentionally retained — this report is the data
   // owner's right of access; only logs/metadata stay sanitized).
   let contact: ContactSnapshot | null = null;
+  let contactLid: string | null = null;
   if (contactId) {
     const { data, error } = await admin
       .from("contacts")
       .select(
-        "id, name, display_name, email, phone_number, cpf_encrypted, birthdate, is_blocked, is_anonymized, consent, tags, source, source_metadata, custom_fields, created_at, last_activity_at, first_service_at",
+        "id, name, display_name, email, phone_number, wa_lid, cpf_encrypted, birthdate, is_blocked, is_anonymized, consent, tags, source, source_metadata, custom_fields, created_at, last_activity_at, first_service_at",
       )
       .eq("organization_id", organizationId)
       .eq("id", contactId)
@@ -844,6 +903,7 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
         });
       }
       const legiveis = camposLegiveis(customFields, perguntasDosGrafos(grafos));
+      contactLid = data.wa_lid ?? null;
       contact = {
         id: data.id,
         name: data.name ?? null,
@@ -1323,6 +1383,71 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
     }
   }
 
+  // Grupos de WhatsApp — `contact_id` direto em `channel_session_groups`
+  // (migration 0482). Ver o docstring de `ChannelSessionGroupRow`: a FK só
+  // aponta para o CONTATO PLACEHOLDER do grupo, então este bloco só devolve
+  // linha quando o titular do pedido é esse placeholder — o mesmo escopo que a
+  // redação usa (`fn_lgpd_cascade_redact_contact`, `contact_id = p_contact_id`).
+  let channel_session_groups: ChannelSessionGroupRow[] = [];
+  if (contactId) {
+    const { data, error } = await admin
+      .from("channel_session_groups")
+      .select("id, group_chat_id, subject, enabled, enabled_at, created_at")
+      .eq("organization_id", organizationId)
+      .eq("contact_id", contactId)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (error) {
+      logger.warn("[lgpd-export-worker] channel session groups load failed", {
+        request_id: requestId,
+        error: error.message,
+      });
+    } else if (data) {
+      channel_session_groups = data;
+    }
+  }
+
+  // Mensagens de grupo escritas pelo titular — ver `group_messages_authored`.
+  // Duas consultas (telefone, lid) em vez de um `or` sobre caminho JSON: cada
+  // uma é um filtro simples, e a união por id desfaz a mensagem que casa as duas.
+  const porId = new Map<string, MessageRow>();
+  const telefones = contact?.phone_number ? phoneLookupVariants(contact.phone_number) : [];
+  const buscas = [
+    telefones.length > 0 ? { campo: "metadata->group_sender->>phone", valores: telefones } : null,
+    contactLid ? { campo: "metadata->group_sender->>lid", valores: [contactLid] } : null,
+  ];
+  for (const busca of buscas) {
+    if (!busca) continue;
+    const { data, error } = await admin
+      .from("messages")
+      .select("id, conversation_id, direction, type, status, body, media_url, sent_at, created_at")
+      .eq("organization_id", organizationId)
+      .in(busca.campo, busca.valores)
+      .order("created_at", { ascending: false })
+      .limit(RECENT_MESSAGES_LIMIT);
+    if (error) {
+      logger.warn("[lgpd-export-worker] group messages load failed", {
+        request_id: requestId,
+        error: error.message,
+      });
+      continue;
+    }
+    for (const m of data ?? []) {
+      porId.set(m.id, {
+        id: m.id,
+        conversation_id: m.conversation_id,
+        direction: m.direction,
+        type: m.type,
+        status: m.status,
+        body: m.body,
+        has_media: Boolean(m.media_url),
+        sent_at: m.sent_at,
+        created_at: m.created_at,
+      });
+    }
+  }
+  const group_messages_authored = [...porId.values()].sort((a, b) => b.created_at.localeCompare(a.created_at));
+
   // Captação por webhook — a MESMA classe do bloco acima, achada pelo gate.
   let webhook_captures: CaptureRow[] = [];
   if (contactId) {
@@ -1451,6 +1576,7 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
   const passagens: PassagemDeAtendimentoRow[] = [];
   const avisos_de_caso: AvisoDeCasoEntregaRow[] = [];
   const conversation_drafts: NonNullable<ExportPayload["conversation_drafts"]> = [];
+  const conversation_notes: NonNullable<ExportPayload["conversation_notes"]> = [];
   if (contactId) {
     const pageSize = 500;
     const refBatchSize = 100; // Mantém o filtro IN abaixo dos limites de URL dos proxies.
@@ -1598,6 +1724,31 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
           .range(offset, offset + pageSize - 1);
         if (error) throw error;
         conversation_drafts.push(...(data ?? []));
+        if (!data || data.length < pageSize) break;
+      }
+    }
+    // As NOTAS INTERNAS das conversas do titular (migration 0483) — MESMO
+    // escopo dos rascunhos, pelos mesmos ids já paginados: `conversation_notes`
+    // não tem FK para `contacts`, e sem este bloco o Art. 18 II entregaria um
+    // relatório que omita o que a equipe anotou sobre a pessoa. É a outra
+    // metade do par que `tests/unit/lgpd-exporta-o-que-redige.test.ts` deriva
+    // da fonte (a cascata 0483 passa a redigir esta tabela) e reprova quem
+    // redige e não exporta. A mídia entra como metadado — caminho, MIME e
+    // bytes — porque o export é `data.json` + `report.pdf`.
+    for (let batch = 0; batch < conversationIds.length; batch += refBatchSize) {
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await admin
+          .from("conversation_notes")
+          // Literal, sem concatenação: o supabase-js lê as colunas do TIPO da
+          // string para inferir a linha, e string montada volta como
+          // `GenericStringError` e não compila (mesma pegadinha logo acima).
+          .select("id, conversation_id, body, media_storage_path, media_mime, media_size_bytes, created_at, created_by_name")
+          .eq("organization_id", organizationId)
+          .in("conversation_id", conversationIds.slice(batch, batch + refBatchSize))
+          .order("id")
+          .range(offset, offset + pageSize - 1);
+        if (error) throw error;
+        conversation_notes.push(...(data ?? []));
         if (!data || data.length < pageSize) break;
       }
     }
@@ -1764,7 +1915,10 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
     avisos_de_caso,
     campaign_recipients,
     campaign_suppressions,
+    channel_session_groups,
+    group_messages_authored,
     conversation_drafts,
+    conversation_notes,
     contact_field_proposals,
     b2b,
   };
@@ -1814,5 +1968,7 @@ function emptyPayload(
     avisos_de_caso: [],
     campaign_recipients: [],
     campaign_suppressions: [],
+    channel_session_groups: [],
+    group_messages_authored: [],
   };
 }

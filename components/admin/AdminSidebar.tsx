@@ -71,9 +71,12 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/email", label: "E-mail", icon: EnvelopeSimple },
   // A porta da tela do COMPORTAMENTO da instalação (issue #1034) — mesma razão
   // das três de cima: são chaves da INSTALAÇÃO, e /admin tem navegação própria.
-  // O rótulo é o do assunto da tela para quem chega por aqui sabendo o que foi
-  // mexer, e não o nome de um arquivo de configuração.
-  { href: "/admin/sistema", label: "Comportamento", icon: Gear },
+  //
+  // Rótulo "Recursos opcionais", e não mais "Comportamento" (doc 80): era aqui
+  // que se ligavam os módulos, e o mantenedor procurou onde ligar recursos sem
+  // achar — "Comportamento" não sugere "ligar recursos". A tela agora junta os
+  // módulos, as chaves de comportamento e o que depende do servidor.
+  { href: "/admin/sistema", label: "Recursos opcionais", icon: Gear },
   // A porta da tela que libera endereços da rede interna (decisão 22-d, #1004).
   // Mesma razão das de cima: o objeto é a MÁQUINA, não uma empresa — e a
   // decisão pede explicitamente que o lugar onde o dono controla seja visível.
@@ -106,7 +109,7 @@ const NAV_ITEMS: NavItem[] = [
   // para Extensões, só que `tests/unit/navegacao-completude.test.ts` não cobre
   // `/admin/**`, então nada acusava.
   { href: "/admin/modulos", label: "Módulos", icon: Stack },
-  // A cobrança dos tenants (módulo `cobranca`, migration 0486). É da INSTALAÇÃO — quem opera a
+  // A cobrança dos tenants (módulo `cobranca`, migration 0493). É da INSTALAÇÃO — quem opera a
   // VPS cobra as empresas que atende —, então mora aqui e não no menu da empresa. Sem o módulo
   // instalado a tela explica e aponta para Módulos, em vez de sumir: é assim que se descobre
   // que ela existe.

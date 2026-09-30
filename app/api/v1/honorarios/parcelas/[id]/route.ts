@@ -1,5 +1,5 @@
 /**
- * PATCH /api/v1/honorarios/parcelas/[id] — COMO PAGAR a parcela (migration 0485).
+ * PATCH /api/v1/honorarios/parcelas/[id] — COMO PAGAR a parcela (migration 0492).
  *
  * O agente financeiro de um escritório (a Sofia) precisa responder "me manda o boleto" com o que o
  * escritório OFICIALMENTE disponibilizou, e a parcela só tinha vencimento, valor e status. Este
@@ -36,7 +36,7 @@ const TAMANHO_MAXIMO_DA_INSTRUCAO = 1000;
 
 const bodySchema = z.object({
   // Vazio (ou só espaços) apaga: é "não há instrução", não "instrução em branco" — o mesmo
-  // `between 1 and 1000` do CHECK da 0485.
+  // `between 1 and 1000` do CHECK da 0492.
   instrucao_pagamento: z
     .string()
     .max(TAMANHO_MAXIMO_DA_INSTRUCAO, "Use no máximo 1000 caracteres.")

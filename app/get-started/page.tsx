@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { createClient } from "@/lib/supabase/server";
-import { brandingDoServidor } from "@/lib/branding/servidor";
+import { marcaDaSaida } from "@/lib/branding/saida";
 import { RecoverOrganizationForm } from "@/components/auth/RecoverOrganizationForm";
 import { modoDeCadastro } from "@/lib/auth/politica-de-cadastro";
 import { estadoDoPedido } from "@/lib/auth/registration-requests";
@@ -43,7 +43,6 @@ export default async function GetStartedPage() {
   // Fora da árvore de `app/app/layout.tsx`, como as telas públicas: o idioma
   // vem do próprio usuário, e o formulário precisa do provider para o `useT()`.
   const t = (texto: string) => traduzir(texto, user.idioma);
-  const marca = await brandingDoServidor();
 
   // COM APROVAÇÃO (migration 0383): a mesma tela vira o pedido. A tabela só é
   // lida nesse modo — com a chave desligada, esta tela faz exatamente o que
@@ -52,13 +51,17 @@ export default async function GetStartedPage() {
   const pedido = comAprovacao ? await estadoDoPedido(user.id) : null;
   const aguardando = pedido === "pending" || pedido === "rejected";
 
+  // O nome em texto vem do resolvedor do BANCO (`marcaDaSaida`), não do
+  // `branding()` — o banco vence e o `.env` é o piso.
+  const marca = await marcaDaSaida(null);
+
   return (
     <IdiomaProvider locale={user.idioma}>
       <main className="bg-muted/40 flex min-h-screen items-center justify-center px-4 py-10">
         <div className="w-full max-w-md space-y-6 rounded-lg border bg-background p-6 shadow-sm">
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
-              {marca.name}
+              {marca.nome}
             </p>
             <h1 className="text-2xl font-semibold tracking-tight">
               {pedido === "pending"

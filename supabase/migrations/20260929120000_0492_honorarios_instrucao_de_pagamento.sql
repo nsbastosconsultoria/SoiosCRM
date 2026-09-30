@@ -1,4 +1,4 @@
--- 0485 — Honorários: como pagar a parcela.
+-- 0492 — Honorários: como pagar a parcela.
 --
 -- A Sofia (agente financeiro de um escritório de advocacia) precisa responder
 -- "me manda o boleto" com o que o escritório oficialmente disponibilizou, e a
@@ -110,20 +110,30 @@ begin
   drop policy if exists tenant_isolation_honorarios_contratos_all on public.honorarios_contratos;
 
   drop policy if exists honorarios_contratos_select on public.honorarios_contratos;
-  create policy honorarios_contratos_select on public.honorarios_contratos
+  -- Cada `create policy` deste corpo ocupa DUAS linhas de propósito (#1906).
+  -- O `update.sh` de v1.39.0 a v1.63.0 lê as regras do TEXTO deste arquivo
+  -- (nome da regra e tabela na MESMA linha do create), até dentro de corpo de
+  -- função, e cobrava estas 8 em instalação sem o módulo. Esse script antigo
+  -- é o que roda na atualização (fica no disco), então o conserto dele não
+  -- alcança quem atualiza: a forma do texto sim. Vigiado por
+  -- tests/unit/adr-0002-funcao-provisionadora.test.ts.
+  create policy honorarios_contratos_select
+    on public.honorarios_contratos
     for select using (
       organization_id in (select public.fn_user_org_ids()) or public.fn_is_platform_admin()
     );
 
   drop policy if exists honorarios_contratos_insert on public.honorarios_contratos;
-  create policy honorarios_contratos_insert on public.honorarios_contratos
+  create policy honorarios_contratos_insert
+    on public.honorarios_contratos
     for insert
     with check (public.fn_is_platform_admin()
                 or (organization_id in (select public.fn_user_org_ids())
                     and public.fn_role_at_least(organization_id, 'manager')));
 
   drop policy if exists honorarios_contratos_update on public.honorarios_contratos;
-  create policy honorarios_contratos_update on public.honorarios_contratos
+  create policy honorarios_contratos_update
+    on public.honorarios_contratos
     for update
     using (public.fn_is_platform_admin()
            or (organization_id in (select public.fn_user_org_ids())
@@ -133,7 +143,8 @@ begin
                     and public.fn_role_at_least(organization_id, 'manager')));
 
   drop policy if exists honorarios_contratos_delete on public.honorarios_contratos;
-  create policy honorarios_contratos_delete on public.honorarios_contratos
+  create policy honorarios_contratos_delete
+    on public.honorarios_contratos
     for delete
     using ((public.fn_is_platform_admin()
             or (organization_id in (select public.fn_user_org_ids())
@@ -146,13 +157,15 @@ begin
   drop policy if exists tenant_isolation_honorarios_parcelas_all on public.honorarios_parcelas;
 
   drop policy if exists honorarios_parcelas_select on public.honorarios_parcelas;
-  create policy honorarios_parcelas_select on public.honorarios_parcelas
+  create policy honorarios_parcelas_select
+    on public.honorarios_parcelas
     for select using (
       organization_id in (select public.fn_user_org_ids()) or public.fn_is_platform_admin()
     );
 
   drop policy if exists honorarios_parcelas_insert on public.honorarios_parcelas;
-  create policy honorarios_parcelas_insert on public.honorarios_parcelas
+  create policy honorarios_parcelas_insert
+    on public.honorarios_parcelas
     for insert
     with check ((public.fn_is_platform_admin()
                  or (organization_id in (select public.fn_user_org_ids())
@@ -163,7 +176,8 @@ begin
                                and c.organization_id = honorarios_parcelas.organization_id));
 
   drop policy if exists honorarios_parcelas_update on public.honorarios_parcelas;
-  create policy honorarios_parcelas_update on public.honorarios_parcelas
+  create policy honorarios_parcelas_update
+    on public.honorarios_parcelas
     for update
     using ((public.fn_is_platform_admin()
             or (organization_id in (select public.fn_user_org_ids())
@@ -178,7 +192,8 @@ begin
                                and c.organization_id = honorarios_parcelas.organization_id));
 
   drop policy if exists honorarios_parcelas_delete on public.honorarios_parcelas;
-  create policy honorarios_parcelas_delete on public.honorarios_parcelas
+  create policy honorarios_parcelas_delete
+    on public.honorarios_parcelas
     for delete
     using ((public.fn_is_platform_admin()
             or (organization_id in (select public.fn_user_org_ids())
@@ -193,7 +208,7 @@ begin
 
   -- RLS já ligada por nós, então esta rotina não mexe mais nelas (D5) — só
   -- aplica as travas de suporte, que dependem de RLS já estar de pé.
-  -- ── COMO PAGAR A PARCELA (migration 0485) ──────────────────────────────────
+  -- ── COMO PAGAR A PARCELA (migration 0492) ──────────────────────────────────
   -- O agente financeiro lia vencimento e valor, mas não tinha o que entregar a
   -- quem pedia "me manda o boleto": não havia campo. É texto que o ESCRITÓRIO
   -- cola — link do boleto, Pix copia-e-cola ou linha digitável —, sem gateway:

@@ -49,7 +49,7 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
       .eq("contrato_id", contratoId)
       .order("numero", { ascending: true });
   let { data, error } = await ler(`${COLUNAS_BASE}, instrucao_pagamento`);
-  // 42703: o app novo subiu antes de a atualização reaplicar o módulo (migration 0485) — a
+  // 42703: o app novo subiu antes de a atualização reaplicar o módulo (migration 0492) — a
   // coluna ainda não existe. A lista das parcelas não pode sumir da tela por isso.
   if (error?.code === "42703") ({ data, error } = await ler(COLUNAS_BASE));
 

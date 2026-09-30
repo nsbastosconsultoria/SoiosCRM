@@ -1,5 +1,5 @@
 /**
- * PATCH /api/v1/honorarios/parcelas/[id] — como pagar a parcela (migration 0485).
+ * PATCH /api/v1/honorarios/parcelas/[id] — como pagar a parcela (migration 0492).
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";

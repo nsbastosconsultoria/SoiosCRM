@@ -123,7 +123,7 @@ describe("crm_list_honorarios_parcelas", () => {
     expect(resultado.parcelas[0]!.instrucao_pagamento).toBe("https://boleto.exemplo/abc");
   });
 
-  it("módulo instalado antes da 0485 (coluna ausente, 42703): lista sem a instrução, com null", async () => {
+  it("módulo instalado antes da 0492 (coluna ausente, 42703): lista sem a instrução, com null", async () => {
     // A atualização reaplica o módulo, mas o app pode subir antes. Derrubar a leitura calaria
     // vencimento e valor junto; `null` é o que a descrição manda tratar como "o time envia".
     const respostas = [

@@ -15,7 +15,7 @@ export const metadata = { title: "Cobrança dos tenants" };
 export const dynamic = "force-dynamic";
 
 /**
- * COBRANÇA DOS TENANTS — Fase 1, manual (módulo `cobranca`, migration 0486).
+ * COBRANÇA DOS TENANTS — Fase 1, manual (módulo `cobranca`, migration 0493).
  *
  * O objeto é a INSTALAÇÃO: quem opera a VPS cobra as empresas que atende. Planos, a assinatura de
  * cada organização e as faturas lançadas e baixadas à mão. O corte por falta de pagamento é do
