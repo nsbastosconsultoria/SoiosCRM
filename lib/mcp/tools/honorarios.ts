@@ -92,7 +92,7 @@ export const crmListHonorariosParcelas: McpToolDefinition<typeof parcelasInputSh
     let { data, error } = await ler(
       "id, numero, vencimento, valor_cents, status, instrucao_pagamento",
     );
-    // 42703: módulo instalado antes da migration 0485 e ainda não reaplicado pela atualização.
+    // 42703: módulo instalado antes da migration 0492 e ainda não reaplicado pela atualização.
     // Sem a coluna, a instrução é desconhecida — `null`, que a descrição já manda tratar como
     // "o time vai enviar". Derrubar a leitura inteira calaria vencimento e valor junto.
     if (error?.code === "42703") {

@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { GOV_ADMIN, GOV_ORG, GOV_VIEWER, countAs, seedGov, sql, writeCountAs } from "./gov-helpers";
 
 /**
- * A RLS DO MÓDULO DE COBRANÇA (migration 0486).
+ * A RLS DO MÓDULO DE COBRANÇA (migration 0493).
  *
  * A regra que o banco precisa garantir, e não só a rota: cobrança é da INSTALAÇÃO. O `admin` de
  * um tenant lê a própria assinatura e as próprias faturas — é o que alimenta a faixa de aviso —,

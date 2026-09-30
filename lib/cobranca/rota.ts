@@ -3,7 +3,7 @@
  * "módulo não instalado".
  *
  * ⚠️ AS TABELAS DA COBRANÇA SÃO LIDAS E ESCRITAS PELO CLIENTE DO USUÁRIO, NÃO PELA SERVICE ROLE.
- * A RLS da provisionadora (migration 0486) só deixa o administrador da PLATAFORMA escrever — então
+ * A RLS da provisionadora (migration 0493) só deixa o administrador da PLATAFORMA escrever — então
  * ela é uma segunda guarda por baixo de `requirePlatformAdmin()`, e não um detalhe contornado. A
  * service role só entra em `aplicarCobranca`, que precisa suspender/reativar a organização.
  */

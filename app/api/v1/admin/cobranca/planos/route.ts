@@ -1,5 +1,5 @@
 /**
- * Planos da cobrança dos tenants (módulo `cobranca`, migration 0486).
+ * Planos da cobrança dos tenants (módulo `cobranca`, migration 0493).
  *
  * GET  — o catálogo de planos da instalação.
  * POST — cria um plano. Só o administrador da plataforma (guarda + RLS da provisionadora).

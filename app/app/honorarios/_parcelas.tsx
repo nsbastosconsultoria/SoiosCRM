@@ -7,7 +7,7 @@
  * `financial_entry_id`. Por isso pagar pede uma CONTA, a mesma lista do
  * catálogo financeiro usada em Faturamento.
  *
- * "Como pagar" (migration 0485) é o texto que o escritório cola — link do
+ * "Como pagar" (migration 0492) é o texto que o escritório cola — link do
  * boleto, Pix copia-e-cola ou linha digitável — e que o agente financeiro
  * repassa ao cliente sem alterar. Só parcela pendente se edita: a paga não
  * muda, e a RLS da 0480 é quem garante isso.
@@ -31,7 +31,7 @@ type Parcela = {
   valor_cents: number;
   financial_entry_id: string | null;
   status: "pendente" | "pago";
-  /** Ausente quando o módulo ainda não foi reaplicado depois da migration 0485. */
+  /** Ausente quando o módulo ainda não foi reaplicado depois da migration 0492. */
   instrucao_pagamento?: string | null;
 };
 
@@ -294,7 +294,7 @@ function FormularioDeParcela({
 /**
  * O texto vai como o escritório escreveu — sem máscara nem validação de
  * formato: link, Pix copia-e-cola e linha digitável são três formas diferentes,
- * e o agente só repassa. O teto de 1000 caracteres é o do CHECK da 0485.
+ * e o agente só repassa. O teto de 1000 caracteres é o do CHECK da 0492.
  */
 function EditorDeInstrucao({
   inicial,

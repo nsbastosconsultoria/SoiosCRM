@@ -11,7 +11,7 @@ import {
 } from "./gov-helpers";
 
 /**
- * COMO PAGAR A PARCELA (migration 0485).
+ * COMO PAGAR A PARCELA (migration 0492).
  *
  * A coluna `instrucao_pagamento` entra pela própria `fn_honorarios_provisionar()`, e é isso que
  * precisa ser provado no banco, não no texto: (1) instalação nova já nasce com ela; (2) quem
@@ -59,7 +59,7 @@ describe("a coluna nasce pela provisionadora", () => {
     expect(colunaExiste()).toBe(true);
   });
 
-  it("⭐ módulo instalado ANTES da 0485: a reaplicação da atualização devolve a coluna", () => {
+  it("⭐ módulo instalado ANTES da 0492: a reaplicação da atualização devolve a coluna", () => {
     // Simula o banco de quem instalou honorários antes desta migration.
     sql(`alter table public.honorarios_parcelas drop column if exists instrucao_pagamento;`);
     expect(colunaExiste()).toBe(false);

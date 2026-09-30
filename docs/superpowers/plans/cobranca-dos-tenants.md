@@ -156,7 +156,7 @@ Ainda em aberto, e sem efeito na Fase 1:
 
 | Peça | Onde |
 |---|---|
-| Módulo `cobranca` (3 tabelas, RLS: só o admin da plataforma escreve; membros leem a própria) | migration `0486`, `fn_cobranca_provisionar()`, apêndice do `baseline.sql` |
+| Módulo `cobranca` (3 tabelas, RLS: só o admin da plataforma escreve; membros leem a própria) | migration `0493`, `fn_cobranca_provisionar()`, apêndice do `baseline.sql` |
 | Regra de estado pura (vencimento, carência de 7 dias, suspender/reativar só o que é da cobrança) | `lib/cobranca/estado.ts` |
 | Aplicação com I/O, compartilhada pelo cron e pelas rotas | `lib/cobranca/aplicar.ts` |
 | Cron diário `cobranca-watcher` (06:10 UTC) | `app/api/v1/cron/cobranca-watcher/route.ts`, `docker/scheduler/entrypoint.sh` |

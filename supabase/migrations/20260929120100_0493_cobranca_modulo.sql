@@ -1,4 +1,4 @@
--- 0486 — Cobrança dos tenants: módulo opcional (Fase 1 do plano
+-- 0493 — Cobrança dos tenants: módulo opcional (Fase 1 do plano
 -- docs/superpowers/plans/cobranca-dos-tenants.md).
 --
 -- Quem opera a instalação cobra as empresas que atende: plano, assinatura por
@@ -94,7 +94,7 @@ begin
     -- Como foi pago ("Pix em 03/10", "transferência") — texto do operador.
     payment_note text check (payment_note is null or char_length(payment_note) <= 500),
     -- Como pagar: link, Pix copia-e-cola ou linha digitável, colado à mão
-    -- (mesma ideia de honorarios_parcelas.instrucao_pagamento, 0485).
+    -- (mesma ideia de honorarios_parcelas.instrucao_pagamento, 0492).
     instrucao_pagamento text
       check (instrucao_pagamento is null or char_length(instrucao_pagamento) between 1 and 1000),
     provider text,
@@ -120,25 +120,30 @@ begin
   alter table public.billing_invoices enable row level security;
 
   drop policy if exists billing_subscriptions_select on public.billing_subscriptions;
-  create policy billing_subscriptions_select on public.billing_subscriptions
+  create policy billing_subscriptions_select
+    on public.billing_subscriptions
     for select using (
       public.fn_is_platform_admin() or organization_id in (select public.fn_user_org_ids())
     );
   drop policy if exists billing_subscriptions_admin on public.billing_subscriptions;
-  create policy billing_subscriptions_admin on public.billing_subscriptions
+  create policy billing_subscriptions_admin
+    on public.billing_subscriptions
     for all using (public.fn_is_platform_admin()) with check (public.fn_is_platform_admin());
 
   drop policy if exists billing_invoices_select on public.billing_invoices;
-  create policy billing_invoices_select on public.billing_invoices
+  create policy billing_invoices_select
+    on public.billing_invoices
     for select using (
       public.fn_is_platform_admin() or organization_id in (select public.fn_user_org_ids())
     );
   drop policy if exists billing_invoices_admin on public.billing_invoices;
-  create policy billing_invoices_admin on public.billing_invoices
+  create policy billing_invoices_admin
+    on public.billing_invoices
     for all using (public.fn_is_platform_admin()) with check (public.fn_is_platform_admin());
 
   drop policy if exists billing_plans_select on public.billing_plans;
-  create policy billing_plans_select on public.billing_plans
+  create policy billing_plans_select
+    on public.billing_plans
     for select using (
       public.fn_is_platform_admin()
       or exists (
@@ -148,7 +153,8 @@ begin
       )
     );
   drop policy if exists billing_plans_admin on public.billing_plans;
-  create policy billing_plans_admin on public.billing_plans
+  create policy billing_plans_admin
+    on public.billing_plans
     for all using (public.fn_is_platform_admin()) with check (public.fn_is_platform_admin());
 
   revoke all on public.billing_plans from anon;
@@ -156,7 +162,7 @@ begin
   revoke all on public.billing_invoices from anon;
 
   comment on table public.billing_plans is
-    'Planos que a instalação vende aos tenants (módulo cobranca, migration 0486). Sem organization_id: é da instalação.';
+    'Planos que a instalação vende aos tenants (módulo cobranca, migration 0493). Sem organization_id: é da instalação.';
   comment on table public.billing_subscriptions is
     'Uma assinatura por organização. suspended_by_billing = a suspensão foi por falta de pagamento, e só essa a reativação automática desfaz.';
   comment on table public.billing_invoices is

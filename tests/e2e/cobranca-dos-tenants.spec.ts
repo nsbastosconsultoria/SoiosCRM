@@ -1,5 +1,5 @@
 /**
- * COBRANÇA DOS TENANTS PELA TELA — do plano à suspensão e de volta (módulo `cobranca`, 0486).
+ * COBRANÇA DOS TENANTS PELA TELA — do plano à suspensão e de volta (módulo `cobranca`, 0493).
  *
  * O caminho, como o dono de uma instalação faria:
  *   1. instala o módulo em Módulos, acha "Cobrança" no menu, cria um plano e assina uma empresa;

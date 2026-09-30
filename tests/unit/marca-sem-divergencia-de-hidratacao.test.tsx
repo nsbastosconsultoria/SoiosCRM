@@ -243,9 +243,10 @@ describe("catraca: `branding()` é server-only", () => {
     // instrumento.
     //
     // Login, cadastro, onboarding e texto legal chamavam `branding()` direto e
-    // eram os controles daqui. Passaram a `brandingDoServidor()`, que lê o
-    // banco: com `branding()` eles mostravam o `APP_NAME` do `.env` e ignoravam
-    // a marca salva em `/admin/marca`. Nenhum call site de servidor resta; o
+    // eram os controles daqui. Login, cadastro e texto legal passaram a
+    // `brandingDoServidor()` (fork Soios) e o onboarding a `marcaDaSaida()`
+    // (original, 1.64): os dois leem o banco, e com `branding()` mostravam o
+    // `APP_NAME` do `.env` e ignoravam a marca salva em `/admin/marca`. Nenhum call site de servidor resta; o
     // controle vira a própria DEFINIÇÃO em `lib/branding.ts`
     // (`export function branding(): …`), que é código e não comentário — se o
     // corte engolir código, ela some da varredura e este caso reprova.

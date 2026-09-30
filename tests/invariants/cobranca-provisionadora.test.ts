@@ -1,5 +1,5 @@
 /**
- * Cobrança dos tenants — módulo opcional via ADR-0002 (migration 0486).
+ * Cobrança dos tenants — módulo opcional via ADR-0002 (migration 0493).
  *
  * O molde cobra forma (D4) e efeito: provisionar cria exatamente as três tabelas, com RLS ligada
  * e `anon` sem privilégio, e o núcleo fica intocado. As três são `protecaoPropria` porque a RLS
