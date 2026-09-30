@@ -35,6 +35,14 @@ const TARGET_WORDS = [
   "gerente",
   "supervisor",
   "departamento",
+  // Retaguarda de escritório jurídico e consultório: o agente de um escritório
+  // promete "o advogado vai te retornar", não "a equipe" (medido em 30/09/2026).
+  "advogado",
+  "advogada",
+  "advogados",
+  "advogadas",
+  "doutor",
+  "doutora",
 ] as const;
 const TARGET_WORD_SET = new Set<string>(TARGET_WORDS);
 const TARGET = `(?:${TARGET_WORDS.join("|")})`;
@@ -46,7 +54,7 @@ const TARGET = `(?:${TARGET_WORDS.join("|")})`;
 const gap = (n: number): string => `[^.!?\\n]{0,${n}}?`;
 
 /**
- * Monta os 7 padrões de promessa-de-humano em cima de um ALVO (`target`)
+ * Monta os padrões de promessa-de-humano em cima de um ALVO (`target`)
  * substituível — o TARGET genérico por padrão, ou o TARGET estendido com
  * nome(s) próprio(s) do tenant (ver `detectHumanPromise`).
  */
@@ -89,6 +97,26 @@ function buildPatterns(target: string): RegExp[] {
     new RegExp(
       `\\b(?:est[aá]|ficou|fica|segue)\\b${gap(10)}\\bem\\b\\s+an[aá]lise\\b${gap(20)}` +
         `\\b(?:com|pela|pelo|do|da|na|no)\\b${gap(10)}\\b${target}\\b`,
+    ),
+    // (2d) ENCAMINHAR PARA ANÁLISE, sem nomear quem analisa. Achado em produção
+    //      (30/09/2026, gpt-5.4-mini): "Vou encaminhar seu caso com prioridade para
+    //      análise" — nenhum caso aberto, conversa parada. Nenhuma regra acima casa:
+    //      "análise" não é alvo humano. O verbo é de 1ª pessoa (vou encaminhar /
+    //      encaminhei) DE PROPÓSITO: "pode me enviar os documentos para análise?" é
+    //      pedido ao cliente, não promessa, e não pode travar a conversa.
+    new RegExp(
+      `(?:\\b(?:vou|vamos|irei|iremos|ja)\\s+(?:\\w+\\s+){0,2}?` +
+        `(?:encaminhar|repassar|enviar|levar|submeter|direcionar|passar|mandar)` +
+        `|\\b(?:encaminho|encaminhei|repasso|repassei|envio|enviei|levo|levei|submeto|submeti|direciono|direcionei|passo|passei|mando|mandei))\\b` +
+        `${gap(40)}\\b(?:pra|para|a)\\s+(?:a\\s+)?(?:analise|avaliacao|revisao)\\b`,
+    ),
+    // (2e) O CASO/PEDIDO vai (ou foi) para análise: "seu caso vai para análise",
+    //      "sua documentação foi para avaliação". Mesma alegação de retaguarda,
+    //      na voz passiva.
+    new RegExp(
+      `\\b(?:seu|sua|seus|suas|o|a)\\s+(?:caso|pedido|processo|solicitacao|demanda|documentacao|documentos?)\\b` +
+        `${gap(20)}\\b(?:vai|vao|sera|serao|segue|seguem|ficara|foi|foram)\\b${gap(10)}` +
+        `\\b(?:pra|para|em)\\s+(?:a\\s+)?(?:analise|avaliacao|revisao)\\b`,
     ),
     // (3) deferir a TERCEIROS via subjuntivo 3ª pessoa do plural: "assim que liberarem eu te aviso".
     //     Não depende de `target` — não repetido no alvo estendido.

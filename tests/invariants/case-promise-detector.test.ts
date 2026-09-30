@@ -35,6 +35,15 @@ const PROMISES: readonly string[] = [
   "sua solicitação sobre garantia está em análise pela equipe responsável",
   "isso está em análise pela nossa equipe",
   "seu caso ficou em análise com o responsável",
+  // achado numa instalação real (30/09/2026, gpt-5.4-mini): a frase EXATA que
+  // deixou a conversa parada — nenhum caso aberto, nenhum humano atribuído.
+  "Perfeito, Leandro. Vou encaminhar seu caso com prioridade para análise",
+  "já encaminhei sua documentação para avaliação",
+  "seu caso vai para análise",
+  "sua solicitação foi para revisão",
+  // retaguarda de escritório jurídico / consultório
+  "vou passar seu caso para o advogado",
+  "a doutora vai te retornar amanhã",
 ];
 
 // NÃO detectar: ação própria do bot / frase institucional / checar SISTEMA (≠ humano).
@@ -54,6 +63,14 @@ const NON_PROMISES: readonly string[] = [
   // "em análise" sem NOMEAR quem — conservador de propósito, mesmo raciocínio das
   // outras regras (exige TARGET explícito pra reduzir falso positivo).
   "o produto está em análise técnica interna, sem previsão",
+  // PEDIDO ao cliente, não promessa: o verbo de "encaminhar para análise" só
+  // conta em 1ª pessoa, senão toda coleta de documento travaria a conversa.
+  "pode me enviar os documentos para análise?",
+  "me envie o laudo para análise, por favor",
+  // o próprio agente analisa — não há retaguarda prometida.
+  "vou analisar seu caso agora mesmo",
+  // menção ao advogado sem promessa de ação dele.
+  "o advogado responsável pelo processo foi citado na decisão",
 ];
 
 describe("detectHumanPromise — calibração (spec 15 §10.2)", () => {
