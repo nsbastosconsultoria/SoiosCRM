@@ -8,6 +8,32 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
 
 ## [Não lançado]
 
+## [1.65.1] — 2026-09-30
+
+### Corrigido
+
+- **Resumo do turno com formato inválido não faz mais o agente refazer o atendimento** Depois de responder ao cliente, o agente faz uma segunda chamada ao modelo para gravar o resumo da
+  conversa (compromissos, objeções e próxima ação). Com alguns modelos da OpenAI, esse resumo às vezes
+  vinha com o formato quebrado, e o sistema refazia o turno inteiro: outra chamada de IA paga para uma
+  resposta que o cliente já tinha recebido.
+
+  Agora o resumo é lido de forma mais tolerante (texto em volta, dois blocos, vírgula sobrando). Se
+  ainda assim vier ilegível, só o resumo é pedido de novo, uma vez. Na segunda falha, o atendimento
+  segue com a memória anterior da conversa, sem refazer o turno e sem gasto extra.
+
+- **O agente não consegue mais prometer "vou encaminhar para análise" sem abrir um caso** O agente podia dizer ao cliente "vou encaminhar seu caso com prioridade para análise" e não fazer
+  nada: nenhum caso aberto, nenhuma pessoa avisada, e a conversa ficava parada esperando. A trava que
+  impede promessa de atendimento humano sem caso aberto só reconhecia frases com "equipe", "setor",
+  "atendente" e parecidos.
+
+  Agora ela reconhece também "encaminhar para análise/avaliação", "seu caso vai para análise" e
+  promessas envolvendo advogado ou doutor(a). Quando o agente tenta prometer isso sem abrir o caso, a
+  mensagem é segurada até o caso existir. Pedidos ao cliente, como "pode me enviar os documentos para
+  análise?", continuam liberados.
+
+  A trava vale para agentes com **"Pedir ajuda sem sair da conversa"** ligado (**IA › Agentes ›**
+  o agente **› Quando ele entra em ação**).
+
 ## [1.65.0] — 2026-09-30
 
 ### Adicionado
@@ -9678,7 +9704,8 @@ Primeira versão marcada do DeskcommCRM. O projeto vinha sendo desenvolvido publ
 
 - **Node 22 é obrigatório para desenvolvimento.** A suíte de invariantes instancia o cliente do Supabase, que exige o `WebSocket` global — nativo apenas a partir do Node 22. Isso não afeta quem apenas hospeda: a VPS roda a imagem pronta.
 
-[Não lançado]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.0...HEAD
+[Não lançado]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.1...HEAD
+[1.65.1]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.0...v1.65.1
 [1.65.0]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.64.1...v1.65.0
 [1.64.1]: https://github.com/melgarafael/DeskcommCRM/compare/v1.64.0...v1.64.1
 [1.64.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.63.6...v1.64.0
