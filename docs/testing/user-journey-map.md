@@ -3090,3 +3090,26 @@ o CI só publica artefato em falha). Medido no run 36309605444, parte 3, head
 | J34.3 | Termo em 2 de 4 mensagens (uma em maiúsculas) | contador "Resultados nas mensagens carregadas: 2"; as 2 bolhas com o anel no `box-shadow` COMPUTADO (`0 0 0 4px`, cor ≠ fundo), uma enviada e uma recebida; as outras 2 sem anel | PASS — anel `rgb(28, 26, 22) 0 0 0 4px` sobre recebida `rgb(245, 243, 238)` e enviada `rgb(80, 109, 72)`; sem anel nas outras |
 | J34.4 | Esc fecha | campo, contador e marcas somem; o foco volta à lupa | PASS |
 | J34.5 | Trocar de conversa pela lista, sem recarregar | a conversa B (que tem o termo) abre sem campo, sem contador e sem marca; abrir a busca nela começa vazia | PASS |
+
+## J35 — Cobrar uma empresa: da fatura à suspensão e de volta `[P1]` (2026-09-30)
+
+Módulo opcional `cobranca` (migration 0486). Spec: `tests/e2e/cobranca-dos-tenants.spec.ts`, no
+banco fresco do `baseline.sql` — o módulo começa **não instalado**. Evidência em
+`evidence/cobranca-dos-tenants/`.
+
+| Caso | Quem | Prova |
+|---|---|---|
+| Instalar em Módulos, achar "Cobrança" no menu, criar plano, assinar a empresa | dono do servidor | tela |
+| Lançar a fatura (com Pix) de vencimento passado: a empresa fica "Em atraso" na hora | dono do servidor | tela |
+| A faixa da carência em `/app`, com valor, data de suspensão e Pix | admin da empresa | tela |
+| Passada a carência, o cron `cobranca-watcher` suspende; a conta suspensa mostra a fatura | cron + admin da empresa | rota do cron + tela |
+| Dar baixa reativa na hora, sem faixa | dono do servidor + admin da empresa | tela |
+
+**Achado executando (consertado):** a faixa não aparecia logo depois da instalação. `avisoDeCobranca`
+lembrava "módulo ausente" por minutos no processo, e a instalação não conseguia apagar a lembrança:
+a rota que instala e o layout de `/app` rodam em camadas diferentes do Next, cada uma com a sua
+cópia do módulo. O memo saiu — sem o módulo, a consulta é o `PGRST205` do cache de schema do
+PostgREST. Reproduzido duas vezes com o memo, verde a partir do banco sem o módulo sem ele.
+
+**Não coberto:** o tempo real da carência (a spec recua o vencimento pelo banco e chama o cron
+de verdade); e-mail de lembrete e gateway, que são das Fases 2 e 4.

@@ -3,9 +3,14 @@
  * conta suspensa. Só leitura, e NUNCA lança — roda no layout de `/app`, e um throw ali é 500 em
  * todas as telas por causa de um aviso.
  *
- * Instalação sem o módulo `cobranca` (o caso comum): a tabela não existe. A resposta é lembrada
- * por alguns minutos no PROCESSO, para o layout não pagar uma ida ao banco em toda tela só para
- * ouvir de novo que o módulo não está lá. Instalar o módulo passa a valer em até esse tempo.
+ * Instalação sem o módulo `cobranca` (o caso comum): a tabela não existe, e o PostgREST responde
+ * `PGRST205` pelo cache de schema — sem tocar em tabela — e o aviso é `null`.
+ *
+ * ⚠️ SEM MEMO DE "MÓDULO AUSENTE", DE PROPÓSITO. A versão anterior lembrava a ausência por alguns
+ * minutos no processo, e a instalação não conseguia apagar a lembrança: a rota que instala
+ * (`app/api/v1/modulos/instalar`) e o layout de `/app` rodam em camadas diferentes do Next, cada
+ * uma com a sua cópia do módulo. Medido pela `tests/e2e/cobranca-dos-tenants.spec.ts`: o dono
+ * visitava `/app` antes de instalar, e a empresa em atraso ficava sem faixa depois.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -28,20 +33,11 @@ export interface AvisoDeCobranca {
   readonly instrucao: string | null;
 }
 
-const MEMO_DO_MODULO_AUSENTE_MS = 5 * 60_000;
-let moduloAusenteAte = 0;
-
-/** Só para os testes: esquece o que o processo lembrou. */
-export function esquecerMemoDoAviso(): void {
-  moduloAusenteAte = 0;
-}
-
 export async function avisoDeCobranca(
   db: SupabaseClient,
   orgId: string,
   agora: Date = new Date(),
 ): Promise<AvisoDeCobranca | null> {
-  if (Date.now() < moduloAusenteAte) return null;
   try {
     const { data: assinatura, error } = await db
       .from("billing_subscriptions")
@@ -49,8 +45,7 @@ export async function avisoDeCobranca(
       .eq("organization_id", orgId)
       .maybeSingle();
     if (error) {
-      if (moduloDeCobrancaAusente(error)) moduloAusenteAte = Date.now() + MEMO_DO_MODULO_AUSENTE_MS;
-      else logger.warn("[cobranca] aviso: leitura da assinatura falhou", { orgId, codigo: error.code });
+      if (!moduloDeCobrancaAusente(error)) logger.warn("[cobranca] aviso: leitura da assinatura falhou", { orgId, codigo: error.code });
       return null;
     }
     if (!assinatura) return null;

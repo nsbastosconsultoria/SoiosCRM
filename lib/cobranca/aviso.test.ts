@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/logger", () => ({ logger: { warn: vi.fn() } }));
 
-import { avisoDeCobranca, esquecerMemoDoAviso } from "./aviso";
+import { avisoDeCobranca } from "./aviso";
 import { bancoFalso, type Banco } from "./banco-falso.test-helper";
 
 const ORG = "org-a";
@@ -20,8 +20,6 @@ function banco(assinatura: Record<string, unknown> | null): Banco {
     ],
   };
 }
-
-beforeEach(() => esquecerMemoDoAviso());
 
 describe("avisoDeCobranca", () => {
   it("⭐ em atraso: vencimento, dias, a data da suspensão e como pagar", async () => {
@@ -52,13 +50,15 @@ describe("avisoDeCobranca", () => {
     expect(a).toMatchObject({ situacao: "suspended", suspendeEm: null, vencimento: "2026-10-10" });
   });
 
-  it("⭐ módulo não instalado: null, e o processo para de perguntar por um tempo", async () => {
+  it("⭐ módulo não instalado: null — e pergunta de novo na próxima tela, sem memo", async () => {
+    // Sem memo porque a instalação não conseguia apagá-lo (camadas diferentes do Next): a
+    // empresa ficava sem faixa depois de o dono instalar. Ver o cabeçalho de `aviso.ts`.
     const from = vi.fn(() => ({
       select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { code: "PGRST205" } }) }) }),
     }));
     expect(await avisoDeCobranca({ from } as never, ORG, AGORA)).toBeNull();
     expect(await avisoDeCobranca({ from } as never, ORG, AGORA)).toBeNull();
-    expect(from).toHaveBeenCalledTimes(1);
+    expect(from).toHaveBeenCalledTimes(2);
   });
 
   it("nunca lança", async () => {
