@@ -46,7 +46,15 @@
  * reprova lá. Não remova essa derivação pensando que é redundante — ela é o que
  * torna a âncora não-falsificável de dentro do diff.
  */
-export const NAMESPACE_DESTE_REPO = "ghcr.io/melgarafael";
+export const NAMESPACE_DESTE_REPO = "ghcr.io/nsbastosconsultoria";
+
+/**
+ * O NOME do repositório no GitHub. No original ele é `DeskcommCRM`, igual ao
+ * nome do produto; no fork Soios é `SoiosCRM`. As URLs do kit e dos Dockerfiles
+ * são `https://github.com/<dono>/<nome>`, e o dono segue DERIVADO do namespace
+ * acima — só o nome, que o namespace não carrega, mora aqui.
+ */
+export const NOME_DESTE_REPO = "SoiosCRM";
 
 /**
  * O dono de uma referência `<registry>/<dono>`.
