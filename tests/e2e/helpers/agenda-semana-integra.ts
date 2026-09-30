@@ -262,6 +262,35 @@ export async function diasDesenhados(page: Page): Promise<string[]> {
  * dias por mês, que é a mesma classe de vermelho-por-calendário que ela existe
  * para fechar.
  */
+/**
+ * Espera a consulta de horários acender ALGUM dia do mês visível — e devolve
+ * `false`, em vez de reprovar, quando o mês visível não tem nenhum.
+ *
+ * Até a consulta responder, todo dia nasce indisponível; por isso a espera
+ * existe. Mas "nenhum dia aceso" também é o estado LEGÍTIMO do fim do último
+ * dia do mês, depois do último horário de hoje: o mês visível acabou e o
+ * próximo dia com jornada é do mês que vem. A espera antiga reprovava ali com
+ * "o seed não deixou jornada publicada" — falso. Medido no CI de 30/09/2026
+ * ~20:50 UTC (PR #16, run 36773545108): `agenda-google-meet` e
+ * `agenda-presenca-recuperacao` reprovaram na espera, antes de chegar ao passo
+ * que avança o mês; às 19:28 UTC, com horário ainda hoje, as mesmas passaram.
+ *
+ * Quem chama avança o mês quando recebe `false`; seed sem jornada nenhuma
+ * continua reprovando, na espera do mês seguinte, com a mensagem que diz isso.
+ */
+async function mesVisivelAcendeDia(page: Page): Promise<boolean> {
+  try {
+    await expect(page.locator('[data-testid^="dia-"][data-disponivel="true"]').first()).toBeVisible(
+      {
+        timeout: 20_000,
+      },
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function escolherDiaDesenhado(page: Page, dias: readonly string[]): Promise<string> {
   const disponiveis = async (): Promise<string[]> =>
     (
@@ -272,12 +301,8 @@ export async function escolherDiaDesenhado(page: Page, dias: readonly string[]):
 
   // Até a consulta de horários responder, TODO dia nasce indisponível — uma
   // varredura feita antes disso leria "nenhum dia da semana desenhada" onde há.
-  await expect(
-    page.locator('[data-testid^="dia-"][data-disponivel="true"]').first(),
-    "nenhum dia disponível no painel — o seed da agenda não deixou jornada publicada",
-  ).toBeVisible({ timeout: 20_000 });
-
-  let candidatos = await disponiveis();
+  // Mês visível sem dia nenhum (fim do último dia do mês) cai no salto abaixo.
+  let candidatos = (await mesVisivelAcendeDia(page)) ? await disponiveis() : [];
   if (candidatos.length === 0) {
     await page.getByTestId("mes-seguinte").click();
     // ⚠️ ESPERA PELOS DIAS DA SEMANA DESENHADA, não por "algum dia disponível".
@@ -304,7 +329,8 @@ export async function escolherDiaDesenhado(page: Page, dias: readonly string[]):
         timeout: 20_000,
         message:
           `nenhum dia da semana desenhada (${dias.join(", ")}) ficou disponível no painel ` +
-          "depois de avançar o mês — o alvo e a grade deixariam de falar do mesmo período",
+          "depois de avançar o mês — o seed não deixou jornada publicada, ou o alvo e a grade " +
+          "deixariam de falar do mesmo período",
       })
       .not.toEqual([]);
     candidatos = await disponiveis();
@@ -369,13 +395,8 @@ async function diasCheios(page: Page): Promise<string[]> {
     return chaves.filter((k) => k > hoje).sort();
   };
 
-  await expect(
-    page.locator('[data-testid^="dia-"][data-disponivel="true"]').first(),
-    "nenhum dia disponível — o seed da agenda não deixou jornada publicada, e sem " +
-      "dia clicável a coluna de horários nunca abre (o defeito ficaria invisível)",
-  ).toBeVisible({ timeout: 20_000 });
-
-  const cheios = await varrer();
+  // Mês visível sem dia nenhum (fim do último dia do mês) cai no salto abaixo.
+  const cheios = (await mesVisivelAcendeDia(page)) ? await varrer() : [];
   if (cheios.length > 0) return cheios;
 
   // Hoje é o último dia útil do mês visível: o próximo dia com jornada cai no
@@ -395,7 +416,9 @@ async function diasCheios(page: Page): Promise<string[]> {
   await expect
     .poll(async () => (cheiosNoMesSeguinte = await varrer()).length, {
       timeout: 20_000,
-      message: "nem o mês seguinte oferece dia — a consulta deveria ter pedido o mês visível",
+      message:
+        "nem o mês seguinte oferece dia — o seed não deixou jornada publicada, ou a consulta " +
+        "não pediu o mês visível",
     })
     .toBeGreaterThan(0);
   return cheiosNoMesSeguinte;
