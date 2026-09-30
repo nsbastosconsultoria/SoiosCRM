@@ -8,6 +8,93 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
 
 ## [Não lançado]
 
+## [1.65.0] — 2026-09-30
+
+### Adicionado
+
+- **Cobrança dos tenants — planos, faturas e corte automático por falta de pagamento** Novo módulo opcional **Cobrança dos tenants**, para quem opera a instalação e cobra as empresas que
+  atende. Instale em **Modo administrador › Módulos**; quem não instala não carrega tabela nenhuma e
+  nada muda.
+
+  Com o módulo instalado, a tela **Modo administrador › Cobrança** cria planos (preço, periodicidade
+  e dias de teste grátis), assina cada empresa num plano e lança as faturas, com o "como pagar" (Pix,
+  link ou linha digitável) colado à mão. Dar baixa numa fatura registra o pagamento.
+
+  Uma rotina diária marca a fatura vencida como em atraso. O administrador da empresa vê uma faixa em
+  todas as telas, com o valor, a data de suspensão e como pagar. Passados **7 dias** de carência, a
+  empresa é suspensa: perde o acesso às telas, mas o WhatsApp e a IA continuam atendendo. A tela de
+  conta suspensa mostra a fatura em aberto. Dar baixa (ou cancelar a fatura) reativa na hora — e
+  só desfaz a suspensão que a cobrança fez, nunca uma suspensão manual.
+
+  Nesta fase não há integração com gateway de pagamento: a baixa é manual.
+
+- **Confirmação de conta e nova senha saem pelo servidor de e-mail da instalação** Na instalação com Supabase na nuvem, os e-mails de confirmação de conta e de redefinir senha
+  saíam pelo remetente embutido do Supabase ("Supabase Auth", com limite baixo de envio) ou pelo
+  que alguém tivesse configurado à mão no painel do Supabase — trocar o servidor em
+  **Modo administrador › E-mail** mudava convites e avisos de LGPD, mas nunca esses dois e-mails.
+
+  Agora o `marca-emails.sh`, que o `update.sh` já roda a cada atualização, grava no Supabase o mesmo
+  servidor de e-mail da tela, com o seu remetente. Sem servidor configurado, nada muda. Para aplicar
+  antes da próxima atualização: `bash hostgator-setup-kit/marca-emails.sh` com
+  `SUPABASE_ACCESS_TOKEN` exportado.
+
+  No Supabase próprio, apagar os campos da tela de E-mail passa a voltar ao servidor do arquivo de
+  instalação, como o resto do sistema; antes os e-mails de acesso ficavam sem servidor.
+
+- **Parcela de honorários ganha "como pagar", e o assistente passa a mandar o boleto** Em **Análise › Dinheiro › Honorários**, cada parcela pendente ganha **"Informar como pagar"**: o
+  escritório cola ali o link do boleto, o Pix copia-e-cola ou a linha digitável daquela parcela.
+  O assistente com a capacidade **"Ver as parcelas de honorários"** passa a receber esse texto e o
+  repassa ao cliente exatamente como está — e, quando a parcela não tem instrução, diz que o time
+  vai enviar em vez de inventar um link.
+
+  Só quem é gerente ou administrador edita, e parcela já paga não muda. O sistema não gera boleto:
+  o texto é o que o escritório cadastrou.
+
+  Quem já tinha o módulo de Honorários instalado recebe o campo na atualização, sem passo manual.
+
+### Alterado
+
+- **As atualizações passam a vir das versões da Soios** O kit de instalação e atualização passa a apontar para o SoiosCRM: as imagens vêm de
+  `ghcr.io/nsbastosconsultoria` e as versões, das releases do repositório `nsbastosconsultoria/SoiosCRM`.
+  Com isso, o botão **"Atualizar agora"** e o `update.sh` levam o servidor para a última versão da
+  Soios, e não mais para a do DeskcommCRM original.
+
+  Numa instalação que já existia, falta um passo único: apontar o código do servidor para o
+  repositório da Soios (`git remote set-url origin …`), descrito em
+  `docs/runbooks/soios-atualizacao-do-fork.md`. Até lá, use a atualização manual do mesmo guia.
+
+### Corrigido
+
+- **Os e-mails de confirmação de conta e de nova senha passam a usar a marca salva na tela** Na instalação com Supabase na nuvem, o e-mail de confirmação de conta e o de redefinir senha
+  chegavam com o nome do produto ("Confirme seu e-mail — DeskcommCRM") mesmo depois de a marca ter
+  sido trocada em **Modo administrador › Marca**: o `marca-emails.sh`, que grava esses dois e-mails
+  no Supabase, lia só o `.env`, e o `.env` quase nunca é atualizado depois da instalação.
+
+  Agora ele lê primeiro a marca salva na tela e só usa o `.env` quando o banco não responde ou não
+  tem marca salva. A próxima atualização já grava os e-mails com a marca certa; para aplicar antes
+  disso, rode `bash hostgator-setup-kit/marca-emails.sh` com `SUPABASE_ACCESS_TOKEN` exportado.
+
+- **Salvar o servidor de e-mail não apaga mais a senha, e limpar a tela volta ao arquivo** Em **Modo administrador › E-mail**, quando os dados do servidor vinham do arquivo de instalação,
+  a tela dizia "Já existe uma senha gravada. Deixe em branco para mantê-la" — mas salvar sem digitar
+  a senha gravava a configuração sem senha, e a partir daí todo e-mail da instalação falhava na
+  autenticação. Agora a senha do arquivo é guardada junto.
+
+  Apagar os campos da tela também volta a usar o arquivo de instalação, como a tela promete; antes a
+  instalação ficava sem e-mail. E o botão "Salvar" não mostra mais "Salvando…" enquanto quem espera
+  é o "Testar conexão".
+
+  Quem já salvou a tela nessa situação: digite a senha de novo em **E-mail** e salve.
+
+- **Entrada, cadastro e configuração inicial passam a mostrar o nome salvo em Marca** As telas de entrar, criar conta, criar a organização, a configuração inicial (onboarding) e as
+  páginas de termos e privacidade mostravam o nome gravado no arquivo de instalação do servidor —
+  "DeskcommCRM" quando ele estava em branco — mesmo depois de a marca ter sido trocada em
+  **Modo administrador › Marca**. O resto do sistema (aba do navegador, menus, e-mails) já usava o
+  nome salvo na tela.
+
+  Agora todas essas telas usam o nome salvo na tela, e o arquivo de instalação só vale quando nada
+  foi salvo. O aviso da tela de Marca, que dizia que essas telas mudariam "na próxima atualização",
+  foi corrigido: nada as atualizava.
+
 ## [1.64.1] — 2026-09-30
 
 ### Corrigido
@@ -9591,7 +9678,8 @@ Primeira versão marcada do DeskcommCRM. O projeto vinha sendo desenvolvido publ
 
 - **Node 22 é obrigatório para desenvolvimento.** A suíte de invariantes instancia o cliente do Supabase, que exige o `WebSocket` global — nativo apenas a partir do Node 22. Isso não afeta quem apenas hospeda: a VPS roda a imagem pronta.
 
-[Não lançado]: https://github.com/melgarafael/DeskcommCRM/compare/v1.64.1...HEAD
+[Não lançado]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.0...HEAD
+[1.65.0]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.64.1...v1.65.0
 [1.64.1]: https://github.com/melgarafael/DeskcommCRM/compare/v1.64.0...v1.64.1
 [1.64.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.63.6...v1.64.0
 [1.63.6]: https://github.com/melgarafael/DeskcommCRM/compare/v1.63.5...v1.63.6
