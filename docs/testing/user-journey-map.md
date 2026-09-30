@@ -3094,16 +3094,15 @@ o CI só publica artefato em falha). Medido no run 36309605444, parte 3, head
 ## J35 — Cobrar uma empresa: da fatura à suspensão e de volta `[P1]` (2026-09-30)
 
 Módulo opcional `cobranca` (migration 0486). Spec: `tests/e2e/cobranca-dos-tenants.spec.ts`, no
-banco fresco do `baseline.sql` — o módulo começa **não instalado**. Evidência em
-`evidence/cobranca-dos-tenants/`.
+banco fresco do `baseline.sql` — o módulo começa **não instalado**.
 
 | Caso | Quem | Prova |
 |---|---|---|
 | Instalar em Módulos, achar "Cobrança" no menu, criar plano, assinar a empresa | dono do servidor | tela |
-| Lançar a fatura (com Pix) de vencimento passado: a empresa fica "Em atraso" na hora | dono do servidor | tela |
-| A faixa da carência em `/app`, com valor, data de suspensão e Pix | admin da empresa | tela |
-| Passada a carência, o cron `cobranca-watcher` suspende; a conta suspensa mostra a fatura | cron + admin da empresa | rota do cron + tela |
-| Dar baixa reativa na hora, sem faixa | dono do servidor + admin da empresa | tela |
+| Lançar a fatura (com Pix) de vencimento passado: a empresa fica "Em atraso" na hora | dono do servidor | `evidence/cobranca-dos-tenants/1-admin-em-atraso.png` |
+| A faixa da carência em `/app`, com valor, data de suspensão e Pix | admin da empresa | `evidence/cobranca-dos-tenants/2-faixa-da-carencia.png` |
+| Passada a carência, o cron `cobranca-watcher` suspende; a conta suspensa mostra a fatura | cron + admin da empresa | `evidence/cobranca-dos-tenants/3-conta-suspensa.png` |
+| Dar baixa reativa na hora, sem faixa | dono do servidor + admin da empresa | `evidence/cobranca-dos-tenants/4-baixa.png` |
 
 **Achado executando (consertado):** a faixa não aparecia logo depois da instalação. `avisoDeCobranca`
 lembrava "módulo ausente" por minutos no processo, e a instalação não conseguia apagar a lembrança:
