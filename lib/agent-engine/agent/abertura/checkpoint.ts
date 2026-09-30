@@ -133,9 +133,51 @@ export async function insertCheckpoint(
 }
 
 /**
- * Extrai e valida o JSON do fechamento. Tolerante a cerca de código e prosa em
- * volta (pega do primeiro '{' ao último '}'); inválido → erro SEM o texto do
- * modelo na mensagem (pode carregar PII da conversa) — o job re-tenta.
+ * Os objetos `{...}` de nível mais alto do texto, na ordem em que aparecem.
+ *
+ * A varredura respeita strings JSON (chave dentro de aspas não abre nem fecha
+ * objeto) e escapes. Existe porque "do primeiro '{' ao último '}'" junta DOIS
+ * objetos num só quando o modelo devolve o JSON e, depois, prosa com chaves —
+ * ou repete o JSON corrigido. Medido em 30/09/2026 com `gpt-5.4-mini`: o turno
+ * respondia ao cliente e o fechamento caía em "JSON de checkpoint inválido".
+ */
+function objetosDeNivelSuperior(text: string): string[] {
+  const achados: string[] = [];
+  let profundidade = 0;
+  let inicio = -1;
+  let emString = false;
+  let escapado = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (emString) {
+      if (escapado) escapado = false;
+      else if (c === '\\') escapado = true;
+      else if (c === '"') emString = false;
+      continue;
+    }
+    if (c === '"') {
+      if (profundidade > 0) emString = true;
+    } else if (c === '{') {
+      if (profundidade === 0) inicio = i;
+      profundidade++;
+    } else if (c === '}' && profundidade > 0) {
+      profundidade--;
+      if (profundidade === 0) achados.push(text.slice(inicio, i + 1));
+    }
+  }
+  return achados;
+}
+
+/** Vírgula antes de `}`/`]` — o erro de formato mais comum de modelo que escreve JSON à mão. */
+function semVirgulaSobrando(json: string): string {
+  return json.replace(/,(\s*[}\]])/g, '$1');
+}
+
+/**
+ * Extrai e valida o JSON do fechamento. Tolerante a cerca de código, prosa em
+ * volta, mais de um objeto no texto e vírgula sobrando antes de `}`/`]`: vale o
+ * primeiro candidato que o `JSON.parse` aceita E o schema valida. Nenhum → erro
+ * SEM o texto do modelo na mensagem (pode carregar PII da conversa).
  */
 export function parseCheckpointText(text: string): CheckpointContent {
   const start = text.indexOf('{');
@@ -143,22 +185,53 @@ export function parseCheckpointText(text: string): CheckpointContent {
   if (start === -1 || end <= start) {
     throw new Error('fechamento do turno sem JSON de checkpoint — run re-tentado pela fila');
   }
-  let raw: unknown;
-  try {
-    raw = JSON.parse(text.slice(start, end + 1));
-  } catch {
-    throw new Error(
-      'JSON de checkpoint inválido no fechamento do turno — run re-tentado pela fila',
-    );
-  }
-  const parsed = checkpointContentSchema.safeParse(raw);
-  if (!parsed.success) {
-    const issues = parsed.error.issues
+  const brutos = [text.slice(start, end + 1), ...objetosDeNivelSuperior(text)];
+  const candidatos = [...brutos, ...brutos.map(semVirgulaSobrando)];
+  let primeiroShapeInvalido: string | null = null;
+  for (const candidato of new Set(candidatos)) {
+    let raw: unknown;
+    try {
+      raw = JSON.parse(candidato);
+    } catch {
+      continue;
+    }
+    const parsed = checkpointContentSchema.safeParse(raw);
+    if (parsed.success) return parsed.data;
+    primeiroShapeInvalido ??= parsed.error.issues
       .map((i) => `${i.path.join('.') || '(raiz)'}: ${i.code}`)
       .join('; ');
+  }
+  if (primeiroShapeInvalido !== null) {
     throw new Error(
-      `checkpoint do fechamento com shape inválido (${issues}) — run re-tentado pela fila`,
+      `checkpoint do fechamento com shape inválido (${primeiroShapeInvalido}) — run re-tentado pela fila`,
     );
   }
-  return parsed.data;
+  throw new Error(
+    'JSON de checkpoint inválido no fechamento do turno — run re-tentado pela fila',
+  );
+}
+
+/**
+ * O checkpoint de CONTINUIDADE: o que se grava quando o fechamento do turno veio
+ * ilegível duas vezes seguidas.
+ *
+ * O cliente JÁ recebeu a resposta quando o fechamento roda. Derrubar o job aqui
+ * fazia a fila refazer o turno INTEIRO — outra chamada de modelo cara, uma
+ * resposta nova que não sai (o envio já consta) e um checkpoint escrito a partir
+ * dessa resposta que o cliente nunca viu. Carregar a memória anterior adiante é
+ * mais barato e mais fiel ao que a conversa de fato contém; o histórico do turno
+ * seguinte mostra ao modelo o que foi dito neste.
+ *
+ * `declaracao` fica AUSENTE de propósito: "o modelo não declarou" é o estado
+ * honesto (ver `checkpointContentSchema`), e nenhuma promessa é inventada.
+ */
+export function checkpointDeContinuidade(
+  anterior: Pick<LeadCheckpointRow, 'commitments' | 'objections' | 'next_action' | 'rolling_summary'> | null,
+): CheckpointContent {
+  return {
+    commitments: anterior?.commitments ?? [],
+    objections: anterior?.objections ?? [],
+    next_action: anterior?.next_action ?? null,
+    rolling_summary: anterior?.rolling_summary ?? '',
+  };
 }

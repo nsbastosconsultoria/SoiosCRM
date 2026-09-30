@@ -93,6 +93,7 @@ import {
 import {
   CHECKPOINT_INSTRUCTION,
   checkpointContentSchema,
+  checkpointDeContinuidade,
   insertCheckpoint,
   parseCheckpointText,
   type CheckpointContent,
@@ -4312,40 +4313,73 @@ async function executarTurnoDoAgente(
       avisarSemCandidato(preview);
       return;
     }
-    const closing = await runModelCall(
-      pool,
-      deps.llmCfg,
-      {
-        tenantId,
-        leadId: leadId || null,
-        jobId: job?.id,
-        purpose: 'checkpoint',
-        ...(agentConfig !== null
-          ? {
-              model: agentConfig.model,
-              llmOverride: {
-                provider: agentConfig.provider,
-                credentialId: agentConfig.credentialId,
-              },
-            }
-          : {}),
-        system,
-        messages: [
-          // prune: o checkpoint reusa a abertura só como texto — a mídia nativa (cara) já
-          // fez seu trabalho na 1ª chamada e não precisa ir de novo.
-          ...openingTextOnly,
-          ...responseMessages,
-          { role: 'user', content: CHECKPOINT_INSTRUCTION },
-        ],
-      },
-      { registry: deps.registry, log: runLog },
-    );
-    const content = parseCheckpointText(
-      closing.result.text.replace(
-        /https:\/\/meet\.google\.com\/[a-zA-Z0-9-]+/g,
-        '[link da reunião disponível na Agenda]',
-      ),
-    );
+    const chamarFechamento = () =>
+      runModelCall(
+        pool,
+        deps.llmCfg,
+        {
+          tenantId,
+          leadId: leadId || null,
+          jobId: job?.id,
+          purpose: 'checkpoint',
+          ...(agentConfig !== null
+            ? {
+                model: agentConfig.model,
+                llmOverride: {
+                  provider: agentConfig.provider,
+                  credentialId: agentConfig.credentialId,
+                },
+              }
+            : {}),
+          system,
+          messages: [
+            // prune: o checkpoint reusa a abertura só como texto — a mídia nativa (cara) já
+            // fez seu trabalho na 1ª chamada e não precisa ir de novo.
+            ...openingTextOnly,
+            ...responseMessages,
+            { role: 'user', content: CHECKPOINT_INSTRUCTION },
+          ],
+        },
+        { registry: deps.registry, log: runLog },
+      );
+    const lerFechamento = (texto: string): CheckpointContent =>
+      parseCheckpointText(
+        texto.replace(
+          /https:\/\/meet\.google\.com\/[a-zA-Z0-9-]+/g,
+          '[link da reunião disponível na Agenda]',
+        ),
+      );
+    const motivoDe = (err: unknown): string =>
+      (err instanceof Error ? err.message : String(err)).slice(0, 160);
+
+    // FECHAMENTO ILEGÍVEL NÃO REFAZ O TURNO. Quando o JSON do fechamento vinha
+    // quebrado (medido com `gpt-5.4-mini` em 30/09/2026), o erro derrubava o job
+    // e a fila refazia o turno INTEIRO depois de o cliente já ter a resposta.
+    // Agora: repete SÓ o fechamento uma vez; se vier ilegível de novo, grava o
+    // checkpoint de continuidade (a memória anterior) e o turno termina. Erro da
+    // CHAMADA (saldo, rede, limite) não passa por aqui — segue lançando, para a
+    // fila tratar como sempre. A prévia de teste não esconde o problema: ela
+    // lança na segunda falha, como antes, para quem testa ver.
+    let closing = await chamarFechamento();
+    let content: CheckpointContent;
+    try {
+      content = lerFechamento(closing.result.text);
+    } catch (primeiraFalha) {
+      runLog.warn('checkpoint: fechamento ilegível — repetindo só o fechamento', {
+        motivo: motivoDe(primeiraFalha),
+      });
+      closing = await chamarFechamento();
+      try {
+        content = lerFechamento(closing.result.text);
+      } catch (segundaFalha) {
+        if (preview) throw segundaFalha;
+        content = checkpointDeContinuidade(await latestCheckpoint(pool, tenantId, leadId));
+        runLog.warn(
+          'checkpoint: fechamento ilegível duas vezes — memória anterior mantida, turno NÃO refeito',
+          { motivo: motivoDe(segundaFalha) },
+        );
+      }
+    }
 
     if (preview) {
       preview.result.checkpoint = content;
