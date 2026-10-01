@@ -252,6 +252,10 @@ export const AUDIT_ACTIONS = [
   // `lib/channels/reactivate.ts` — o único caminho de volta, e é o que faz a
   // frase acima valer para os DOIS casos em vez de para o que lembraram.
   "channel.reactivated",
+  // Conversas 1:1 de canal ARQUIVADO com o mesmo número passaram para o canal
+  // ativo (migration 0901). Emitida pelo banco, pelo gatilho
+  // `trg_canal_herda_conversas` — sem ator: quem dispara é o número aparecer.
+  "channel.conversations_inherited",
   // Chamada de voz WhatsApp (WaCalls, spec 18) — pareamento do segundo
   // dispositivo vinculado, opt-in por org. Admin only.
   //
