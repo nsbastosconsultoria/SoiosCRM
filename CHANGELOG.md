@@ -8,6 +8,20 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
 
 ## [Não lançado]
 
+## [1.65.2] — 2026-10-01
+
+### Corrigido
+
+- **Conectar de novo o mesmo número de WhatsApp leva as conversas antigas junto** Quando o WhatsApp caía e o canal era excluído e conectado de novo como canal novo, as conversas
+  antigas ficavam presas ao canal excluído. Todo follow-up dessas conversas parava com o aviso "canal
+  arquivado", e a Central mostrava "Job descartado após esgotar tentativas" e "Um fluxo de follow-up
+  parou de tentar" para leads que só estavam em silêncio.
+
+  Agora, assim que o número é lido no canal novo, as conversas do canal excluído com o mesmo número
+  passam para ele, e os follow-ups seguem por ali. Instalações que já passaram pela troca recebem o
+  conserto ao atualizar. Conversa de quem já voltou a escrever pelo canal novo continua separada,
+  com o histórico antigo preservado, e grupos não mudam de canal.
+
 ## [1.65.1] — 2026-09-30
 
 ### Corrigido
@@ -9704,7 +9718,8 @@ Primeira versão marcada do DeskcommCRM. O projeto vinha sendo desenvolvido publ
 
 - **Node 22 é obrigatório para desenvolvimento.** A suíte de invariantes instancia o cliente do Supabase, que exige o `WebSocket` global — nativo apenas a partir do Node 22. Isso não afeta quem apenas hospeda: a VPS roda a imagem pronta.
 
-[Não lançado]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.1...HEAD
+[Não lançado]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.2...HEAD
+[1.65.2]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.1...v1.65.2
 [1.65.1]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.0...v1.65.1
 [1.65.0]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.64.1...v1.65.0
 [1.64.1]: https://github.com/melgarafael/DeskcommCRM/compare/v1.64.0...v1.64.1
