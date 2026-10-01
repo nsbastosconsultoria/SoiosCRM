@@ -44583,3 +44583,101 @@ update public.agent_inbox_items i
 create unique index if not exists agent_inbox_event_dead_aberto_unico
   on public.agent_inbox_items (organization_id, kind, title)
   where status = 'open' and kind = 'event_dead';
+
+-- ---- canal reconectado herda as conversas do mesmo número (migration 0901) ----
+-- Conversas 1:1 de canal ARQUIVADO com o mesmo número e provedor passam para o
+-- canal ativo, para follow-up e resposta de caso não morrerem com "canal
+-- arquivado". O porquê inteiro está no cabeçalho da migration 0901.
+create or replace function public.fn_canal_herda_conversas_do_numero(p_org uuid, p_canal uuid)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_canal public.channel_sessions;
+  v_conv record;
+  v_movidas integer := 0;
+  v_de uuid[] := '{}';
+begin
+  select * into v_canal
+    from public.channel_sessions
+   where organization_id = p_org and id = p_canal and archived_at is null;
+  if not found or v_canal.phone_number is null then
+    return 0;
+  end if;
+
+  for v_conv in
+    select c.id, c.channel_session_id
+      from public.conversations c
+      join public.channel_sessions s
+        on s.organization_id = c.organization_id and s.id = c.channel_session_id
+     where c.organization_id = p_org
+       and not c.is_group
+       and s.id <> p_canal
+       and s.archived_at is not null
+       and s.phone_number = v_canal.phone_number
+       and s.provider = v_canal.provider
+       and not exists (
+         select 1 from public.conversations n
+          where n.organization_id = p_org
+            and n.contact_id = c.contact_id
+            and n.channel_session_id = p_canal
+            and not n.is_group)
+     order by c.id
+       for update of c skip locked
+  loop
+    begin
+      update public.conversations
+         set channel_session_id = p_canal
+       where organization_id = p_org and id = v_conv.id;
+      v_movidas := v_movidas + 1;
+      if not (v_conv.channel_session_id = any (v_de)) then
+        v_de := v_de || v_conv.channel_session_id;
+      end if;
+    exception when unique_violation then
+      null;
+    end;
+  end loop;
+
+  if v_movidas > 0 then
+    insert into public.api_audit_log (organization_id, actor_user_id, action, resource_type, resource_id, metadata)
+    values (p_org, null, 'channel.conversations_inherited', 'channel_sessions', p_canal,
+            jsonb_build_object('conversations', v_movidas, 'from_channel_session_ids', to_jsonb(v_de)));
+  end if;
+
+  return v_movidas;
+end;
+$$;
+revoke execute on function public.fn_canal_herda_conversas_do_numero(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.fn_canal_herda_conversas_do_numero(uuid, uuid) to service_role;
+
+-- O gatilho é `security definer` porque quem grava o número é, entre outros,
+-- a rota GET do canal com o cliente do USUÁRIO (`authenticated`), e a função
+-- acima não é executável por ele.
+create or replace function public.fn_canal_herda_conversas_trg()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.archived_at is null and new.phone_number is not null
+     and (tg_op = 'INSERT'
+          or old.phone_number is distinct from new.phone_number
+          or old.archived_at is not null) then
+    perform public.fn_canal_herda_conversas_do_numero(new.organization_id, new.id);
+  end if;
+  return null;
+end;
+$$;
+revoke execute on function public.fn_canal_herda_conversas_trg() from public, anon, authenticated;
+
+drop trigger if exists trg_canal_herda_conversas on public.channel_sessions;
+create trigger trg_canal_herda_conversas
+  after insert or update of phone_number, archived_at on public.channel_sessions
+  for each row execute function public.fn_canal_herda_conversas_trg();
+
+select public.fn_canal_herda_conversas_do_numero(organization_id, id)
+  from public.channel_sessions
+ where archived_at is null and phone_number is not null;
