@@ -148,7 +148,6 @@ export function buildOpeningMessage(
   /** Mensagem canônica do job inbound; vence uma leitura concorrente do histórico. */
   currentInboundText?: string,
 ): string {
-  const entregue = (nome: string): boolean => entregues.includes(nome);
   const mensagemAtual =
     currentInboundText === undefined
       ? [...context.messages].reverse().find((m) => m.direction === 'inbound')
@@ -175,18 +174,34 @@ export function buildOpeningMessage(
     '',
     'Responda ao lead usando a tool send_message — NUNCA escreva a resposta como texto direto',
     '(texto fora de tool é descartado pelo runtime). Use get_lead_context se precisar reler o contexto.',
-    // Quando o avanço do funil vira trabalho do Operador, o Conversador não
-    // precisa saber que existe um funil. É a diferença entre "não fale disso" e
-    // "não há disso no seu contexto" — a segunda não depende de obediência.
-    ...(entregue('update_lead_state')
+    ...linhasDeFerramentasDoConversador(entregues),
+  ].join('\n');
+}
+
+/**
+ * As linhas do rodapé que mandam usar `update_lead_state` e `save_lead_note` —
+ * só as das ferramentas que o turno AINDA tem.
+ *
+ * Quando o avanço do funil vira trabalho do Operador, o Conversador não
+ * precisa saber que existe um funil. É a diferença entre "não fale disso" e
+ * "não há disso no seu contexto" — a segunda não depende de obediência.
+ *
+ * Mora aqui, e não em cada abertura, porque a abertura do follow-up tinha a
+ * própria cópia das duas linhas, sem a condição: com o Operador ligado, o
+ * runtime tirava as ferramentas do turno e o prompt continuava mandando
+ * chamá-las.
+ */
+export function linhasDeFerramentasDoConversador(entregues: readonly string[] = []): string[] {
+  return [
+    ...(entregues.includes('update_lead_state')
       ? []
       : [
           'Houve avanço REAL no funil neste turno? Marque-o com update_lead_state (só o próximo estágio válido).',
         ]),
-    ...(entregue('save_lead_note')
+    ...(entregues.includes('save_lead_note')
       ? []
       : [
           'Aprendeu algo durável sobre o lead? Salve com save_lead_note (a headline entra no índice de memória).',
         ]),
-  ].join('\n');
+  ];
 }
