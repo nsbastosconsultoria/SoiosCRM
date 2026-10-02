@@ -20,6 +20,7 @@ import {
   buildFlowStepOpeningMessage,
   buildFollowupOpeningMessage,
 } from "@/lib/agent-engine/agent/followup-turn";
+import { buildCaseReplyOpeningMessage } from "@/lib/agent-engine/agent/case-reply-turn";
 import { buildOpeningMessage } from "@/lib/agent-engine/agent/inbound-turn";
 import type { LeadContext } from "@/lib/agent-engine/edge/crm/get-lead-context";
 
@@ -144,5 +145,34 @@ describe("follow-up agendado pelo agente — o cabeçalho continua o dele", () =
     const t = buildFollowupOpeningMessage("bloco", null, null, contexto([]), "sem notas");
     expect(t).toContain("você havia combinado retornar");
     expect(t).toContain("Retome a conversa com naturalidade");
+  });
+});
+
+describe("resposta de caso — mesma regra de ferramentas", () => {
+  const abrir = (entregues?: readonly string[]) =>
+    buildCaseReplyOpeningMessage(
+      "need_lead_info",
+      "11111111-2222-3333-4444-555555555555",
+      "o CPF do titular",
+      null,
+      null,
+      contexto([]),
+      "sem notas",
+      false,
+      entregues,
+    );
+
+  it("com o Operador dono das duas, nenhuma é citada", () => {
+    const t = abrir(ENTREGUES);
+    expect(t).not.toContain("update_lead_state");
+    expect(t).not.toContain("save_lead_note");
+    // A instrução do caso continua inteira.
+    expect(t).toContain("provide_case_update");
+  });
+
+  it("controle: sem Operador, as duas continuam citadas", () => {
+    const t = abrir();
+    expect(t).toContain("update_lead_state");
+    expect(t).toContain("save_lead_note");
   });
 });

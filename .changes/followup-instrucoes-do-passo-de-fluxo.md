@@ -10,4 +10,5 @@ novo, e mesmo no ramo que roda justamente porque o cliente respondeu. Agora o
 agente sabe que o contato vem de um fluxo da empresa, recebe a resposta do
 cliente em destaque quando ela existe, e a orientação que você escreveu no passo
 vale mais que a instrução genérica de retomar a conversa. Com o Operador ligado,
-o follow-up também deixou de mandar o agente usar ferramentas que ele não tem.
+o follow-up e a resposta a um caso interno também deixaram de mandar o agente
+usar ferramentas que ele não tem.

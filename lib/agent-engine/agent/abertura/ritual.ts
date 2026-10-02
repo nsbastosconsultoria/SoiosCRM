@@ -186,10 +186,10 @@ export function buildOpeningMessage(
  * precisa saber que existe um funil. É a diferença entre "não fale disso" e
  * "não há disso no seu contexto" — a segunda não depende de obediência.
  *
- * Mora aqui, e não em cada abertura, porque a abertura do follow-up tinha a
- * própria cópia das duas linhas, sem a condição: com o Operador ligado, o
- * runtime tirava as ferramentas do turno e o prompt continuava mandando
- * chamá-las.
+ * Mora aqui, e não em cada abertura, porque as aberturas do follow-up e da
+ * resposta de caso tinham a própria cópia das duas linhas, sem a condição: com
+ * o Operador ligado, o runtime tirava as ferramentas do turno e o prompt
+ * continuava mandando chamá-las.
  */
 export function linhasDeFerramentasDoConversador(entregues: readonly string[] = []): string[] {
   return [
