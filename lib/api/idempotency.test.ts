@@ -44,6 +44,9 @@ type OpcoesDoDuble = {
   linhas?: Linha[];
   /** Se presente, a gravação falha com este erro (ex.: { code: "23505" }). */
   erroNoInsert?: { code?: string } | null;
+  erroNaLeitura?: { code: string };
+  erroNaReleitura?: { code: string };
+  erroNaRetomada?: { code: string };
   /**
    * Linhas que passam a existir no momento da colisão — simula o outro
    * escritor que gravou entre a nossa leitura e a nossa gravação. Sem isto o
@@ -77,6 +80,7 @@ function duble(opcoes: OpcoesDoDuble = {}) {
   const eqAplicados: Array<[string, unknown]> = [];
   const gtAplicados: Array<[string, unknown]> = [];
   let seq = 0;
+  let leituras = 0;
 
   const casa = (
     linha: Linha,
@@ -101,10 +105,13 @@ function duble(opcoes: OpcoesDoDuble = {}) {
         maiorQue = [coluna, valor];
         return builder;
       },
-      maybeSingle: async () => ({
-        data: linhas.find((l) => casa(l, filtros, maiorQue)) ?? null,
-        error: null,
-      }),
+      maybeSingle: async () => {
+        const error = ++leituras === 1 ? opcoes.erroNaLeitura : opcoes.erroNaReleitura;
+        return {
+          data: error ? null : linhas.find((l) => casa(l, filtros, maiorQue)) ?? null,
+          error: error ?? null,
+        };
+      },
     };
     return builder;
   };
@@ -124,6 +131,7 @@ function duble(opcoes: OpcoesDoDuble = {}) {
       select: () => builder,
       maybeSingle: async () => {
         atualizacoes.push({ patch, filtros: [...filtros] });
+        if (opcoes.erroNaRetomada) return { data: null, error: opcoes.erroNaRetomada };
         // `.select("id")` é a forma da TOMADA DE POSSE: quem lê o retorno está
         // perguntando "esta linha ainda era minha?" — e por isso o desfecho
         // depende dele.
@@ -425,14 +433,48 @@ describe("comIdempotencia", () => {
     expect(desfecho).toEqual({ tipo: "replay", resposta: { id: "t1" }, status: 201 });
   });
 
-  it("(11) reserva que NÃO gravou por erro de transporte: o efeito roda mesmo assim", async () => {
-    // Sem piora em relação ao que existia: erro que não é colisão não bloqueia
-    // o efeito. Devolver erro aqui faria o cliente retentar e duplicar.
-    const d = duble({ erroNoInsert: { code: "08006" } });
-    const desfecho = await comIdempotencia(
-      entrada(d, async () => ({ resposta: { id: "t1" }, status: 201 })),
-    );
-    expect(desfecho).toEqual({ tipo: "executou", resposta: { id: "t1" }, status: 201 });
+  it.each(["08006", "42501", "57014"])("(11) falha %s ao reservar impede o efeito", async (code) => {
+    // Transporte, permissão ou timeout: sem reserva confirmada não há posse
+    // da chave. O efeito ainda não começou, então propagar é seguro.
+    const falha = { code };
+    const d = duble({ erroNoInsert: falha });
+    const executar = vi.fn(async () => ({ resposta: { id: "t1" }, status: 201 }));
+
+    await expect(comIdempotencia(entrada(d, executar))).rejects.toBe(falha);
+    expect(executar).not.toHaveBeenCalled();
+    expect(d.inseridos).toHaveLength(0);
+    expect(d.atualizacoes).toHaveLength(0);
+  });
+
+  it("falha ao ler não é ausência de recibo: não reserva nem executa", async () => {
+    const falha = { code: "08006" };
+    const d = duble({ erroNaLeitura: falha });
+    const executar = vi.fn(async () => ({ resposta: {}, status: 201 }));
+
+    await expect(comIdempotencia(entrada(d, executar))).rejects.toBe(falha);
+    expect(executar).not.toHaveBeenCalled();
+    expect(d.eventos).toEqual([]);
+    expect(d.atualizacoes).toHaveLength(0);
+  });
+
+  it("falha na releitura após colisão propaga em vez de alegar operação em curso", async () => {
+    const falha = { code: "08006" };
+    const d = duble({ erroNoInsert: { code: "23505" }, erroNaReleitura: falha });
+    const executar = vi.fn(async () => ({ resposta: {}, status: 201 }));
+
+    await expect(comIdempotencia(entrada(d, executar))).rejects.toBe(falha);
+    expect(executar).not.toHaveBeenCalled();
+    expect(d.atualizacoes).toHaveLength(0);
+  });
+
+  it("falha ao retomar reserva vencida propaga sem executar", async () => {
+    const falha = { code: "42501" };
+    const d = duble({ linhas: [reserva({ expires_at: RECIBO_VENCIDO })], erroNaRetomada: falha });
+    const executar = vi.fn(async () => ({ resposta: {}, status: 201 }));
+
+    await expect(comIdempotencia(entrada(d, executar))).rejects.toBe(falha);
+    expect(executar).not.toHaveBeenCalled();
+    expect(d.atualizacoes).toHaveLength(1);
   });
 
   it("(12) efeito que LANÇA libera a chave: o erro propaga e a retentativa executa", async () => {

@@ -69,9 +69,10 @@
  * Se o efeito já aconteceu e a gravação do recibo falha, o desfecho devolvido
  * é `executou` — não erro. Devolver erro faria o cliente retentar e DUPLICAR o
  * efeito, que é exatamente o que a idempotência existe para evitar. A gravação
- * é, portanto, best-effort, e quem chama pode registrar o aviso. O mesmo vale
- * para a reserva: erro que não seja 23505 não impede o efeito — nesse ponto o
- * comportamento é o de antes desta mudança, sem piora.
+ * é, portanto, best-effort, e quem chama pode registrar o aviso.
+ * Antes do efeito, falhas de leitura, reserva ou retomada propagam o erro:
+ * sem confirmar a posse da chave, executar permitiria duplicar a operação.
+ * A colisão 23505 continua sendo resolvida pela releitura da linha existente.
  *
  * O caso inverso — o EFEITO lança — libera a reserva e propaga o erro: não há
  * recibo de operação que falhou, e a retentativa com a mesma chave executa em
@@ -209,7 +210,8 @@ export async function comIdempotencia<T>(
     const comJanela = somenteVivo
       ? consulta.gt("expires_at", agora().toISOString())
       : consulta;
-    const { data } = await comJanela.maybeSingle();
+    const { data, error } = await comJanela.maybeSingle();
+    if (error) throw error;
     return (data as LinhaDaChave | null) ?? null;
   };
 
@@ -238,6 +240,8 @@ export async function comIdempotencia<T>(
     expires_at: expiraEm,
   });
 
+  if (erroDaReserva && erroDaReserva.code !== "23505") throw erroDaReserva;
+
   // 23505: alguém passou pela leitura e reservou a chave primeiro. É o índice
   // único fazendo o trabalho dele — esta requisição NÃO executa o efeito.
   if (erroDaReserva && (erroDaReserva as { code?: string }).code === "23505") {
@@ -253,7 +257,7 @@ export async function comIdempotencia<T>(
     // linha velha é reescrita como reserva nova — com o `expires_at` lido como
     // bilhete, para não roubar a reserva de quem tomou posse entre a leitura e
     // esta gravação.
-    const { data: tomouPosse } = await db
+    const { data: tomouPosse, error: erroDaRetomada } = await db
       .from("idempotency_keys")
       .update({
         request_hash: hashDaColuna(hash),
@@ -265,6 +269,7 @@ export async function comIdempotencia<T>(
       .eq("expires_at", linha.expires_at)
       .select("id")
       .maybeSingle();
+    if (erroDaRetomada) throw erroDaRetomada;
     if (!tomouPosse) return { tipo: "em_curso" };
   }
 
