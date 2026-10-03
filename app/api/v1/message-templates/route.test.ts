@@ -43,7 +43,7 @@ const CHAVE = "b7c30000-0000-4000-8000-000000000003";
 type Linha = Record<string, unknown>;
 
 /** Fake stateful das duas tabelas que a rota toca. */
-function banco() {
+function banco(erroDaReserva: { code: string } | null = null) {
   const templates: Linha[] = [];
   const recibos: Linha[] = [];
   let seq = 0;
@@ -97,6 +97,7 @@ function banco() {
         return { data: casam()[0] ?? null, error: null };
       },
       insert: async (linha: Linha) => {
+        if (erroDaReserva) return { error: erroDaReserva };
         recibos.push({ id: `recibo-${++seq}`, ...linha });
         return { error: null };
       },
@@ -138,6 +139,20 @@ beforeEach(() => {
 });
 
 describe("POST /api/v1/message-templates — idempotência", () => {
+  it("reserva recusada: 500 sem criar template, auditar criação ou expor o erro do banco", async () => {
+    const db = banco({ code: "42501" });
+
+    const resposta = await POST(req(CORPO, CHAVE));
+    const corpo = await resposta.json();
+
+    expect(resposta.status).toBe(500);
+    expect(corpo.error.code).toBe("internal_error");
+    expect(JSON.stringify(corpo)).not.toContain("42501");
+    expect(db.templates).toHaveLength(0);
+    expect(db.recibos).toHaveLength(0);
+    expect(h.audit).not.toHaveBeenCalled();
+  });
+
   it("(1) mesma chave e mesmo corpo: cria UM template e responde igual das duas vezes", async () => {
     const db = banco();
 
