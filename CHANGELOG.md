@@ -8,6 +8,21 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
 
 ## [Não lançado]
 
+## [1.65.3] — 2026-10-03
+
+### Corrigido
+
+- **A mensagem por IA de um fluxo de follow-up não inventa mais promessa nem ignora a resposta do cliente** O passo "mensagem por IA" de um fluxo de follow-up dizia ao agente que ele tinha
+  combinado retornar e que o cliente não havia escrito — mesmo num fluxo de lead
+  novo, e mesmo no ramo que roda justamente porque o cliente respondeu. Agora o
+  agente sabe que o contato vem de um fluxo da empresa, recebe a resposta do
+  cliente em destaque quando ela existe, e a orientação que você escreveu no passo
+  vale mais que a instrução genérica de retomar a conversa. Com o Operador ligado,
+  o follow-up e a resposta a um caso interno também deixaram de mandar o agente
+  usar ferramentas que ele não tem.
+
+- **Criações protegidas contra duplicação param quando a reserva falha** Nas criações com chave de idempotência (respostas rápidas, mensagens, rascunhos, agendamentos e pagamento de parcelas), uma falha ao ler, reservar ou retomar a chave agora interrompe a operação antes do efeito. Isso evita criar sem a proteção contra duplicação quando o banco recusa a reserva. Crédito: @nsbastosconsultoria.
+
 ## [1.65.2] — 2026-10-01
 
 ### Corrigido
@@ -9718,7 +9733,8 @@ Primeira versão marcada do DeskcommCRM. O projeto vinha sendo desenvolvido publ
 
 - **Node 22 é obrigatório para desenvolvimento.** A suíte de invariantes instancia o cliente do Supabase, que exige o `WebSocket` global — nativo apenas a partir do Node 22. Isso não afeta quem apenas hospeda: a VPS roda a imagem pronta.
 
-[Não lançado]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.2...HEAD
+[Não lançado]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.3...HEAD
+[1.65.3]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.2...v1.65.3
 [1.65.2]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.1...v1.65.2
 [1.65.1]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.0...v1.65.1
 [1.65.0]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.64.1...v1.65.0
