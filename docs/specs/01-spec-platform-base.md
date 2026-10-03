@@ -1099,6 +1099,8 @@ segunda requisição simultânea colidir no índice único em vez de executar de
    `23505` relê: linha viva é classificada como no passo 1; linha vencida é retomada por
    `update` otimista (`id` + `expires_at` lido como bilhete) — quem perde a retomada recebe
    `idempotency_in_progress`.
+   Falha na leitura, erro de reserva diferente de `23505` ou erro na retomada interrompe
+   a operação antes do efeito; o handler devolve erro, sem criar sem reserva confirmada.
 3. Executa o efeito. Se ele **lança**, a reserva vence na hora e o erro propaga: a
    retentativa com a mesma chave executa em vez de receber "em curso".
 4. Grava o **recibo** na mesma linha (filtrada por `request_hash`), `expires_at` = 24h.
