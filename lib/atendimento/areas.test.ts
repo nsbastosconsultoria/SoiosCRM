@@ -10,7 +10,7 @@ describe("áreas da organização", () => {
 
   it("configuração válida é usada como está", () => {
     const areas = [{ slug: "fiscal", rotulo: "Fiscal" }];
-    expect(areasDaOrganizacao({ carteira: { areas } })).toEqual(areas);
+    expect(areasDaOrganizacao({ atendimento: { areas } })).toEqual(areas);
   });
 
   it("configuração torta falha ABERTA para o padrão (nunca tela sem área)", () => {
@@ -24,7 +24,7 @@ describe("áreas da organização", () => {
       ],
       "fiscal",
     ]) {
-      expect(areasDaOrganizacao({ carteira: { areas: ruim } })).toBe(AREAS_PADRAO);
+      expect(areasDaOrganizacao({ atendimento: { areas: ruim } })).toBe(AREAS_PADRAO);
     }
   });
 

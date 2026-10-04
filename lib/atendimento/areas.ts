@@ -1,10 +1,17 @@
 /**
- * As áreas de atendimento da organização (spec 21 §4.5.1) — o vocabulário que a carteira
- * (responsável por área, áreas que uma pessoa recebe) e o módulo protocolos (fila da área)
- * compartilham.
+ * As áreas de atendimento da organização — UM vocabulário, compartilhado por todo módulo que
+ * divide o trabalho por área: a carteira (responsável por área, áreas que uma pessoa recebe —
+ * spec 21 §4.5.1) e os protocolos (a fila e a categoria de cada demanda — spec 22).
  *
- * Mora em `organizations.settings.carteira.areas` como `[{ slug, rotulo }]`. Sem configuração —
- * ou com uma configuração que não passa no schema — vale o modelo genérico: a carteira funciona
+ * Mora em `organizations.settings.atendimento.areas` como `[{ slug, rotulo }]`, numa chave NEUTRA
+ * e não dentro de um módulo: os protocolos funcionam sem a carteira instalada, e duas listas (uma
+ * por módulo) divergiriam — o "fiscal" da carteira deixaria de ser o "fiscal" da fila.
+ *
+ * Quem é MEMBRO ou LÍDER de cada área não mora aqui: é id de usuário, e id de usuário em jsonb é
+ * chave estrangeira que o banco não confere (anti-patterns 1 e 4). Isso vive em tabela, no módulo
+ * que precisa (spec 22).
+ *
+ * Sem configuração — ou com uma que não passa no schema — vale o modelo genérico: a tela funciona
  * no primeiro dia, e o modelo de nicho (contabilidade) é aplicado por ação explícita, nunca
  * sozinho. Falha ABERTA para o padrão, como `janela-de-atendimento.ts`: uma configuração torta não
  * pode deixar a tela sem área nenhuma para escolher.
@@ -50,7 +57,7 @@ export const AREAS_CONTABILIDADE: readonly Area[] = [
 
 /** `settings` é o jsonb inteiro de `organizations.settings`. */
 export function areasDaOrganizacao(settings: unknown): readonly Area[] {
-  const bruto = (settings as { carteira?: { areas?: unknown } } | null | undefined)?.carteira?.areas;
+  const bruto = (settings as { atendimento?: { areas?: unknown } } | null | undefined)?.atendimento?.areas;
   if (bruto === undefined) return AREAS_PADRAO;
   const lido = areasSchema.safeParse(bruto);
   return lido.success ? lido.data : AREAS_PADRAO;

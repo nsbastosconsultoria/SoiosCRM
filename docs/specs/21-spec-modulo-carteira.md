@@ -182,11 +182,14 @@ check (vigencia_fim is null or vigencia_fim >= vigencia_inicio)
 partial unique (organization_id, company_id, area) where principal and vigencia_fim is null
 ```
 
-#### 4.5.1 Vocabulário de áreas — `organizations.settings.carteira.areas`
+#### 4.5.1 Vocabulário de áreas — `organizations.settings.atendimento.areas` (compartilhado)
 
-Lista de `{ slug, rotulo }` por organização. Genérico no schema; o modelo "contabilidade" semeia
-`relacionamento, contabil, fiscal, dp, societario, tributario, financeiro`. A spec 22 usa **o mesmo
-vocabulário** para a fila do protocolo: uma só fonte de verdade das áreas.
+Lista de `{ slug, rotulo }` por organização, em `lib/atendimento/areas.ts`. Genérico no schema; o
+modelo "contabilidade" semeia `relacionamento, contabil, fiscal, dp, societario, tributario,
+financeiro`. A spec 22 usa **o mesmo vocabulário** para a fila do protocolo: uma só fonte de
+verdade das áreas. A chave é neutra (`atendimento`, não `carteira`) porque os protocolos funcionam
+sem a carteira instalada (decisão do dono, 2026-10-04). Membros e líder de cada área são id de
+usuário e não moram neste jsonb: vivem em tabela com chave estrangeira, no módulo protocolos.
 
 ### 4.6 `carteira_contexto_conversa` + `carteira_eventos`
 

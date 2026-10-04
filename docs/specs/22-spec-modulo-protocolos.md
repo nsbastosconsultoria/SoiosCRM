@@ -69,7 +69,7 @@ protocolo_categorias
   id, organization_id
   parent_id uuid → protocolo_categorias (cascade)   -- null = categoria; preenchido = subcategoria (1 nível só)
   nome text not null, slug text not null
-  area text not null                                -- slug do vocabulário de áreas (spec 21 §4.5.1; sem carteira: settings.protocolos.areas)
+  area text not null                                -- slug de settings.atendimento.areas (lib/atendimento/areas.ts), o MESMO vocabulário da carteira
   prioridade_padrao text not null default 'P3' check in ('P1','P2','P3','P4')
   exige_competencia boolean not null default false
   exige_handoff boolean not null default false      -- ex.: notificação/intimação/fiscalização
@@ -89,6 +89,14 @@ protocolo_politicas_sla
   pausa_aguardando_terceiro boolean not null default true
   partial unique (organization_id, prioridade) where categoria_id is null
   unique (organization_id, prioridade, categoria_id)
+
+protocolo_area_membros                              -- quem trabalha a fila de cada área
+  id, organization_id
+  area text not null check (area ~ '^[a-z][a-z0-9_]{1,40}$')
+  user_id uuid not null                             -- FK composta (organization_id, user_id) → user_organizations (cascade)
+  papel text not null default 'membro' check in ('membro','lider')
+  unique (organization_id, area, user_id)
+  partial unique (organization_id, area) where papel = 'lider'
 
 protocolo_feriados
   id, organization_id, data date not null, descricao text not null
@@ -251,9 +259,11 @@ humano.
 1. Com `carteira`: responsável principal vigente da empresa **na área** do protocolo, se for membro
    ativo da organização ⇒ `distribuido_por='carteira'`, estado `atribuido`.
 2. Senão, **fila da área**: estado `triagem`, sem responsável; membros da área
-   (`settings.protocolos.areas[].membros`) enxergam e pegam ("assumir").
-3. Fila da área sem membros ⇒ `settings.protocolos.responsavel_fallback_user_id` ⇒ `distribuido_por=
-   'fallback'`, auditado, e aviso na Central (fila sem dono é anti-morte, §13).
+   (`protocolo_area_membros`) enxergam e pegam ("assumir").
+3. Fila da área sem membros ⇒ o **líder** da área (`papel = 'lider'`) ⇒ `distribuido_por='fallback'`,
+   auditado. Sem líder também ⇒ o protocolo fica na fila, visível a `manager`+, com aviso na Central
+   (fila sem dono é anti-morte, §17). Não há "responsável reserva" em `settings`: id de usuário em
+   jsonb é chave estrangeira que o banco não confere (anti-patterns 1 e 4 — decisão de 2026-10-04).
 4. Transferência humana: imediata, auditada, sem aceite (mesma decisão G1-06d da spec 13).
 
 ## 10. SLA
@@ -291,7 +301,7 @@ sair soma o intervalo **útil** em `pausa_acumulada` e empurra `resolucao_vence_
 
 Para cada relógio não pausado e não cumprido: ao cruzar 80%, 100% e 120%, insere em
 `protocolo_marcos_sla` (a PK garante idempotência no replay) e só então: 80% ⇒ aviso ao responsável;
-100% ⇒ responsável + gestor da área (`settings.protocolos.areas[].lider_user_id`), evento
+100% ⇒ responsável + líder da área (`protocolo_area_membros`, `papel = 'lider'`), evento
 `sla_estourado`; 120% ⇒ papéis `manager`+. Rodada sem efeito não audita.
 
 ## 11. Pontos no núcleo
@@ -329,7 +339,7 @@ configuração `admin`.
 - Inbox — botão "Abrir protocolo" no cabeçalho da conversa (pré-preenchido com contato e empresa do
   contexto) e lista "Protocolos desta empresa" no painel lateral.
 - Configurações › Protocolos — categorias, regras de prioridade, políticas SLA, expediente, feriados,
-  áreas e membros.
+  áreas (as de `settings.atendimento.areas`) e os membros e o líder de cada uma.
 
 ## 13. Modelo de nicho "contabilidade"
 
@@ -372,16 +382,19 @@ semeia número inventado é a mesma falha). Um modelo `generico` com 4 categoria
   **não** diz prazo de resolução; segunda mensagem sobre o mesmo DAS complementa em vez de duplicar.
 - **E2E / prova em par:** cenários B, C e E do modelo §35 pela inbox e pela tela de protocolos.
 
-## 16. Perguntas abertas (decisão do dono)
+## 16. Decisões do dono (2026-10-04)
 
-| # | Pergunta | Recomendação |
+| # | Pergunta | Decisão |
 |---|---|---|
-| Q1 | Protocolo sempre cria `agent_case` quando a IA abre? | Sim (§6): é o que deixa o humano responder sem ir à inbox |
-| Q2 | `agent` pode baixar prioridade? | Não; só `manager`+ (subir, qualquer `agent`) |
-| Q3 | Expediente único por organização basta na v1? | Sim; calendário por área entra se houver pedido real |
-| Q4 | Satisfação (CSAT) ao fechar? | Fora da v1; o evento `protocolo.estado_alterado` já é o gancho |
-| Q5 | Numeração anual (`2026-000123`) ou contínua? | Anual, igual às propostas |
-| Q6 | Nome do módulo: "protocolos", "solicitações" ou "tickets"? | "Protocolos" (ver nota no topo); renomear antes do PR-C custa só texto |
+| Q1 | Protocolo sempre cria `agent_case` quando a IA abre? | **Sim** (§6): o humano responde pela ficha do protocolo e a IA repassa ao cliente |
+| Q2 | `agent` pode baixar prioridade? | **Não**: baixar só `manager`+; subir, qualquer `agent` |
+| Q3 | Expediente único por organização basta na v1? | **Sim**; calendário por área só com pedido real |
+| Q4 | Satisfação (CSAT) ao fechar? | **Fora da v1**; o evento `protocolo.estado_alterado` é o gancho |
+| Q5 | Numeração anual (`2026-000123`) ou contínua? | **Anual**, igual às propostas |
+| Q6 | Nome do módulo | **"Protocolos"** (ver nota no topo) |
+| Q7 | Vocabulário de áreas | **Um só, neutro**: `settings.atendimento.areas` (`lib/atendimento/areas.ts`), compartilhado com a carteira |
+| Q8 | Membros e líder da área | **Tabela** `protocolo_area_membros` com FK, nunca jsonb; sem "responsável reserva" em `settings` |
+| Q9 | Regra de prazo padrão | Prazo do cliente hoje ou vencido ⇒ P1; em até 2 dias úteis ⇒ P2; configurável em `settings.protocolos.regras_de_prazo` |
 
 ## 17. Sistema vivo (DoD 13) e Definition of Done
 

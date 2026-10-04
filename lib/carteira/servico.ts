@@ -23,7 +23,7 @@ import { audit } from "@/lib/audit";
 import { createCompanyHandler, getCompanyHandler } from "@/lib/crm-b2b/companies-handler";
 import { normalizeCnpj } from "@/lib/crm-b2b/normalize";
 
-import { areasDaOrganizacao, type Area } from "./areas";
+import { areasDaOrganizacao, type Area } from "@/lib/atendimento/areas";
 import { lancarErroDaCarteira, type ErroDoBanco } from "./erros";
 import type {
   EmpresaNovaNaCarteira,

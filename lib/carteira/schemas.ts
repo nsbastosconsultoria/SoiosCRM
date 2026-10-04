@@ -5,7 +5,7 @@
  */
 import { z } from "zod";
 
-import { SLUG_DE_AREA } from "./areas";
+import { SLUG_DE_AREA } from "@/lib/atendimento/areas";
 import { ESTADOS_DA_CARTEIRA, PAPEIS_DO_VINCULO, TIPOS_DE_ESTABELECIMENTO } from "./vocabulario";
 
 const slugDeArea = z.string().regex(SLUG_DE_AREA, "área inválida");
