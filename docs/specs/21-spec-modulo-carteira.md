@@ -333,21 +333,29 @@ da empresa ao modelo — só o que o próprio contato já informou (mesmo princ�
 
 ## 9. API e tela
 
-**API** (`/api/v1/carteira/…`, wrappers `ok()/fail()`, Zod, `requireRole`, `requireSupportWrite`
-antes do efeito, `Idempotency-Key` nos POSTs de criação, auditoria em toda mutação):
+**API** (`/api/v1/carteira/…`, wrappers `ok()/fail()`, Zod estrito, `requireRole`,
+`requireSupportWrite` antes do efeito, auditoria em toda mutação; regra de negócio em
+`lib/carteira/servico.ts`, erro do banco traduzido em `lib/carteira/erros.ts`). Implementado no PR-A2:
 
 ```text
-GET    /carteira/empresas?estado=&grupo_id=&responsavel=&q=&cursor=
-GET    /carteira/empresas/:company_id            -- perfil + vínculos + responsáveis + contexto recente
-PATCH  /carteira/empresas/:company_id            -- grupo, matriz, atributos
-POST   /carteira/empresas/:company_id/estado     -- transição (§4.2)
-POST   /carteira/vinculos        PATCH/DELETE(desativa) /carteira/vinculos/:id
-POST   /carteira/responsaveis    PATCH /carteira/responsaveis/:id   (encerra vigência)
-GET/POST/PATCH /carteira/grupos
-POST   /carteira/conversas/:conversation_id/contexto   -- troca manual pelo atendente
+GET    /carteira/empresas?estado=&q=&limit=          viewer   -- lista (perfil + empresa)
+POST   /carteira/empresas                            manager  -- põe na carteira (cria pelo CNPJ se preciso; estado_inicial prospect|ativo)
+GET    /carteira/empresas/:company_id                viewer   -- ficha: perfil, empresa, pessoas (núcleo), detalhes, responsáveis, linha do tempo, áreas
+PATCH  /carteira/empresas/:company_id                manager  -- grupo, matriz/filial, atributos (estado NÃO)
+POST   /carteira/empresas/:company_id/estado         manager  -- transição (§4.2), via fn_carteira_transicionar
+POST   /carteira/empresas/:company_id/vinculos       manager  -- liga contato (pessoa → company_people → detalhe)
+PATCH  /carteira/vinculos/:company_people_id         agent    -- papel, áreas, ativo (cria o detalhe se faltar)
+POST   /carteira/empresas/:company_id/responsaveis   manager  -- define o principal da área (encerra o anterior)
+POST   /carteira/responsaveis/:id/encerrar           manager  -- encerra a vigência
+GET/POST /carteira/grupos                            viewer / manager
 ```
 
-Papéis: leitura `viewer`+; vínculos e contexto `agent`+; estado, grupos e responsáveis `manager`+.
+Criar vínculo é `manager` (e não `agent`, como dizia a versão anterior desta seção) porque inserir em
+`company_people` é `manager`+ na RLS do núcleo (0239); editar o detalhe é `agent`, o mesmo degrau
+de editar `company_people`. Fica para o PR-B: `POST /carteira/conversas/:conversation_id/contexto`
+(troca manual na inbox). Fora desta versão: `Idempotency-Key` nos POSTs (a carteira repete a
+operação com o mesmo efeito — `upsert`, "mesma pessoa de novo não muda nada"), filtros por grupo e
+responsável na lista.
 
 **Tela** `app/app/carteira/` (porta em `lib/navigation/catalogo.ts`, grupo CRM; some com o módulo
 desligado): lista de empresas com filtro por estado/grupo/responsável; ficha com abas
@@ -369,15 +377,17 @@ categorias da spec 22. Mora em `lib/carteira/modelos/contabilidade.ts`, ao lado 
   consumidor**, nunca antes: o drain deixa evento sem handler `pending` para sempre (anti-pattern 3;
   nota da 0155 no MANIFEST). A migration 0902 não emite nenhum; a linha do tempo até lá é
   `carteira_eventos`, escrita por gatilho.
-- **Auditoria** (`lib/audit/actions.ts`, no fim do array): `carteira.empresa_atualizada`,
-  `carteira.estado_alterado`, `carteira.vinculo_criado`, `carteira.vinculo_atualizado`,
-  `carteira.responsavel_alterado`, `carteira.grupo_criado`, `carteira.contexto_alterado`.
+- **Auditoria** (`lib/audit/actions.ts`, no fim do array): `carteira.empresa_adicionada`,
+  `carteira.perfil_atualizado`, `carteira.estado_alterado`, `carteira.vinculo_criado`,
+  `carteira.vinculo_atualizado`, `carteira.responsavel_definido`, `carteira.responsavel_encerrado`,
+  `carteira.grupo_criado` (PR-A2); `carteira.contexto_alterado` entra com a troca de contexto na inbox (PR-B).
 - **LGPD (ADR-0002, D8):** nenhuma coluna do módulo é texto livre sobre a pessoa (papel, áreas,
   estado, ids, datas), e os gatilhos montam `carteira_eventos.anterior/novo` campo a campo, nunca
   com `to_jsonb(new)`. Por isso o módulo **não declara seção** em `modulo_secoes_lgpd` — mesma
   decisão da 0480. Vínculos e períodos de contexto sobrevivem à anonimização do contato (são
-  operação, como `crm_leads.stage_id`). **Export** inclui a seção "empresas vinculadas" (PR-A2);
-  falha de leitura marca o export como parcial.
+  operação, como `crm_leads.stage_id`). **Export:** a pessoa e as empresas a que ela está ligada já
+  saem na seção `b2b` do export do núcleo (`lib/lgpd/export-collector.ts`, `people` +
+  `company_people`), porque o vínculo é o do núcleo. O módulo não acrescenta seção.
 
 ## 12. Testes
 
