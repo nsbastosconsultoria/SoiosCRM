@@ -173,6 +173,23 @@ protocolo_marcos_sla                                  -- idempotência do escalo
 Append-only como `carteira_eventos` (spec 21 §4.6): sem UPDATE/DELETE/TRUNCATE para os três papéis
 do PostgREST.
 
+### 4.4 Quem escreve (decidido na implementação, migration 0904)
+
+- **`protocolos` só é escrito pelo serviço** (`lib/protocolos/`), com o service role, depois do
+  `requireRole` da rota. A sessão só LÊ (`authenticated` sem INSERT/UPDATE/DELETE). Motivo: o SLA é
+  calculado em TypeScript (`lib/protocolos/sla.ts` — expediente, feriados, pausas), e uma escrita
+  direta pelo PostgREST mudaria o estado sem recalcular os prazos. Consequência: "só gestor baixa a
+  prioridade" (Q2) é cobrado no serviço, não na RLS.
+- **No gatilho, valendo para qualquer escritor:** número e ano (contador com trava de linha),
+  campos que nascem com o protocolo (empresa, contato, conversa, origem, número) imutáveis,
+  coerência de organização e de hierarquia de categoria, a **máquina de estados** (fechado e
+  cancelado são finais) e os carimbos que não dependem de calendário (primeira resposta, resolvido,
+  reaberturas, fechado).
+- `resumo` aceita nulo: é o que a anonimização grava (seção de LGPD), já que jsonb não recebe o
+  rótulo de texto.
+- Nota, complemento do cliente e alertas de SLA entram por `fn_protocolo_registrar_evento` (só
+  service role); a linha do tempo continua append-only para os três papéis.
+
 ## 5. Abertura e resumo estruturado
 
 Toda abertura passa por **uma** função de domínio, `lib/protocolos/abrir.ts`, usada pela tool, pela API

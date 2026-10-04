@@ -37,6 +37,14 @@ export const CATALOGO_DE_MODULOS: readonly ModuloCatalogo[] = [
       "cliente, quem cuida dela em cada área e de qual empresa é cada conversa. Para quem " +
       "atende empresas recorrentes por um número só (contabilidade, agência, TI gerenciada).",
   },
+  {
+    slug: "protocolos",
+    nome: "Protocolos",
+    descricao:
+      "As demandas dos clientes atuais com número, categoria, prioridade, fila por área e prazo " +
+      "de resposta e de resolução (SLA). Para quem precisa saber o que vence hoje e quem é o " +
+      "dono de cada pedido.",
+  },
 ];
 
 export function moduloDoCatalogo(slug: string): ModuloCatalogo | undefined {
