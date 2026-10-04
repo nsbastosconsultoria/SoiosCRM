@@ -588,3 +588,133 @@ export async function criarGrupo(
   });
   return data;
 }
+
+// ─── contexto da conversa (a empresa de que a conversa trata) ────────────────
+
+export type EmpresaDaConversa = {
+  company_id: string;
+  nome: string;
+  cnpj: string | null;
+  estado: EstadoDaCarteira | null;
+  papel: string | null;
+};
+
+/**
+ * As empresas da pessoa da conversa e a empresa corrente — para a inbox. Pela SESSÃO: a conversa
+ * só é lida se quem pede a enxerga (RLS por atendente, `fn_can_view_conversation`), e o contexto
+ * herda essa visibilidade (policy da 0902). Diferente da ferramenta do assistente, aqui o CNPJ sai
+ * inteiro: é a equipe olhando o próprio cadastro.
+ */
+export async function contextoDaConversa(db: SB, ctx: HandlerCtx, conversationId: string) {
+  const { data: conversa, error } = await db
+    .from("conversations")
+    .select("id, contacts!inner(person_id)")
+    .eq("organization_id", ctx.organization_id)
+    .eq("id", conversationId)
+    .maybeSingle();
+  falha(error, ctx);
+  if (!conversa) naoEncontrado(ctx, "Conversa não encontrada.");
+  const personId =
+    (conversa as unknown as { contacts: { person_id: string | null } | null }).contacts?.person_id ?? null;
+
+  const { data: corrente, error: erroCorrente } = await db
+    .from("carteira_contexto_conversa")
+    .select("company_id, definido_por, inicio")
+    .eq("organization_id", ctx.organization_id)
+    .eq("conversation_id", conversationId)
+    .is("fim", null)
+    .maybeSingle();
+  falha(erroCorrente, ctx);
+
+  let empresas: EmpresaDaConversa[] = [];
+  if (personId) {
+    const { data: vinculos, error: erroVinculos } = await db
+      .from("company_people")
+      .select("company_id, companies!inner(legal_name, trade_name, cnpj), carteira_vinculo_detalhes(papel, ativo)")
+      .eq("organization_id", ctx.organization_id)
+      .eq("person_id", personId)
+      .limit(50);
+    falha(erroVinculos, ctx);
+    type Linha = {
+      company_id: string;
+      companies: { legal_name: string | null; trade_name: string | null; cnpj: string | null };
+      carteira_vinculo_detalhes: { papel: string; ativo: boolean } | Array<{ papel: string; ativo: boolean }> | null;
+    };
+    const detalhe = (l: Linha) =>
+      Array.isArray(l.carteira_vinculo_detalhes) ? l.carteira_vinculo_detalhes[0] : l.carteira_vinculo_detalhes;
+    const linhas = ((vinculos ?? []) as unknown as Linha[]).filter((l) => detalhe(l)?.ativo ?? true);
+
+    const ids = linhas.map((l) => l.company_id);
+    const { data: perfis, error: erroPerfis } =
+      ids.length === 0
+        ? { data: [], error: null }
+        : await db
+            .from("carteira_perfis")
+            .select("company_id, estado")
+            .eq("organization_id", ctx.organization_id)
+            .in("company_id", ids);
+    falha(erroPerfis, ctx);
+    const estadoDe = new Map(
+      ((perfis ?? []) as Array<{ company_id: string; estado: EstadoDaCarteira }>).map((p) => [p.company_id, p.estado]),
+    );
+    empresas = linhas.map((l) => ({
+      company_id: l.company_id,
+      nome: l.companies.trade_name || l.companies.legal_name || "",
+      cnpj: l.companies.cnpj,
+      estado: estadoDe.get(l.company_id) ?? null,
+      papel: detalhe(l)?.papel ?? null,
+    }));
+  }
+
+  return {
+    empresas,
+    empresa_da_conversa: (corrente as { company_id: string | null } | null)?.company_id ?? null,
+    definido_por: (corrente as { definido_por: string } | null)?.definido_por ?? null,
+  };
+}
+
+/**
+ * A pessoa da tela troca a empresa da conversa. Antes de chamar a função (que é só do service
+ * role), confere PELA SESSÃO que quem pede enxerga a conversa — senão um atendente apontaria o
+ * contexto de uma conversa que a RLS esconde dele. Humano pode apontar qualquer empresa da
+ * organização (`fn_carteira_definir_contexto`), inclusive nenhuma (`null`).
+ */
+export async function definirContextoPelaTela(
+  db: SB,
+  admin: SB,
+  ctx: HandlerCtx,
+  userId: string,
+  conversationId: string,
+  companyId: string | null,
+) {
+  const { data: visivel } = await db
+    .from("conversations")
+    .select("id")
+    .eq("organization_id", ctx.organization_id)
+    .eq("id", conversationId)
+    .maybeSingle();
+  if (!visivel) naoEncontrado(ctx, "Conversa não encontrada.");
+
+  const { data, error } = await admin.rpc("fn_carteira_definir_contexto", {
+    p_org: ctx.organization_id,
+    p_conversation: conversationId,
+    p_company: companyId,
+    p_definido_por: "humano",
+    p_user: userId,
+  });
+  falha(error, ctx);
+  const r = data as { alterado: boolean; company_id: string | null; anterior?: string | null };
+
+  if (r.alterado) {
+    await audit({
+      organizationId: ctx.organization_id,
+      actorUserId: userId,
+      action: "carteira.contexto_alterado",
+      resourceType: "conversations",
+      resourceId: conversationId,
+      requestId: ctx.requestId,
+      metadata: { company_id: r.company_id, anterior: r.anterior ?? null },
+    });
+  }
+  return r;
+}

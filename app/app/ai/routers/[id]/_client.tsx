@@ -46,6 +46,7 @@ import type { ClassifierModelOption } from "@/lib/ai/classifier-models";
 import type { ChannelSessionLite } from "../../agents/[id]/_components/AgentForm";
 import { useFollowupFlows } from "@/hooks/followup/useFollowupFlows";
 import { useT } from "@/hooks/i18n/useT";
+import { RegraDeRelacionamento } from "./_relacionamento";
 
 interface AgentLite {
   id: string;
@@ -122,6 +123,8 @@ export function RouterEditorClient({
   // seria prometer um comportamento que a instalação não tem.
   const { activeOrg } = useAuth();
   const roteirosLigados = activeOrg?.modulos_ligados?.includes("fluxos_atendimento") === true;
+  // A regra "quem já é cliente" lê a carteira de empresas: sem o módulo, não há o que ler.
+  const carteiraLigada = activeOrg?.modulos_ligados?.includes("carteira") === true;
   const { data: atendimentoFlows } = useFollowupFlows({ surface: "atendimento", enabled: roteirosLigados });
 
   const baseline = React.useMemo(
@@ -373,6 +376,15 @@ export function RouterEditorClient({
               </p>
             </div>
           </Card>
+
+          {carteiraLigada ? (
+            <RegraDeRelacionamento
+              routerId={routerId}
+              config={router.config}
+              intencoesSalvas={members.map((m) => m.intent_name)}
+              podeGerenciar={canManage}
+            />
+          ) : null}
 
           <TestPanel
             isActive={router.is_active}

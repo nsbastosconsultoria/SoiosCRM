@@ -36,6 +36,7 @@ import { DialButton } from "@/components/voice/DialButton";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { phoneForDisplay } from "@/lib/channels/phone-variants";
+import { EmpresaDaConversa } from "./EmpresaDaConversa";
 
 interface Props {
   conversation: ConversationWithContact;
@@ -85,7 +86,7 @@ export function ConversationHeader({
   botaoBuscaRef,
 }: Props) {
   const t = useT();
-  const { user } = useAuth();
+  const { user, activeOrg } = useAuth();
   const claim = useClaimConversation();
   const release = useReleaseConversation();
   const close = useCloseConversation();
@@ -216,6 +217,11 @@ export function ConversationHeader({
             <Phone size={11} weight="regular" aria-hidden /> {phone}
           </p>
         )}
+        {/* De qual empresa é a conversa (módulo carteira, spec 21). Abaixo do telefone porque
+            responde a mesma pergunta — QUEM está do outro lado —, e some sem o módulo. */}
+        {activeOrg?.modulos_ligados?.includes("carteira") ? (
+          <EmpresaDaConversa conversationId={conversation.id} podeTrocar={activeOrg.role !== "viewer"} />
+        ) : null}
       </div>
 
       {/* `shrink-0` saiu daqui: era ele que impunha o piso de largura. Agora a

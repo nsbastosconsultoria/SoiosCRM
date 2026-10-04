@@ -95,6 +95,10 @@ const ESCRITA_QUE_E_TRABALHO_DE_ATENDENTE: ReadonlyArray<string> = [
   "crm_propose_contact_field",
   // `app/api/v1/ai/cases/[id]/` — exige `agent`.
   "crm_close_human_case",
+  // `app/api/v1/carteira/conversas/[id]/contexto/` — POST exige `agent`: dizer de qual empresa é a
+  // conversa é trabalho de quem atende (spec 21 §8). O banco limita o agente às empresas ligadas à
+  // pessoa da conversa (`fn_carteira_definir_contexto`, migration 0902); a pessoa da tela, não.
+  "crm_carteira_definir_empresa_da_conversa",
   // `app/api/v1/conversations/[id]/reactivate-bot/` — POST exige `agent`.
   // A regra dura aqui NÃO é o papel: o handler recusa `actor.type === "ai_agent"`
   // com `resume_requires_person`. Proteção dita em voz alta em vez de acidente de

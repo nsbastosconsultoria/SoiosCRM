@@ -30,8 +30,30 @@ const patchRouterSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   is_active: z.boolean().optional(),
   fallback_agent_id: z.string().uuid().nullable().optional(),
-  config: z.record(z.string(), z.unknown()).optional(),
+  config: z
+    .record(z.string(), z.unknown())
+    // `relacionamento` (spec 21 §7) tem forma conhecida: situação → nome da intenção, e se o
+    // cliente pode ser reclassificado. `null` desliga a regra. O motor lê defensivamente, mas
+    // gravar lixo aqui deixaria a tela dizendo que a regra existe quando o motor a ignora.
+    .refine(
+      (c) =>
+        !("relacionamento" in c) ||
+        c.relacionamento === null ||
+        regraDeRelacionamentoSchema.safeParse(c.relacionamento).success,
+      { message: "config.relacionamento inválido" },
+    )
+    .optional(),
 });
+
+const regraDeRelacionamentoSchema = z
+  .object({
+    cliente_ativo: z.string().min(1).max(120).optional(),
+    cliente_inativo: z.string().min(1).max(120).optional(),
+    prospect: z.string().min(1).max(120).optional(),
+    desconhecido: z.string().min(1).max(120).optional(),
+    permite_reclassificar: z.boolean().optional(),
+  })
+  .strict();
 
 // ---------------------------------------------------------------------------
 // GET

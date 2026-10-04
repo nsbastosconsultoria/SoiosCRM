@@ -69,3 +69,9 @@ export const grupoNovoSchema = z
     descricao: z.string().trim().max(500).nullable().optional(),
   })
   .strict();
+
+export const contextoSchema = z
+  .object({
+    company_id: z.string().uuid().nullable(),
+  })
+  .strict();

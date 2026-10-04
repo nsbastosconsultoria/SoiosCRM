@@ -272,7 +272,7 @@ Regras (modelo §23):
 ```jsonc
 // ai_routers.config (jsonb já existente; chave nova, opcional)
 "relacionamento": {
-  "cliente_ativo": "<ai_router_members.id>",   // ex.: membro "Atendimento"
+  "cliente_ativo": "<intent_name do membro>",  // ex.: "atendimento"
   "cliente_inativo": null,                     // null = segue a classificação normal
   "prospect": null,
   "desconhecido": null,
@@ -280,47 +280,66 @@ Regras (modelo §23):
 }
 ```
 
-### 7.1 Ordem de decisão nova
+### 7.1 Ordem de decisão nova (implementada no PR-B)
 
 ```text
-0. relacionamento configurado E resolvedor disponível?
-     situação com membro definido ─► esse agente (outcome 'relationship')
-     senão ─► segue
+campanha (degrau 0 de antes) → roteador ativo?
+0. config.relacionamento E a situação do contato tem membro?
+     a conversa já saiu desse membro por reclassificação (sticky em OUTRO agente)? ─► regras de sempre
+     sem mensagem (follow-up) ou permite_reclassificar=false ─► membro da situação ('relationship')
+     classificador: outra intenção, confiança ≥ mínima ─► membro dela ('relationship_overridden')
+     senão ─► membro da situação ('relationship')
 1..7. regras atuais (sticky → classificação → fallback → genérico), inalteradas
 ```
 
+Aponta pelo **nome da intenção** (`intent_name`, único por roteador), não pelo id do membro: salvar
+os membros regrava as linhas e troca os ids, e a regra apontaria para um membro que não existe mais.
+
+**Por que "já saiu por reclassificação" desliga a regra:** depois de "quero abrir outra empresa" o
+cliente está no Comercial; a resposta seguinte ("é no ramo de marketing") não tem intenção clara, e
+sem essa exceção a regra o devolveria ao Atendimento no meio da conversa comercial. Volta ao
+Atendimento quando o classificador reconhecer essa intenção, como em qualquer troca de assunto.
+
+**Roteiro de atendimento:** a regra decide todo turno de quem é cliente; quando devolve o agente que
+já atendia (o sticky), é continuação e não recomeça o roteiro (`flowPointerId` nulo), como o sticky.
+
 ### 7.2 Reclassificação controlada
 
-Com `permite_reclassificar=true`, um cliente ativo que expressa intenção **comercial** com confiança
-`>= min_confidence` (ex.: "quero abrir outra empresa") vai para o membro dessa intenção, com outcome
-`relationship_overridden`. É o cross-sell do modelo §35-F. Com `false`, cliente ativo vai sempre ao
-membro do relacionamento, e cabe ao prompt dele registrar a oportunidade.
+Com `permite_reclassificar=true` (padrão), um cliente ativo que expressa outra intenção com
+confiança `>= min_confidence` vai para o membro dela, com outcome `relationship_overridden`. Com
+`false`, cliente ativo vai sempre ao membro do relacionamento, e o classificador nem roda.
 
 ### 7.3 Contrato e robustez
 
-- O núcleo **não importa** o módulo: chama uma interface `ResolvedorDeRelacionamento` injetada nas
-  `ResolveTurnAgentDeps`. Sem o módulo instalado, a implementação padrão devolve `desconhecido` —
-  e `desconhecido` sem membro configurado é exatamente o comportamento de hoje.
-- `ai_router_decisions` ganha os outcomes `relationship` e `relationship_overridden` (coluna é
-  `text` + CHECK: forward-fix da constraint pela tripla migration + baseline + MANIFEST, e o
-  vocabulário entra em `tests/invariants/vocabulario-banco-x-typescript.test.ts`).
-- A tela do roteador (`app/app/ai/routers/[id]/page.tsx`) ganha a seção "Quem já é cliente",
-  visível só com o módulo instalado.
-- Resolver o relacionamento acontece **uma vez por turno**, antes do classificador: custo zero de
-  LLM quando o relacionamento decide.
+- O núcleo recebe o resolvedor por injeção (`ResolveTurnAgentDeps.resolverRelacionamento`); o
+  padrão é `situacaoDaConversa` (`lib/carteira/resolvedor.ts`, sobre `pg`). Resolvedor que falha
+  (módulo desinstalado, banco lento) vira `desconhecido` com `log.warn`; sem membro para
+  `desconhecido`, é o roteamento de antes.
+- Roteador sem `config.relacionamento` não chama o resolvedor: zero custo para quem não usa.
+- `ai_router_decisions.outcome` ganha `relationship` e `relationship_overridden` (migration 0903,
+  núcleo). O PATCH do roteador valida a forma de `config.relacionamento` (Zod estrito).
+- A tela do roteador ganha o card "Quem já é cliente" (`app/app/ai/routers/[id]/_relacionamento.tsx`),
+  só com o módulo instalado, que oferece só intenções já salvas.
+- Uma leitura por turno, antes do classificador; sem reclassificação permitida, o classificador
+  nem roda (custo zero de LLM quando o relacionamento decide).
+- O Jev não é consultado no caminho da regra 0 (ele só observa o classificador de sempre).
 
 ## 8. Ferramentas do agente (catálogo MCP, `modulo: "carteira"`)
 
 Padrão de `lib/mcp/tools/catalogo/honorarios.ts`: somem do agente e da tela de capacidades com o
 módulo desligado (`deModuloDesligado`); lançam erro explicativo se a tabela não existir.
 
-| Tool | Categoria | Risco | Pacotes | O que faz |
-|---|---|---|---|---|
-| `crm_carteira_empresas_do_contato` | read | seguro | `atender`, `vender` | Lista as empresas do contato da conversa (nome, CNPJ mascarado, estado, papel) e o contexto corrente |
-| `crm_carteira_definir_empresa_da_conversa` | write | seguro | `atender` | Define a empresa ativa; só aceita empresa com vínculo ativo com o contato |
-| `crm_carteira_buscar_empresa` | read | seguro | `atender`, `vender` | Busca por CNPJ ou nome **dentro da organização**; devolve candidatos, nunca cria |
-| `crm_carteira_cadastrar_prospect` | write | seguro | `vender` | Cria (ou reaproveita, pelo CNPJ) empresa + perfil `prospect` + vínculo com o contato; sem CNPJ, aceita só nome e atividade |
-| `crm_carteira_vincular_contato` | write | **crítica** | — (ligar uma a uma) | Liga o contato a uma empresa **cliente** existente. Crítica porque dá a quem escreve acesso ao contexto daquela empresa — exige confirmação por CNPJ completo e é sempre auditada |
+| Tool | Categoria | Risco | Pacotes | O que faz | Estado |
+|---|---|---|---|---|---|
+| `crm_carteira_empresas_do_contato` | read | seguro | `atender` | Empresas da pessoa da conversa (nome, 4 últimos dígitos do CNPJ, estado, papel), a situação e a empresa corrente | PR-B |
+| `crm_carteira_definir_empresa_da_conversa` | write | atenção | `atender` | Define a empresa da conversa; o banco só aceita empresa ligada à pessoa | PR-B |
+| `crm_carteira_buscar_empresa` | read | seguro | `atender` | Busca na carteira por nome ou dígitos do CNPJ; devolve candidatas, nunca cria | PR-B |
+| `crm_carteira_cadastrar_prospect` | write | — | `vender` | Cria empresa prospect + vínculo | **adiada**: falta a medição de folga do pacote `vender` (abaixo) |
+| `crm_carteira_vincular_contato` | write | crítica | — | Liga a pessoa a uma empresa CLIENTE | **adiada** (Q4): o caminho é o humano, pela ficha da carteira |
+
+`crm_carteira_definir_empresa_da_conversa` entra em `ESCRITA_QUE_E_TRABALHO_DE_ATENDENTE`
+(`tests/unit/capacidade-alcancavel-pelo-agente.test.ts`) com a paridade da rota
+`POST /carteira/conversas/:id/contexto`, que exige `agent`.
 
 **Pacote `vender`:** o comentário de `honorarios.ts` registra que `vender` já consome quase toda a
 folga do teto de capacidades (`pacote-reserva-vaga-da-critica.test.ts`). Antes de pôr duas tools em
@@ -352,8 +371,8 @@ GET/POST /carteira/grupos                            viewer / manager
 
 Criar vínculo é `manager` (e não `agent`, como dizia a versão anterior desta seção) porque inserir em
 `company_people` é `manager`+ na RLS do núcleo (0239); editar o detalhe é `agent`, o mesmo degrau
-de editar `company_people`. Fica para o PR-B: `POST /carteira/conversas/:conversation_id/contexto`
-(troca manual na inbox). Fora desta versão: `Idempotency-Key` nos POSTs (a carteira repete a
+de editar `company_people`. No PR-B: `GET/POST /carteira/conversas/:conversation_id/contexto` (`viewer` / `agent`), com
+o seletor de empresa no cabeçalho da conversa (`components/inbox/EmpresaDaConversa.tsx`). Fora desta versão: `Idempotency-Key` nos POSTs (a carteira repete a
 operação com o mesmo efeito — `upsert`, "mesma pessoa de novo não muda nada"), filtros por grupo e
 responsável na lista.
 

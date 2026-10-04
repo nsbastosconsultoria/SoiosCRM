@@ -1030,6 +1030,7 @@ export const AUDIT_ACTIONS = [
   "carteira.responsavel_definido",
   "carteira.responsavel_encerrado",
   "carteira.grupo_criado",
+  "carteira.contexto_alterado",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

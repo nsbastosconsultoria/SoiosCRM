@@ -52,6 +52,11 @@ import {
 } from "./evolucao";
 import { crmListContactOrders, crmSearchProducts } from "./comercio";
 import { crmGetHonorariosContrato, crmListHonorariosParcelas } from "./honorarios";
+import {
+  crmCarteiraBuscarEmpresa,
+  crmCarteiraDefinirEmpresaDaConversa,
+  crmCarteiraEmpresasDoContato,
+} from "./carteira";
 import { crmDescribeExternalData, crmQueryExternalData } from "./dados-externos";
 import { crmListPrivacyRequests } from "./privacidade";
 import {
@@ -123,6 +128,9 @@ export const allTools: ReadonlyArray<McpToolDefinition> = [
   crmSearchProducts,
   crmGetHonorariosContrato,
   crmListHonorariosParcelas,
+  crmCarteiraEmpresasDoContato,
+  crmCarteiraDefinirEmpresaDaConversa,
+  crmCarteiraBuscarEmpresa,
   crmPrepararProposta,
   crmDescribeExternalData,
   crmQueryExternalData,

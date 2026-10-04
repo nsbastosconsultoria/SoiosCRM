@@ -13587,6 +13587,17 @@ export const DICIONARIO: Traducoes = {
   "Responsável definido": { es: "Responsable definido" },
   "Responsável alterado": { es: "Responsable modificado" },
   "Conversa associada à empresa": { es: "Conversación asociada a la empresa" },
+  // ── Carteira no atendimento (spec 21 §7–§9) ──
+  "Regra de clientes salva.": { es: "Regla de clientes guardada." },
+  "Quem já é cliente": { es: "Quién ya es cliente" },
+  "Pela carteira de empresas, o roteador reconhece quem já é cliente antes de olhar a mensagem e manda direto para a intenção escolhida.": { es: "Por la cartera de empresas, el enrutador reconoce quién ya es cliente antes de mirar el mensaje y lo envía directo a la intención elegida." },
+  "Cliente ativo vai para": { es: "El cliente activo va a" },
+  "Não usar — classificar a mensagem como sempre": { es: "No usar — clasificar el mensaje como siempre" },
+  "Se o cliente pedir outra coisa com clareza (ex.: abrir outra empresa), seguir a intenção dele": { es: "Si el cliente pide otra cosa con claridad (p. ej.: abrir otra empresa), seguir su intención" },
+  "Salvar regra de clientes": { es: "Guardar regla de clientes" },
+  "Empresa de que a conversa trata": { es: "Empresa de la que trata la conversación" },
+  "Nenhuma definida": { es: "Ninguna definida" },
+  "ver ficha": { es: "ver ficha" },
 };
 
 /**
