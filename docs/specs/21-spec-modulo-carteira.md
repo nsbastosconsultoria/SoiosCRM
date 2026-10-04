@@ -59,7 +59,7 @@ pertence; um contato que representa três empresas obriga a equipe a perguntar t
 | `event_log` | Eventos para quem consome (roteador, protocolos, métricas) | Integrar |
 | Mecanismo de módulo (ADR-0002; migrations 0325/0340; exemplo `honorarios`, 0480) | Provisionadora, instalação, reaplicação, LGPD por `to_regclass` | Integrar |
 
-**Código realmente novo:** 1 provisionadora com 5 tabelas, 1 ponto de extensão no roteador,
+**Código realmente novo:** 1 provisionadora com 6 tabelas, 1 ponto de extensão no roteador,
 5 ferramentas de agente, rotas `/api/v1/carteira/*`, 1 tela com 3 abas, eventos e auditoria.
 
 ## 4. Modelo de dados (corpo de `fn_carteira_provisionar()`)
@@ -108,15 +108,24 @@ check (matriz_company_id is null or matriz_company_id <> company_id)
 
 **Transições permitidas** (função `fn_carteira_transicionar`, a única escrita de `estado`):
 
-```text
-prospect ─► em_qualificacao ─► proposta ─► em_implantacao ─► ativo ◄─► suspenso
-   │              │               │              │              │
-   └──────────────┴───────────────┴──────────────┴──► inativo   └─► em_distrato ─► inativo
-inativo ─► prospect   (reativação: nova oportunidade, cliente_desde preservado)
-```
+| De | Para |
+|---|---|
+| `prospect` | `em_qualificacao`, `proposta`, `em_implantacao`, `ativo`¹, `inativo` |
+| `em_qualificacao` | `prospect`, `proposta`, `em_implantacao`, `inativo` |
+| `proposta` | `em_qualificacao`, `em_implantacao`, `inativo` |
+| `em_implantacao` | `ativo`, `inativo` |
+| `ativo` | `suspenso`, `em_distrato`, `inativo` |
+| `suspenso` | `ativo`, `em_distrato`, `inativo` |
+| `em_distrato` | `ativo`, `inativo` |
+| `inativo` | `prospect` (reativação; `cliente_desde` preservado) |
 
-Toda transição grava `carteira_eventos` (§4.6), emite `carteira.estado_alterado` no `event_log` e
-audita `carteira.estado_alterado`. Transição fora da tabela → `409 carteira_transicao_invalida`.
+¹ `prospect → ativo` existe para carregar a carteira de quem já é cliente há anos — exigir o
+funil inteiro para cadastrar um cliente antigo seria mentir sobre como ele chegou.
+
+Toda transição grava `carteira_eventos` (§4.6) por gatilho, e a rota audita
+`carteira.estado_alterado`. Transição fora da tabela → `409 carteira_transicao_invalida`.
+Implementado na migration 0902; `authenticated` e `service_role` não têm UPDATE em `estado`,
+`cliente_desde` e `estado_alterado_*` (privilégio de coluna).
 
 ### 4.3 Atributos por nicho — `organizations.settings.carteira.atributos`
 
@@ -347,17 +356,19 @@ categorias da spec 22. Mora em `lib/carteira/modelos/contabilidade.ts`, ao lado 
 ## 11. Eventos, auditoria, LGPD
 
 - **`event_log`:** `carteira.estado_alterado`, `carteira.vinculo_criado`, `carteira.vinculo_desativado`,
-  `carteira.contexto_alterado`, `carteira.responsavel_alterado`. Cada um tem consumidor declarado
-  (anti-pattern 3): métricas da carteira, roteador (cache de relacionamento, se houver), spec 22
-  (distribuição pelo responsável).
+  `carteira.contexto_alterado`, `carteira.responsavel_alterado` — **entram junto com o primeiro
+  consumidor**, nunca antes: o drain deixa evento sem handler `pending` para sempre (anti-pattern 3;
+  nota da 0155 no MANIFEST). A migration 0902 não emite nenhum; a linha do tempo até lá é
+  `carteira_eventos`, escrita por gatilho.
 - **Auditoria** (`lib/audit/actions.ts`, no fim do array): `carteira.empresa_atualizada`,
   `carteira.estado_alterado`, `carteira.vinculo_criado`, `carteira.vinculo_atualizado`,
   `carteira.responsavel_alterado`, `carteira.grupo_criado`, `carteira.contexto_alterado`.
-- **LGPD (ADR-0002, D8):** `carteira_vinculos` e `carteira_contexto_conversa` referenciam o contato.
-  Na anonimização em cascata (`fn_lgpd_cascade_redact_contact`, por SQL dinâmico protegido por
-  `to_regclass`): vínculos do contato ficam `ativo=false` e perdem `areas`; os períodos de contexto
-  permanecem (são operação, não dado da pessoa — mesmo argumento da 0480). **Export** inclui a seção
-  "empresas vinculadas"; falha de leitura marca o export como parcial.
+- **LGPD (ADR-0002, D8):** nenhuma coluna do módulo é texto livre sobre a pessoa (papel, áreas,
+  estado, ids, datas), e os gatilhos montam `carteira_eventos.anterior/novo` campo a campo, nunca
+  com `to_jsonb(new)`. Por isso o módulo **não declara seção** em `modulo_secoes_lgpd` — mesma
+  decisão da 0480. Vínculos e períodos de contexto sobrevivem à anonimização do contato (são
+  operação, como `crm_leads.stage_id`). **Export** inclui a seção "empresas vinculadas" (PR-A2);
+  falha de leitura marca o export como parcial.
 
 ## 12. Testes
 
