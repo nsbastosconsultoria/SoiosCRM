@@ -22,9 +22,9 @@ Medido na `main` @ `2d8e92a11` (v1.65.3):
 
 | Fato | Onde |
 |---|---|
-| O contato do WhatsApp (`contacts`) é **pessoa física** e não tem vínculo com empresa | `baseline.sql`, `CREATE TABLE ... "contacts"`; comentário da tabela: "Pessoa fisica no escopo de um tenant" |
+| O contato do WhatsApp (`contacts`) é **pessoa física**; liga-se a uma pessoa B2B por `contacts.person_id` | `baseline.sql`, `contacts` + migration 0239 (`add column if not exists person_id`) |
 | A empresa existe (`companies`, com CNPJ normalizado e único por organização, enriquecimento pela BrasilAPI) | `baseline.sql`, `companies` + `companies_org_normalized_cnpj_uidx`; `lib/crm-b2b/` |
-| A empresa liga-se a `people` (`company_people`), e `people` **não** se liga a `contacts` | `baseline.sql`, `company_people`, `people` |
+| A pessoa liga-se a várias empresas por `company_people` (N:N, com cargo, departamento, decisor e principal). **O caminho contato → pessoa → empresas já existe no núcleo** | `baseline.sql`, `company_people`; `lib/crm-b2b/people-handler.ts` (`contacts.person_linked`) |
 | A empresa não tem estado de relacionamento (prospect, ativo, suspenso…), grupo, matriz/filial nem responsáveis por área | — |
 | A conversa não tem empresa ativa (`conversations` tem `current_demanda_id`, `active_ai_agent_id`, `active_intent`, nenhum `company_id`) | `baseline.sql`, `conversations` + apêndices |
 | O roteador decide pela **intenção da última mensagem** (com sticky e fallback); não consulta relacionamento | `lib/agent-engine/agent/resolve-turn-agent.ts`, `lib/ai/decisao/roteador.ts` |
@@ -37,7 +37,7 @@ pertence; um contato que representa três empresas obriga a equipe a perguntar t
 
 | Entrega | Não entrega (e por quê) |
 |---|---|
-| Vínculo N:N **contato × empresa**, com papel e áreas que o contato recebe | Junção `people` × `contacts` — pergunta aberta Q1 (§13) |
+| O que falta ao vínculo do núcleo para o atendimento: papel em vocabulário fechado, áreas que a pessoa recebe, desativar sem apagar | Um segundo vínculo contato × empresa — o núcleo já tem (§4.4) |
 | **Perfil de relacionamento** da empresa: estado do ciclo de vida, cliente desde, grupo, matriz/filial | Campos fiscais especializados como colunas (regime, faturamento) — vão em `atributos` com schema declarativo (§4.3) |
 | **Grupo empresarial** | Consolidação financeira do grupo — fora do escopo |
 | **Carteira interna**: responsável por empresa **por área** | Permissão por empresa (sigilo entre carteiras) — Q3 |
@@ -53,6 +53,7 @@ pertence; um contato que representa três empresas obriga a equipe a perguntar t
 | `companies_org_normalized_cnpj_uidx` | Deduplicação por CNPJ já resolvida pelo núcleo | Integrar |
 | `lib/crm-b2b/enrich.ts` (BrasilAPI) | Preencher razão social, CNAE, situação ao cadastrar por CNPJ | Integrar |
 | `contacts` (núcleo) | **A** pessoa que escreve | Integrar (FK) |
+| `contacts.person_id` + `people` + `company_people` (núcleo, 0239) | **O** vínculo de quem escreve com as empresas. O módulo só detalha | Integrar (FK 1:1) |
 | `conversations.current_demanda_id` | Molde de "contexto corrente" já usado na conversa | Referenciar o padrão |
 | `crm_leads` | A oportunidade comercial continua sendo o lead; o perfil não duplica funil | Referenciar |
 | `api_audit_log` + `lib/audit/actions.ts` | Auditoria de toda mutação | Integrar |
@@ -137,26 +138,34 @@ organização, Zod construído dinamicamente, UI lê pelo schema central, nunca 
 `volume_notas` (select), `atividade_principal` (text). CNAE, porte, situação cadastral e natureza
 jurídica **já estão em `companies`** — não duplicar (DIRC).
 
-### 4.4 `carteira_vinculos` — contato × empresa (N:N)
+### 4.4 O vínculo é o do núcleo; `carteira_vinculo_detalhes` só detalha
+
+> **Correção de 2026-10-04.** A primeira versão desta spec dizia que `people` não se ligava a
+> `contacts` e criava `carteira_vinculos` (contato × empresa). Era falso: `contacts.person_id` e
+> `company_people` (migration 0239) já fazem contato → pessoa → empresas, N:N. Uma segunda tabela
+> para o mesmo fato seria duas fontes de verdade (anti-pattern 2). Decisão do dono: reusar o núcleo.
+
+O vínculo "quem escreve representa a empresa X" é **contato → `contacts.person_id` → `company_people`**.
+Cargo, departamento, decisor e principal ficam lá. O módulo acrescenta, 1:1 com `company_people`:
 
 ```text
-id uuid pk
+company_people_id uuid pk → company_people(id) on delete cascade
 organization_id
-contact_id uuid not null → contacts(id) on delete cascade
-company_id uuid not null → companies(id) on delete cascade
-papel text not null check in ('socio','administrador','financeiro','rh','fiscal','procurador','funcionario','contador_externo','outro')
-principal boolean not null default false   -- contato principal DA EMPRESA
-areas text[] not null default '{}'         -- áreas que este contato recebe (§4.5); vazio = todas
-ativo boolean not null default true
+papel text not null default 'outro' check in ('socio','administrador','financeiro','rh','fiscal','procurador','funcionario','contador_externo','outro')
+areas text[] not null default '{}'         -- áreas que esta pessoa recebe (§4.5.1); vazio = todas
+ativo boolean not null default true        -- desativar sem apagar
 origem text not null check in ('manual','agente','importacao','api')
-unique (organization_id, contact_id, company_id)
-partial unique (organization_id, company_id) where principal and ativo
 ```
 
-- `contacts.is_merged_into`: ao mesclar contatos, os vínculos do absorvido são repontados para o
-  sobrevivente (mesma rotina que já reponta FKs no merge — **a confirmar** o ponto exato na
-  implementação; o merge que não repontar deixa vínculo órfão, e o invariante §12 reprova).
+- **Vínculo sem detalhe vale como ativo**: o que alguém ligou pela tela de Pessoas conta para a carteira.
 - Desativar (`ativo=false`) e não apagar: a conversa antiga continua apontando para a empresa certa.
+  Apagar o `company_people` no núcleo (papel `manager`, regra do núcleo) leva o detalhe por cascata.
+- Criar o vínculo segue as regras do núcleo: `company_people` exige `manager`+ para inserir e
+  `agent`+ para editar (0239). Contato sem pessoa ganha uma pessoa nova na primeira ligação
+  (nome do contato, ou o telefone se não houver nome).
+- A junção de contatos (`fn_mesclar_contatos`) não reponta `contacts.person_id` (é FK que SAI de
+  `contacts`): se o contato absorvido tinha pessoa e o principal não, o vínculo não segue. É regra
+  do núcleo, registrada aqui como risco conhecido (Q5).
 
 ### 4.5 `carteira_responsaveis` — carteira interna por área
 
@@ -388,10 +397,11 @@ categorias da spec 22. Mora em `lib/carteira/modelos/contabilidade.ts`, ao lado 
 
 | # | Pergunta | Recomendação |
 |---|---|---|
-| Q1 | Ligar `people` a `contacts` em vez de criar `carteira_vinculos`? | **Não agora.** `people` serve à prospecção B2B e não tem telefone; o vínculo que o atendimento precisa é com quem escreve. Registrar a junção como evolução |
+| Q1 | ~~Ligar `people` a `contacts` em vez de criar `carteira_vinculos`?~~ | **Resolvida (2026-10-04):** o núcleo já liga (`contacts.person_id`, 0239). Reusar o núcleo; o módulo só detalha (§4.4) |
 | Q2 | Estado `em_implantacao` conta como cliente no roteador? | Sim (regra 2 de §5): quem acabou de contratar não pode voltar ao Comercial |
 | Q3 | Sigilo por carteira (atendente vê só as empresas da própria carteira)? | Fora desta spec; `user_pipeline_access` também não está no MVP. Avisar o escritório |
 | Q4 | `crm_carteira_vincular_contato` deve existir para a IA? | Sim, mas crítica e desligada por padrão; o caminho normal é o humano vincular pela inbox |
+| Q5 | A junção de contatos deve levar `contacts.person_id` do absorvido quando o principal não tem pessoa? | Sim, mas é mudança do NÚCLEO (`fn_mesclar_contatos`), em PR próprio; até lá, religar pela tela |
 
 ## 14. Sistema vivo (DoD 13) e Definition of Done
 

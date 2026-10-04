@@ -61,7 +61,7 @@ describe("módulo carteira — tripla", () => {
     for (const tabela of [
       "carteira_grupos",
       "carteira_perfis",
-      "carteira_vinculos",
+      "carteira_vinculo_detalhes",
       "carteira_responsaveis",
       "carteira_contexto_conversa",
       "carteira_eventos",

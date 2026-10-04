@@ -43283,11 +43283,21 @@ select public.fn_canal_herda_conversas_do_numero(organization_id, id)
 -- módulo só PENDURA o relacionamento nela (1:1 em `carteira_perfis`) — a provisionadora não
 -- pode escrever no núcleo (D4), e duas tabelas de empresa seriam duas fontes de verdade.
 --
+-- ── DIRC: o vínculo também é o do núcleo ──────────────────────────────────────
+-- "Quem escreve representa quais empresas" já existe: `contacts.person_id → people` e
+-- `company_people` (pessoa × empresa, N:N, com cargo, departamento, decisor e principal —
+-- migration 0239, CRM B2B). O módulo NÃO cria outro vínculo contato × empresa: duas tabelas
+-- para o mesmo fato divergiriam (anti-pattern nº 2), e as telas de Empresas/Pessoas e a
+-- carteira passariam a contar histórias diferentes. O que falta ao vínculo do núcleo para o
+-- atendimento — papel num vocabulário fechado, áreas que o contato recebe, desativar sem
+-- apagar — mora em `carteira_vinculo_detalhes`, 1:1 com `company_people`. Vínculo sem
+-- detalhe vale como ATIVO: o que alguém ligou pela tela de Pessoas conta para a carteira.
+--
 -- ── As seis tabelas ───────────────────────────────────────────────────────────
 -- carteira_grupos             — grupo empresarial.
 -- carteira_perfis             — o relacionamento com a empresa (estado, cliente desde,
 --                               grupo, matriz/filial, atributos do nicho).
--- carteira_vinculos           — contato × empresa (N:N), com papel e áreas que o contato recebe.
+-- carteira_vinculo_detalhes   — o que o atendimento precisa saber de um `company_people`.
 -- carteira_responsaveis       — quem cuida da empresa em cada área, com vigência.
 -- carteira_contexto_conversa  — a empresa ativa de cada conversa, por PERÍODO (append-only;
 --                               trocar fecha o período e abre outro — nada do passado se move).
@@ -43313,14 +43323,8 @@ select public.fn_canal_herda_conversas_do_numero(organization_id, id)
 -- Nenhuma coluna do módulo é texto livre sobre a pessoa: papel, áreas, estado, ids e datas.
 -- `carteira_eventos.anterior/novo` guardam só esses campos (os gatilhos montam o jsonb
 -- campo a campo, nunca `to_jsonb(new)` inteiro). Por isso o módulo não declara seção em
--- `modulo_secoes_lgpd` — mesma decisão da 0480 para honorários. O vínculo sobrevive à
--- anonimização do contato pela mesma razão que `crm_leads.stage_id` sobrevive: é operação.
---
--- ── Junção de contatos ────────────────────────────────────────────────────────
--- `fn_mesclar_contatos` reponta TODA chave estrangeira para `contacts` lida do catálogo
--- (`pg_constraint`), então `carteira_vinculos.contact_id` acompanha a fusão sem código novo.
--- Colisão (os dois contatos já ligados à mesma empresa) cai no caminho linha a linha dela e
--- o vínculo do perdedor fica na lápide — nunca órfão.
+-- `modulo_secoes_lgpd` — mesma decisão da 0480 para honorários. Pessoa e vínculo são do
+-- núcleo, e a LGPD deles é a do núcleo.
 
 create or replace function public.fn_carteira_provisionar()
 returns void
@@ -43382,38 +43386,32 @@ begin
   create index if not exists carteira_perfis_matriz_idx
     on public.carteira_perfis (matriz_company_id) where matriz_company_id is not null;
 
-  -- ── carteira_vinculos ──────────────────────────────────────────────────────
-  create table if not exists public.carteira_vinculos (
-    id uuid primary key default gen_random_uuid(),
+  -- ── carteira_vinculo_detalhes ──────────────────────────────────────────────
+  -- 1:1 com `company_people` (núcleo). Empresa, pessoa, cargo, departamento, decisor e
+  -- principal continuam LÁ; aqui só o que o atendimento precisa e o núcleo não tem.
+  create table if not exists public.carteira_vinculo_detalhes (
+    company_people_id uuid primary key references public.company_people(id) on delete cascade,
     organization_id uuid not null references public.organizations(id) on delete cascade,
-    contact_id uuid not null references public.contacts(id) on delete cascade,
-    company_id uuid not null references public.companies(id) on delete cascade,
-    papel text not null
+    papel text not null default 'outro'
       check (papel in ('socio', 'administrador', 'financeiro', 'rh', 'fiscal', 'procurador',
                        'funcionario', 'contador_externo', 'outro')),
-    -- O contato principal DA EMPRESA (um só entre os ativos — índice parcial abaixo).
-    principal boolean not null default false,
-    -- Áreas que este contato recebe; vazio = todas. Slugs do vocabulário de áreas da
+    -- Áreas que esta pessoa recebe; vazio = todas. Slugs do vocabulário de áreas da
     -- organização (organizations.settings.carteira.areas).
     areas text[] not null default '{}'::text[],
+    -- Desativar sem apagar: apagar o `company_people` some com a história de quem
+    -- representava a empresa; desativar a tira do atendimento e mantém o registro.
     ativo boolean not null default true,
     origem text not null default 'manual' check (origem in ('manual', 'agente', 'importacao', 'api')),
     alterado_por uuid references auth.users(id) on delete set null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
-    constraint carteira_vinculos_par_unico unique (organization_id, contact_id, company_id),
-    constraint carteira_vinculos_areas_slug
+    constraint carteira_vinculo_detalhes_areas_slug
       check (array_position(areas, null) is null
              and coalesce(array_to_string(areas, ','), '') ~ '^([a-z][a-z0-9_]{1,40}(,[a-z][a-z0-9_]{1,40})*)?$')
   );
 
-  create unique index if not exists carteira_vinculos_um_principal_idx
-    on public.carteira_vinculos (organization_id, company_id) where principal and ativo;
-  -- O resolvedor lê "as empresas DESTE contato" a cada turno.
-  create index if not exists carteira_vinculos_contato_idx
-    on public.carteira_vinculos (organization_id, contact_id) where ativo;
-  create index if not exists carteira_vinculos_empresa_idx
-    on public.carteira_vinculos (organization_id, company_id);
+  create index if not exists carteira_vinculo_detalhes_inativos_idx
+    on public.carteira_vinculo_detalhes (organization_id) where not ativo;
 
   -- ── carteira_responsaveis ──────────────────────────────────────────────────
   create table if not exists public.carteira_responsaveis (
@@ -43470,6 +43468,7 @@ begin
     organization_id uuid not null references public.organizations(id) on delete cascade,
     company_id uuid references public.companies(id) on delete set null,
     contact_id uuid references public.contacts(id) on delete set null,
+    person_id uuid references public.people(id) on delete set null,
     conversation_id uuid references public.conversations(id) on delete set null,
     tipo text not null
       check (tipo in ('perfil_criado', 'estado_alterado', 'perfil_atualizado',
@@ -43501,13 +43500,13 @@ begin
     after insert or update on public.carteira_perfis
     for each row execute function public.fn_carteira_evento_de_perfil();
 
-  drop trigger if exists carteira_vinculos_coerencia on public.carteira_vinculos;
-  create trigger carteira_vinculos_coerencia
-    before insert or update on public.carteira_vinculos
+  drop trigger if exists carteira_vinculo_detalhes_coerencia on public.carteira_vinculo_detalhes;
+  create trigger carteira_vinculo_detalhes_coerencia
+    before insert or update on public.carteira_vinculo_detalhes
     for each row execute function public.fn_carteira_vinculo_coerente();
-  drop trigger if exists carteira_vinculos_linha_do_tempo on public.carteira_vinculos;
-  create trigger carteira_vinculos_linha_do_tempo
-    after insert or update on public.carteira_vinculos
+  drop trigger if exists carteira_vinculo_detalhes_linha_do_tempo on public.carteira_vinculo_detalhes;
+  create trigger carteira_vinculo_detalhes_linha_do_tempo
+    after insert or update on public.carteira_vinculo_detalhes
     for each row execute function public.fn_carteira_evento_de_vinculo();
 
   drop trigger if exists carteira_responsaveis_coerencia on public.carteira_responsaveis;
@@ -43587,23 +43586,23 @@ begin
   grant update (grupo_id, tipo_estabelecimento, matriz_company_id, atributos, alterado_por, updated_at)
     on public.carteira_perfis to authenticated, service_role;
 
-  alter table public.carteira_vinculos enable row level security;
-  drop policy if exists carteira_vinculos_select on public.carteira_vinculos;
-  create policy carteira_vinculos_select
-    on public.carteira_vinculos
+  alter table public.carteira_vinculo_detalhes enable row level security;
+  drop policy if exists carteira_vinculo_detalhes_select on public.carteira_vinculo_detalhes;
+  create policy carteira_vinculo_detalhes_select
+    on public.carteira_vinculo_detalhes
     for select using (
       organization_id in (select public.fn_user_org_ids()) or public.fn_is_platform_admin()
     );
-  drop policy if exists carteira_vinculos_insert on public.carteira_vinculos;
-  create policy carteira_vinculos_insert
-    on public.carteira_vinculos
+  drop policy if exists carteira_vinculo_detalhes_insert on public.carteira_vinculo_detalhes;
+  create policy carteira_vinculo_detalhes_insert
+    on public.carteira_vinculo_detalhes
     for insert
     with check (public.fn_is_platform_admin()
                 or (organization_id in (select public.fn_user_org_ids())
                     and public.fn_role_at_least(organization_id, 'agent')));
-  drop policy if exists carteira_vinculos_update on public.carteira_vinculos;
-  create policy carteira_vinculos_update
-    on public.carteira_vinculos
+  drop policy if exists carteira_vinculo_detalhes_update on public.carteira_vinculo_detalhes;
+  create policy carteira_vinculo_detalhes_update
+    on public.carteira_vinculo_detalhes
     for update
     using (public.fn_is_platform_admin()
            or (organization_id in (select public.fn_user_org_ids())
@@ -43611,8 +43610,8 @@ begin
     with check (public.fn_is_platform_admin()
                 or (organization_id in (select public.fn_user_org_ids())
                     and public.fn_role_at_least(organization_id, 'agent')));
-  revoke all on public.carteira_vinculos from anon;
-  revoke delete, truncate on public.carteira_vinculos from authenticated;
+  revoke all on public.carteira_vinculo_detalhes from anon;
+  revoke delete, truncate on public.carteira_vinculo_detalhes from authenticated;
 
   alter table public.carteira_responsaveis enable row level security;
   drop policy if exists carteira_responsaveis_select on public.carteira_responsaveis;
@@ -43677,8 +43676,8 @@ begin
     'Grupo empresarial (módulo carteira, migration 0902). Consolida o relacionamento de várias empresas sem perder o CNPJ de cada uma.';
   comment on table public.carteira_perfis is
     'O relacionamento com a empresa (1:1 com companies). estado só muda por fn_carteira_transicionar; cliente_desde é gravado na primeira entrada em ativo e nunca regravado.';
-  comment on table public.carteira_vinculos is
-    'Contato × empresa (N:N): quem escreve representa quais empresas, com que papel e quais áreas recebe. Desativa, não apaga.';
+  comment on table public.carteira_vinculo_detalhes is
+    'O que o atendimento precisa de um company_people (núcleo): papel, áreas que a pessoa recebe e ativo. O vínculo em si é do núcleo; vínculo sem detalhe vale como ativo. Desativa, não apaga.';
   comment on table public.carteira_responsaveis is
     'Carteira interna: quem cuida da empresa em cada área, com vigência. Um principal vigente por (empresa, área).';
   comment on table public.carteira_contexto_conversa is
@@ -43729,29 +43728,30 @@ begin
 end;
 $$;
 
--- ---- coerência do vínculo: contato e empresa da MESMA organização ----
--- E o perfil nasce no primeiro vínculo (spec 21 §4.2): a empresa ligada a alguém passa a ter
--- relacionamento, `prospect` até alguém dizer outra coisa.
+-- ---- coerência do detalhe: o vínculo do núcleo é da MESMA organização ----
+-- (empresa e pessoa do `company_people` já são conferidas por fn_company_people_same_org).
+-- E o perfil nasce no primeiro vínculo detalhado (spec 21 §4.2): a empresa ligada a alguém
+-- passa a ter relacionamento, `prospect` até alguém dizer outra coisa.
 create or replace function public.fn_carteira_vinculo_coerente()
 returns trigger
 language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
+declare
+  v_company uuid;
 begin
-  if tg_op = 'UPDATE' and new.organization_id is distinct from old.organization_id then
-    raise exception 'carteira_organizacao_imutavel' using errcode = '23514';
+  if tg_op = 'UPDATE' and (new.organization_id is distinct from old.organization_id
+                           or new.company_people_id is distinct from old.company_people_id) then
+    raise exception 'carteira_vinculo_imutavel' using errcode = '23514';
   end if;
-  if not exists (select 1 from public.companies
-                  where id = new.company_id and organization_id = new.organization_id) then
-    raise exception 'carteira_empresa_de_outra_organizacao' using errcode = '23514';
-  end if;
-  if not exists (select 1 from public.contacts
-                  where id = new.contact_id and organization_id = new.organization_id) then
-    raise exception 'carteira_contato_de_outra_organizacao' using errcode = '23514';
+  select company_id into v_company from public.company_people
+   where id = new.company_people_id and organization_id = new.organization_id;
+  if v_company is null then
+    raise exception 'carteira_vinculo_de_outra_organizacao' using errcode = '23514';
   end if;
   insert into public.carteira_perfis (company_id, organization_id)
-  values (new.company_id, new.organization_id)
+  values (v_company, new.organization_id)
   on conflict (company_id) do nothing;
   new.updated_at := now();
   return new;
@@ -43830,8 +43830,9 @@ begin
 end;
 $$;
 
--- ---- linha do tempo: vínculo ----
--- `origem = 'agente'` vira ator `ia`: foi a ferramenta do agente que ligou.
+-- ---- linha do tempo: detalhe do vínculo ----
+-- `origem = 'agente'` vira ator `ia`: foi a ferramenta do agente que ligou. Empresa e pessoa
+-- vêm do `company_people` — o detalhe não as copia (DIRC).
 create or replace function public.fn_carteira_evento_de_vinculo()
 returns trigger
 language plpgsql
@@ -43842,23 +43843,24 @@ declare
   v_ator uuid := coalesce(auth.uid(), new.alterado_por);
   v_kind text := case when new.origem = 'agente' and auth.uid() is null then 'ia'
                       when v_ator is null then 'sistema' else 'humano' end;
+  v_vinculo record;
 begin
+  select company_id, person_id into v_vinculo from public.company_people
+   where id = new.company_people_id;
+
   if tg_op = 'INSERT' then
     insert into public.carteira_eventos
-      (organization_id, company_id, contact_id, tipo, novo, ator_kind, ator_user_id)
-    values (new.organization_id, new.company_id, new.contact_id, 'vinculo_criado',
-            jsonb_build_object('papel', new.papel, 'principal', new.principal,
-                               'areas', to_jsonb(new.areas), 'ativo', new.ativo, 'origem', new.origem),
+      (organization_id, company_id, person_id, tipo, novo, ator_kind, ator_user_id)
+    values (new.organization_id, v_vinculo.company_id, v_vinculo.person_id, 'vinculo_criado',
+            jsonb_build_object('papel', new.papel, 'areas', to_jsonb(new.areas),
+                               'ativo', new.ativo, 'origem', new.origem),
             v_kind, v_ator);
-  elsif (new.contact_id, new.papel, new.principal, new.areas, new.ativo)
-          is distinct from (old.contact_id, old.papel, old.principal, old.areas, old.ativo) then
+  elsif (new.papel, new.areas, new.ativo) is distinct from (old.papel, old.areas, old.ativo) then
     insert into public.carteira_eventos
-      (organization_id, company_id, contact_id, tipo, anterior, novo, ator_kind, ator_user_id)
-    values (new.organization_id, new.company_id, new.contact_id, 'vinculo_atualizado',
-            jsonb_build_object('contact_id', old.contact_id, 'papel', old.papel, 'principal', old.principal,
-                               'areas', to_jsonb(old.areas), 'ativo', old.ativo),
-            jsonb_build_object('contact_id', new.contact_id, 'papel', new.papel, 'principal', new.principal,
-                               'areas', to_jsonb(new.areas), 'ativo', new.ativo),
+      (organization_id, company_id, person_id, tipo, anterior, novo, ator_kind, ator_user_id)
+    values (new.organization_id, v_vinculo.company_id, v_vinculo.person_id, 'vinculo_atualizado',
+            jsonb_build_object('papel', old.papel, 'areas', to_jsonb(old.areas), 'ativo', old.ativo),
+            jsonb_build_object('papel', new.papel, 'areas', to_jsonb(new.areas), 'ativo', new.ativo),
             v_kind, v_ator);
   end if;
   return null;
@@ -44041,10 +44043,16 @@ begin
     if not exists (select 1 from public.companies where id = p_company and organization_id = p_org) then
       raise exception 'carteira_empresa_nao_encontrada' using errcode = 'P0002';
     end if;
+    -- O vínculo é o do núcleo: contato → pessoa → company_people. Sem detalhe = ativo.
     if p_definido_por <> 'humano' and not exists (
-         select 1 from public.carteira_vinculos v
-          where v.organization_id = p_org and v.contact_id = v_conversa.contact_id
-            and v.company_id = p_company and v.ativo) then
+         select 1
+           from public.contacts ct
+           join public.company_people cp
+             on cp.person_id = ct.person_id and cp.organization_id = p_org
+           left join public.carteira_vinculo_detalhes d on d.company_people_id = cp.id
+          where ct.id = v_conversa.contact_id and ct.organization_id = p_org
+            and cp.company_id = p_company
+            and coalesce(d.ativo, true)) then
       raise exception 'carteira_contato_sem_vinculo_com_a_empresa' using errcode = 'P0001';
     end if;
   end if;
