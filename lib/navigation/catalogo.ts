@@ -195,6 +195,19 @@ export const NAV_CATALOG = [
     group: "atendimento",
     sidebar: true,
   },
+  {
+    // Módulo opcional (ADR-0002, spec 22), fonte `modulos_instalados`: a porta só existe depois
+    // que o administrador da instalação instala `protocolos`. No menu lateral, junto da Inbox,
+    // porque é a fila do dia de quem atende cliente — não consulta de passagem.
+    href: "/app/protocolos",
+    label: "Protocolos",
+    description: "As demandas dos clientes com número, categoria, prioridade, fila por área e prazo de resposta.",
+    icon: "ClipboardText",
+    group: "atendimento",
+    sidebar: true,
+    minRole: "viewer",
+    modulo: "protocolos",
+  },
 
   // ---- CRM — o funil ----
   {
@@ -372,6 +385,18 @@ export const NAV_CATALOG = [
     group: "crm",
     section: "Fechar a venda",
     capacidade: "propostas",
+  },
+  {
+    // Configuração do módulo protocolos (spec 22 §12): categorias, filas, prazos, expediente.
+    // Só com o módulo instalado, e só `admin` (a RLS da 0904 exige o mesmo).
+    href: "/app/settings/tenant/protocolos",
+    label: "Protocolos",
+    description: "Categorias, filas por área, prazos de resposta e o expediente que conta o prazo.",
+    icon: "ClipboardText",
+    group: "organizacao",
+    section: "Sua empresa",
+    minRole: "admin",
+    modulo: "protocolos",
   },
   {
     // A promessa que o comentário da Agenda fazia desde que ela nasceu. Aqui se
