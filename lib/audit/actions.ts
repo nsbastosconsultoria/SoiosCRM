@@ -1031,6 +1031,15 @@ export const AUDIT_ACTIONS = [
   "carteira.responsavel_encerrado",
   "carteira.grupo_criado",
   "carteira.contexto_alterado",
+
+  // Módulo protocolos (spec 22, migration 0904). A linha do tempo do PROTOCOLO mora em
+  // `protocolo_eventos` (gatilho); estas são as da rota, com quem pediu e o request.
+  "protocolos.aberto",
+  "protocolos.estado_alterado",
+  "protocolos.prioridade_alterada",
+  "protocolos.atualizado",
+  "protocolos.atribuido",
+  "protocolos.config_alterada",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */
