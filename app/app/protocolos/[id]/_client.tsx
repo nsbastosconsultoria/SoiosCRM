@@ -236,8 +236,90 @@ export function FichaDoProtocolo({
         ) : null}
       </section>
 
+      {podeAtender && p.conversation_id ? (
+        <FalarComCliente protocoloId={protocoloId} estado={p.estado} onFeito={recarregar} />
+      ) : null}
+
       <LinhaDoTempo protocoloId={protocoloId} eventos={ficha.data.eventos} podeAtender={podeAtender} onNota={recarregar} />
     </div>
+  );
+}
+
+/**
+ * A equipe fala com o cliente pela ficha, e a IA leva a mensagem (spec 22 §6): pedir uma
+ * informação ou avisar que resolveu. Só as ações que a tabela de transições aceita a partir do
+ * estado atual aparecem — o servidor recusa o resto de qualquer jeito.
+ */
+function FalarComCliente({
+  protocoloId,
+  estado,
+  onFeito,
+}: {
+  protocoloId: string;
+  estado: EstadoDoProtocolo;
+  onFeito: () => void;
+}) {
+  const t = useT();
+  const [texto, setTexto] = useState("");
+  const [aviso, setAviso] = useState<string | null>(null);
+  const podePedir = TRANSICOES_DO_PROTOCOLO[estado].includes("aguardando_cliente");
+  const podeAvisar = TRANSICOES_DO_PROTOCOLO[estado].includes("resolvido");
+  const falar = useMutation({
+    mutationFn: (acao: "pedir_informacao" | "avisar_resolvido") =>
+      apiClient.post<{ data: { estado_atualizado: boolean } }>(`/api/v1/protocolos/${protocoloId}/cliente`, {
+        acao,
+        texto: texto.trim(),
+      }),
+    onSuccess: (r) => {
+      setTexto("");
+      setAviso(
+        r.data.estado_atualizado
+          ? t("Pronto: a IA vai levar a mensagem ao cliente pela conversa.")
+          : t("A IA vai levar a mensagem, mas o estado do protocolo não mudou. Atualize o estado à mão."),
+      );
+      onFeito();
+    },
+    onError: showApiError,
+  });
+  if (!podePedir && !podeAvisar) return null;
+
+  const pronto = texto.trim().length >= 3 && !falar.isPending;
+  return (
+    <section className="rounded-md border border-border p-3" data-testid="protocolo-falar-com-cliente">
+      <h2 className="mb-1 text-sm font-semibold">{t("Falar com o cliente")}</h2>
+      <p className="mb-2 text-xs text-text-muted">
+        {t("A IA leva a sua mensagem ao cliente pela conversa. Quando ele responder, a resposta entra aqui.")}
+      </p>
+      <textarea
+        value={texto}
+        onChange={(e) => {
+          setTexto(e.target.value);
+          setAviso(null);
+        }}
+        rows={3}
+        maxLength={2000}
+        placeholder={t("O que a IA deve dizer ao cliente")}
+        className={`w-full ${CAMPO}`}
+        data-testid="protocolo-mensagem-ao-cliente"
+      />
+      <div className="mt-2 flex flex-wrap gap-2">
+        {podePedir ? (
+          <Button size="sm" variant="outline" disabled={!pronto} onClick={() => falar.mutate("pedir_informacao")}>
+            {t("Pedir informação ao cliente")}
+          </Button>
+        ) : null}
+        {podeAvisar ? (
+          <Button size="sm" disabled={!pronto} onClick={() => falar.mutate("avisar_resolvido")}>
+            {t("Avisar que resolveu")}
+          </Button>
+        ) : null}
+      </div>
+      {aviso ? (
+        <p className="mt-2 text-xs text-text-muted" role="status">
+          {aviso}
+        </p>
+      ) : null}
+    </section>
   );
 }
 

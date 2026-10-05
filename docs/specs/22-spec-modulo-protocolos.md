@@ -209,38 +209,40 @@ e pela tela — nunca três caminhos.
    são lidos das colunas — o resumo não duplica o que já é coluna (DIRC).
 6. Emite `protocolo.aberto` no `event_log`, audita `protocolos.aberto`, grava `protocolo_eventos`.
 
-## 6. Relação com Casos Humanos (núcleo) — ADIADA para o PR-E
+## 6. Relação com Casos Humanos (núcleo) — caso SOB DEMANDA (PR-E, migration 0906)
 
-> **Estado em 2026-10-05:** não implementada. A abertura pela ferramenta do assistente (PR-D)
-> roda pelo cliente PostgREST do MCP, e a máquina de estados do caso (`human-cases.ts`) roda sobre
-> `pg`, dentro do motor. Ligar os dois a partir da ferramenta exigiria copiar `openCase` — duas
-> portas para a mesma transição, o que a doutrina proíbe. O PR-E faz a ligação do lado do motor,
-> com o desenho abaixo. Até lá, a equipe responde ao cliente pela inbox (link "Abrir a conversa"
-> na ficha do protocolo).
+O protocolo **não substitui** o loop da spec 15; ele o usa como canal **na hora de falar com o
+cliente**, e não durante a vida inteira do protocolo.
 
-O protocolo **não substitui** o loop da spec 15; ele o usa como canal.
+**Por que sob demanda (decisão do dono, 05/10/2026).** O desenho anterior abria um `agent_case` junto
+com o protocolo e o mantinha aberto até a resolução. Medido no motor: só existe **um caso aberto por
+conversa** (`openCase`, `where not exists`), e um caso aberto **desliga a trava anti-promessa**
+(`casePromiseGate`). Um protocolo vive dias — prender um caso por ele bloquearia os outros chamados
+daquela conversa e deixaria a IA livre para prometer humano sem chamar.
 
-- **IA dona da conversa (padrão):** abrir protocolo pela tool também abre um `agent_case`
-  (`awaiting_human`) ligado por `agent_case_id`. A resposta do humano na ficha do protocolo vai para o
-  caso, e a IA a repassa ao cliente por `case_reply_turn` — o humano não precisa ir à inbox.
-- **Fonte de verdade de cada estado** (evita anti-pattern 2):
+**Como funciona:**
 
-  | Ação | Quem decide | Efeito no outro |
-  |---|---|---|
-  | Humano pede informação ao cliente | protocolo → `aguardando_cliente` | caso → `awaiting_lead` |
-  | Cliente responde, IA chama `provide_case_update` | caso → `awaiting_human` | protocolo → `em_atendimento`, evento `complemento_do_cliente` |
-  | Humano resolve | protocolo → `resolvido` | caso → `resolved` (a IA avisa o cliente) |
-  | Caso escalado (`escalated`) | caso | protocolo **continua**; o handoff só muda quem fala com o cliente |
-  | Protocolo cancelado | protocolo | caso → `cancelled` |
+| Ação | Onde | Efeito |
+|---|---|---|
+| "Pedir informação ao cliente" | ficha (`POST /protocolos/:id/cliente`, `pedir_informacao`) | numa transação `pg`: caso `source='protocolo'` aberto e já em `awaiting_lead`, `case_reply_turn` enfileirado, `protocolos.agent_case_id` ligado, nota na linha do tempo; depois o protocolo → `aguardando_cliente` (pausa o prazo) |
+| "Avisar que resolveu" | ficha (`avisar_resolvido`) | caso aberto e já `resolved`, `case_reply_turn` com `resolved`; protocolo → `resolvido` |
+| Cliente responde, IA chama `provide_case_update` | motor (`lib/protocolos/resposta-do-cliente.ts`) | numa transação: evento `complemento_do_cliente`, protocolo `aguardando_cliente` → `em_atendimento` com o prazo retomado (mesma regra da tela, `relogio-do-estado.ts`), caso → `resolved` (ator `system`) |
+| Protocolo resolvido, fechado ou cancelado com o caso ainda aberto | `mudarEstado` | caso → `cancelled` (sem recado ao cliente) |
 
-- **Ponto no núcleo:** a máquina de estados do caso é `lib/agent-engine/agent/human-cases.ts`
-  (transições sobre `pg`, atômicas — cabeçalho de `lib/escalacao/chamados.ts`). A sincronização
-  entra **ali**, como passo opcional na mesma transação, ativo só quando `to_regclass('public.protocolos')`
-  existe e há protocolo ligado. Não é um consumidor assíncrono de evento: dois donos da mesma
-  transição, separados por fila, deixariam caso e protocolo divergentes entre um passo e outro.
-  Sem o módulo, nada muda.
-- Protocolo aberto por humano numa conversa em handoff não cria `agent_case`: quem responde é o
-  atendente, pela inbox.
+**Recusas, antes de qualquer efeito:** transição fora da tabela (409 `protocolo_transicao_invalida`);
+protocolo sem conversa (422 `protocolo_sem_conversa` — fale pela inbox); conversa com uma pessoa no
+comando, `contacts.force_human` (409 `conversa_com_pessoa`); conversa que já tem um chamado aberto
+(409 `conversa_com_chamado_aberto` — responda por ele em Chamados).
+
+**Fonte de verdade:** a transição do caso é de `human-cases.ts` (funções novas
+`fecharCasoDoProtocoloRespondido` e `cancelarCasoDoProtocolo`, ambas guardadas por
+`source = 'protocolo'` — nenhum caminho do protocolo fecha caso aberto pela IA); a do protocolo é do
+gatilho do banco, nos dois caminhos (PostgREST na tela, `pg` no motor). Sem o módulo instalado,
+`to_regclass('public.protocolos')` é nulo e `provide_case_update` segue como sempre.
+
+**Requisito:** o agente da conversa precisa ter a capacidade de casos ligada (`cases_enabled`) para
+chamar `provide_case_update` quando o cliente responder. Sem ela, a mensagem sai, mas a resposta do
+cliente chega só como mensagem comum na inbox.
 
 ## 7. Prioridade
 
@@ -341,7 +343,7 @@ Para cada relógio não pausado e não cumprido: ao cruzar 80%, 100% e 120%, ins
   tripla migration + baseline + MANIFEST (migration 0905, PR-D), e a projeção da Central ganha o
   destino `/app/protocolos/:id` (`lib/ai/inbox-destino.ts`). A cascata LGPD dos avisos NÃO precisa
   alcançá-los: o texto leva número, categoria e prazo — nunca título nem descrição do protocolo.
-- **Consumidor de estado do caso** (§6) — PR-E.
+- **`agent_cases.source`** ganha `protocolo` (migration 0906, PR-E) — o caso aberto pela ficha (§6).
 - Nenhuma outra tabela do núcleo muda.
 
 ## 12. API e telas

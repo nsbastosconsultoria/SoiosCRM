@@ -18,10 +18,12 @@ import { ApiError } from "@/lib/api/types";
 import type { HandlerCtx } from "@/lib/api/handlers/types";
 import { AREAS_CONTABILIDADE, AREAS_PADRAO, areasDaOrganizacao, type Area } from "@/lib/atendimento/areas";
 import { audit } from "@/lib/audit";
+import { logger } from "@/lib/logger";
 import { ROLE_RANK, type Role } from "@/lib/auth/types";
 import type { createAdminClient } from "@/lib/supabase/admin";
 
 import { lancarErroDoProtocolo, type ErroDoBanco } from "./erros";
+import { mudancasDoRelogio } from "./relogio-do-estado";
 import { MODELOS_DE_CATEGORIAS } from "./modelos";
 import {
   baixaPrioridade,
@@ -30,7 +32,7 @@ import {
   type Prioridade,
 } from "./prioridade";
 import type { EntradaDeAbertura, PatchDoProtocolo } from "./schemas";
-import { expedienteDaOrganizacao, minutosUteisEntre, somarMinutosUteis, type Expediente } from "./sla";
+import { expedienteDaOrganizacao, somarMinutosUteis, type Expediente } from "./sla";
 import { ESTADOS_ABERTOS, type Distribuicao, type EstadoDoProtocolo, type OrigemDoProtocolo } from "./vocabulario";
 
 type SB = SupabaseClient;
@@ -39,7 +41,7 @@ type SB = SupabaseClient;
  * (`tests/unit/escrita-em-organizations-usa-cliente-admin.test.ts` — com o cliente de sessão a
  * RLS casa zero linhas e o PostgREST devolve sucesso).
  */
-type Admin = ReturnType<typeof createAdminClient>;
+export type Admin = ReturnType<typeof createAdminClient>;
 
 export const SELECT_DO_PROTOCOLO =
   "id, ano, numero, company_id, contact_id, conversation_id, agent_case_id, lead_id, categoria_id, subcategoria_id, " +
@@ -55,6 +57,7 @@ export type LinhaDoProtocolo = {
   company_id: string | null;
   contact_id: string | null;
   conversation_id: string | null;
+  agent_case_id: string | null;
   categoria_id: string;
   subcategoria_id: string | null;
   competencia: string | null;
@@ -560,36 +563,31 @@ export async function mudarEstado(
 ) {
   const atual = await lerParaEscrever(admin, ctx, id);
   const politica = await politicaPorId(admin, ctx, atual.politica_sla_id);
-  const mudancas: Record<string, unknown> = { estado: para, alterado_por: ator.userId };
-
-  const pausaAqui =
-    politica !== null &&
-    ((para === "aguardando_cliente" && politica.pausa_aguardando_cliente) ||
-      (para === "aguardando_terceiro" && politica.pausa_aguardando_terceiro));
-
-  if (atual.pausado_desde && !pausaAqui) {
-    const cal = await carregarCalendario(admin, ctx);
-    const relogio = politica ? relogioDa(politica, cal) : cal.expediente;
-    const pausados = minutosUteisEntre(new Date(atual.pausado_desde), new Date(), relogio, cal.feriados);
-    mudancas.pausado_desde = null;
-    mudancas.pausa_acumulada = `${minutosDoIntervalo(atual.pausa_acumulada) + pausados} minutes`;
-    if (atual.resolucao_vence_em && pausados > 0) {
-      mudancas.resolucao_vence_em = somarMinutosUteis(
-        new Date(atual.resolucao_vence_em),
-        pausados,
-        relogio,
-        cal.feriados,
-      ).toISOString();
-    }
-  } else if (!atual.pausado_desde && pausaAqui) {
-    mudancas.pausado_desde = new Date().toISOString();
-  }
+  const cal = atual.pausado_desde ? await carregarCalendario(admin, ctx) : { expediente: null, feriados: new Set<string>() };
+  const mudancas: Record<string, unknown> = {
+    estado: para,
+    alterado_por: ator.userId,
+    ...mudancasDoRelogio(
+      {
+        pausado_desde: atual.pausado_desde,
+        pausa_acumulada_min: minutosDoIntervalo(atual.pausa_acumulada),
+        resolucao_vence_em: atual.resolucao_vence_em,
+      },
+      politica,
+      cal,
+      para,
+      new Date(),
+    ),
+  };
 
   if (para === "cancelado" || para === "fechado" || para === "resolvido") {
     mudancas.motivo_encerramento = motivo ?? null;
   }
 
   const gravado = await gravar(admin, ctx, atual, mudancas);
+  if ((para === "cancelado" || para === "fechado" || para === "resolvido") && atual.agent_case_id) {
+    await cancelarCasoAbertoDoProtocolo(ctx, atual.agent_case_id, ator.userId);
+  }
   if (ator.userId) {
     await audit({
       organizationId: ctx.organization_id,
@@ -602,6 +600,28 @@ export async function mudarEstado(
     });
   }
   return gravado;
+}
+
+/**
+ * O protocolo encerrou com um caso dele ainda aberto (a equipe pediu algo ao cliente e resolveu sem
+ * a resposta): o caso é cancelado, pela máquina de estados dos casos (`human-cases.ts`, sobre
+ * `pg`). Falhar aqui não desfaz o encerramento — o caso aberto continua visível em Chamados, e o
+ * vigia de casos parados o cobra. Sem pool configurado (desenvolvimento), idem.
+ */
+async function cancelarCasoAbertoDoProtocolo(ctx: HandlerCtx, caseId: string, userId: string | null) {
+  try {
+    const [{ getRequestPool }, { cancelarCasoDoProtocolo }] = await Promise.all([
+      import("@/lib/agent-engine/db/request-pool"),
+      import("@/lib/agent-engine/agent/human-cases"),
+    ]);
+    await cancelarCasoDoProtocolo(getRequestPool(), ctx.organization_id, caseId, userId);
+  } catch (e) {
+    logger.warn("[protocolos] caso do protocolo não foi cancelado", {
+      case_id: caseId,
+      error: e instanceof Error ? e.message : String(e),
+      requestId: ctx.requestId,
+    });
+  }
 }
 
 /**

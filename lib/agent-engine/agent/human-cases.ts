@@ -166,20 +166,26 @@ export type OpenCaseResult =
  * (uniq_job_queue_one_running_per_contact), não deste statement sozinho.
  */
 export async function openCase(
-  db: pg.Pool,
+  db: Queryable,
   ids: CaseIds,
   input: {
     title: string;
     summary: string;
     blocker: string;
     contextSnapshot?: Record<string, unknown>;
-    source?: 'agent' | 'guardrail_autofallback';
+    /**
+     * `protocolo` (0906): a EQUIPE abriu pela ficha de um protocolo, para a IA levar a
+     * mensagem ao cliente (`lib/protocolos/falar-com-cliente.ts`). Só esse caminho passa
+     * `actorUserId` — o evento 'opened' registra quem foi.
+     */
+    source?: 'agent' | 'guardrail_autofallback' | 'protocolo';
     kind?: string;
+    actorUserId?: string | null;
   },
 ): Promise<OpenCaseResult> {
   await guardServiceEffect();
   const source = input.source ?? 'agent';
-  const actorKind = source === 'agent' ? 'agent' : 'system';
+  const actorKind = source === 'agent' ? 'agent' : source === 'protocolo' ? 'human' : 'system';
 
   const { rows } = await db.query<{ case_id: string }>(
     `with new_case as (
@@ -193,8 +199,8 @@ export async function openCase(
         )
        returning id
      )
-     insert into agent_case_events (organization_id, case_id, kind, actor_kind)
-     select $1, id, 'opened', $10
+     insert into agent_case_events (organization_id, case_id, kind, actor_kind, actor_user_id)
+     select $1, id, 'opened', $10, $12::uuid
        from new_case
      returning case_id`,
     [
@@ -211,6 +217,7 @@ export async function openCase(
       // O default mora aqui e no banco: se um caminho novo esquecer de passar, a
       // linha nasce classificada como 'outro' em vez de nula.
       input.kind ?? 'outro',
+      input.actorUserId ?? null,
     ],
   );
 
@@ -329,6 +336,58 @@ export async function markAwaitingLead(
      union all
      select $1::uuid, id, 'lead_asked', 'human', $3::uuid, null::text, null::text from updated`,
     [tenantId, caseId, actorUserId, ask],
+  );
+  return transitioned(rowCount);
+}
+
+/**
+ * Caso aberto pela ficha de um protocolo (0906), quando o cliente respondeu o que a equipe pediu:
+ * awaiting_human -> resolved, evento 'resolved' com ator `system`. A informação já foi registrada
+ * NO PROTOCOLO, na mesma transação de quem chama (`lib/protocolos/resposta-do-cliente.ts`) — é lá
+ * que a equipe segue, e um caso esperando resposta humana na fila de chamados seria trabalho em
+ * dobro. A guarda `source = 'protocolo'` impede fechar por aqui um caso que a IA abriu.
+ */
+export async function fecharCasoDoProtocoloRespondido(
+  db: Queryable,
+  tenantId: string,
+  caseId: string,
+): Promise<boolean> {
+  const { rowCount } = await db.query(
+    `with updated as (
+       update agent_cases
+          set status = 'resolved', closed_at = now(), updated_at = now()
+        where organization_id = $1 and id = $2 and status = 'awaiting_human' and source = 'protocolo'
+        returning id
+     )
+     insert into agent_case_events (organization_id, case_id, kind, actor_kind)
+     select $1::uuid, id, 'resolved', 'system' from updated`,
+    [tenantId, caseId],
+  );
+  return transitioned(rowCount);
+}
+
+/**
+ * O protocolo foi encerrado (resolvido, fechado ou cancelado) com o caso dele ainda aberto — a
+ * equipe pediu algo ao cliente e depois resolveu sem a resposta. Aberto -> cancelled, evento
+ * 'cancelled' com quem encerrou. Sem mensagem ao cliente: o encerramento do protocolo não é recado.
+ * Mesma guarda de origem de `fecharCasoDoProtocoloRespondido`.
+ */
+export async function cancelarCasoDoProtocolo(
+  db: Queryable,
+  tenantId: string,
+  caseId: string,
+  actorUserId: string | null,
+): Promise<boolean> {
+  const { rowCount } = await db.query(
+    `with updated as (
+       update agent_cases
+          set status = 'cancelled', closed_at = now(), updated_at = now()
+        where organization_id = $1 and id = $2 and status = any($4::text[]) and source = 'protocolo'
+        returning id
+     )
+     insert into agent_case_events (organization_id, case_id, kind, actor_kind, actor_user_id)
+     select $1::uuid, id, 'cancelled', 'human', $3::uuid from updated`,
+    [tenantId, caseId, actorUserId, OPEN_STATUSES],
   );
   return transitioned(rowCount);
 }
