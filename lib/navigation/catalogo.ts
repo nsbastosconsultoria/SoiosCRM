@@ -197,14 +197,19 @@ export const NAV_CATALOG = [
   },
   {
     // Módulo opcional (ADR-0002, spec 22), fonte `modulos_instalados`: a porta só existe depois
-    // que o administrador da instalação instala `protocolos`. No menu lateral, junto da Inbox,
-    // porque é a fila do dia de quem atende cliente — não consulta de passagem.
+    // que o administrador da instalação instala `protocolos`.
+    //
+    // SEM `sidebar`, e não por falta de importância: o menu lateral tem TETO de 15 itens (a dobra
+    // a 1280x900 — `tests/unit/interface-por-empresa.test.ts`), e um módulo não pode furá-lo para
+    // toda instalação que o liga. Como "atendimento" não tem hub, a empresa que vive na fila
+    // escolhe pôr Protocolos no menu em Configurações › Interface (os destinos de grupo sem hub
+    // entram por escolha — `lib/navigation/registry.ts`), trocando por algo que usa menos. Até
+    // lá, o ⌘K acha a tela pelo nome.
     href: "/app/protocolos",
     label: "Protocolos",
     description: "As demandas dos clientes com número, categoria, prioridade, fila por área e prazo de resposta.",
     icon: "ClipboardText",
     group: "atendimento",
-    sidebar: true,
     minRole: "viewer",
     modulo: "protocolos",
   },

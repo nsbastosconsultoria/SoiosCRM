@@ -4,7 +4,9 @@ secao: adicionado
 titulo: Protocolos — a fila, a ficha e a configuração
 ---
 
-Com o módulo **Protocolos** instalado, o atendimento ganha a tela **Protocolos**, no menu lateral.
+Com o módulo **Protocolos** instalado, o atendimento ganha a tela **Protocolos**. Ela abre pela
+busca (⌘K), e a empresa pode pôr a tela no menu lateral em **Configurações › Interface**. O menu
+tem limite de itens, por isso a tela não entra nele sozinha.
 
 - **A fila:** quatro visões. *Minha fila*, *Fila da área* (com o botão *Assumir*), *Vencendo* e
   *Todos*. Cada protocolo mostra o número, a prioridade e quanto falta para o prazo de resolução.
