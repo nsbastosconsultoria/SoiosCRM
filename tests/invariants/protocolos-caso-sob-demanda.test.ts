@@ -18,7 +18,7 @@ import {
 } from "@/lib/agent-engine/agent/human-cases";
 import { registrarRespostaNoProtocolo } from "@/lib/protocolos/resposta-do-cliente";
 
-import { GOV_AGENT_A, GOV_ORG, seedGov, sql } from "./gov-helpers";
+import { GOV_AGENT_A, GOV_ORG, GOV_SESSION, seedGov, sql } from "./gov-helpers";
 
 const container = process.env.TEST_DB_CONTAINER;
 if (!container) {
@@ -31,7 +31,9 @@ const pool = new pg.Pool({
 
 // Namespace próprio (09060000-): um caso aberto por conversa, então nenhuma outra suíte pode
 // dividir estas conversas.
-const SESSAO = "09060000-2222-4000-8000-000000000001";
+// A sessão é a do seed comum: `channel_sessions` tem unique DEFERRABLE, que `on conflict` recusa
+// (ver `seedGov`).
+const SESSAO = GOV_SESSION;
 const CATEGORIA = "09060000-3333-4000-8000-000000000001";
 const POLITICA = "09060000-4444-4000-8000-000000000001";
 
@@ -95,13 +97,11 @@ beforeAll(() => {
   seedGov();
   sql(`
     select public.fn_protocolos_provisionar();
-    insert into public.channel_sessions (id, organization_id, waha_session_name, status, webhook_secret_encrypted)
-      values ('${SESSAO}', '${GOV_ORG}', 'sessao-0906', 'WORKING', '\\x00'::bytea) on conflict (id) do nothing;
     insert into public.protocolo_categorias (id, organization_id, parent_id, nome, slug, area)
       values ('${CATEGORIA}', '${GOV_ORG}', null, 'Fiscal 0906', 'fiscal-0906', 'fiscal') on conflict do nothing;
     insert into public.protocolo_politicas_sla
-      (id, organization_id, prioridade, primeira_resposta_min, resolucao_min, em_horario_util, pausa_aguardando_cliente)
-      values ('${POLITICA}', '${GOV_ORG}', 'P3', 60, 2880, false, true) on conflict do nothing;
+      (id, organization_id, prioridade, categoria_id, primeira_resposta_min, resolucao_min, em_horario_util, pausa_aguardando_cliente)
+      values ('${POLITICA}', '${GOV_ORG}', 'P3', '${CATEGORIA}', 60, 2880, false, true) on conflict do nothing;
   `);
 });
 
