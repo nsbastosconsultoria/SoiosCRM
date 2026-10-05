@@ -108,7 +108,7 @@ function anonimizar(contato: string): void {
 }
 
 describe("D8 — a anonimização alcança as seções de módulo declaradas", () => {
-  it("o mecanismo existe e nasce com o registro VAZIO (nenhum módulo declara ainda)", () => {
+  it("o mecanismo existe, e o registro só traz seção de módulo que existe de verdade", () => {
     expect(sql(`select (to_regclass('public.modulo_secoes_lgpd') is not null)::text;`)).toBe("true");
     expect(
       sql(`select count(*) from pg_proc where proname = 'fn_lgpd_redigir_secoes_de_modulo'
@@ -119,9 +119,16 @@ describe("D8 — a anonimização alcança as seções de módulo declaradas", (
              where c.relname = 'contacts' and t.tgname = 'trg_lgpd_secoes_de_modulo'
                and not t.tgisinternal;`),
     ).toBe("1");
-    // O registro nasce vazio de propósito — e é a prova de que a migration não inventou
-    // dado de LGPD para um módulo que não pediu (honorários, 0480).
-    expect(sql(`select count(*) from public.modulo_secoes_lgpd;`)).toBe("0");
+    // Até a 0904 o registro nascia vazio. Os protocolos (spec 22) foram o primeiro módulo com
+    // texto livre sobre a pessoa e declararam as seções deles. O que continua valendo, e é o
+    // que esta linha mede: (1) nenhuma migration inventa dado de LGPD para módulo que não
+    // pediu — honorários segue sem seção (0480); (2) toda seção registrada é de um módulo que
+    // EXISTE (tem provisionadora), senão o registro guardaria lixo que nenhuma instalação usa.
+    expect(sql(`select count(*) from public.modulo_secoes_lgpd where modulo = 'honorarios';`)).toBe("0");
+    expect(
+      sql(`select count(*) from public.modulo_secoes_lgpd s
+            where to_regprocedure(format('public.fn_%s_provisionar()', s.modulo)) is null;`),
+    ).toBe("0");
     // E o guard é o da D8, lido do catálogo (não do arquivo): o corpo tem de resolver a
     // tabela com to_regclass antes de qualquer comando.
     expect(sql(`

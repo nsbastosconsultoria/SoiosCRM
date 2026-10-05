@@ -55,7 +55,7 @@ export function EmpresaDaConversa({ conversationId, podeTrocar }: { conversation
           aria-label={t("Empresa de que a conversa trata")}
           data-testid="empresa-da-conversa-select"
           onChange={(e) => trocar.mutate(e.target.value || null)}
-          className="min-w-0 truncate rounded border border-border bg-background px-1 py-0.5 text-xs text-foreground"
+          className="min-w-0 truncate rounded-md border border-border bg-background px-1 py-0.5 text-xs text-foreground"
         >
           <option value="">{t("Nenhuma definida")}</option>
           {dados.empresas.map((e) => (

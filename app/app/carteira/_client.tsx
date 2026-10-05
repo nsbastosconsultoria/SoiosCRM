@@ -116,7 +116,7 @@ export function Carteira({ podeGerenciar }: { podeGerenciar: boolean }) {
                     {[linha.empresa.city, linha.empresa.state].filter(Boolean).join(" / ")}
                   </td>
                   <td className="py-2">
-                    <span className={`rounded px-2 py-0.5 text-xs ${classeDoEstado(linha.estado)}`}>
+                    <span className={`rounded-md px-2 py-0.5 text-xs ${classeDoEstado(linha.estado)}`}>
                       {rotuloDoEstado(linha.estado, t)}
                     </span>
                   </td>

@@ -169,7 +169,7 @@ function Relacionamento({
     <section className="rounded-md border border-border p-3">
       <h2 className="mb-2 text-sm font-semibold">{t("Relacionamento")}</h2>
       <div className="flex flex-wrap items-center gap-2">
-        <span className={`rounded px-2 py-0.5 text-xs ${classeDoEstado(estado)}`} data-testid="carteira-estado">
+        <span className={`rounded-md px-2 py-0.5 text-xs ${classeDoEstado(estado)}`} data-testid="carteira-estado">
           {rotuloDoEstado(estado, t)}
         </span>
         {clienteDesde ? (

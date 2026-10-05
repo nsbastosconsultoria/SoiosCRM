@@ -180,6 +180,7 @@ describe("hubSections", () => {
       "/app/campaigns",
       "/app/contacts",
       "/app/companies",
+      "/app/carteira",
       "/app/people",
       "/app/tasks",
       "/app/calls",
@@ -197,6 +198,13 @@ describe("hubSections", () => {
       hubSections("crm", true, null, undefined, modulos).flatMap((s) => s.items.map((i) => i.href));
     expect(hrefs([]).filter((h) => B2B.includes(h))).toEqual([]);
     expect(hrefs(["crm_b2b"]).filter((h) => B2B.includes(h))).toEqual(B2B);
+  });
+
+  it("a carteira de empresas só existe com o módulo carteira instalado (spec 21)", () => {
+    const hrefs = (modulos: readonly ModuloOpcional[]) =>
+      hubSections("crm", true, null, undefined, modulos).flatMap((s) => s.items.map((i) => i.href));
+    expect(hrefs([])).not.toContain("/app/carteira");
+    expect(hrefs(["carteira"])).toContain("/app/carteira");
   });
 
   it("agrupa a IA nas três etapas da jornada, na ordem", () => {
