@@ -1018,6 +1018,19 @@ export const AUDIT_ACTIONS = [
   "company_people.updated",
   "contacts.person_linked",
   "imports.companies_people",
+
+  // Módulo carteira de empresas (spec 21, migration 0902). O estado do relacionamento, o
+  // vínculo detalhado e os responsáveis por área — a linha do tempo da EMPRESA mora em
+  // `carteira_eventos` (gatilho); estas são as da ROTA, com quem pediu e o request.
+  "carteira.empresa_adicionada",
+  "carteira.perfil_atualizado",
+  "carteira.estado_alterado",
+  "carteira.vinculo_criado",
+  "carteira.vinculo_atualizado",
+  "carteira.responsavel_definido",
+  "carteira.responsavel_encerrado",
+  "carteira.grupo_criado",
+  "carteira.contexto_alterado",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

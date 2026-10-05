@@ -12,6 +12,8 @@
  */
 import type pg from 'pg';
 
+import { SITUACOES_DE_RELACIONAMENTO, type SituacaoDeRelacionamento } from '@/lib/carteira/resolvedor';
+
 export interface RouterMember {
   agentId: string;
   intentName: string;
@@ -22,6 +24,24 @@ export interface RouterMember {
    * `null`/ausente = só roteia agente, como antes.
    */
   flowPointerId?: string | null;
+}
+
+/**
+ * Regra de relacionamento (spec 21 §7) — `config.relacionamento` do roteador.
+ *
+ * Cada situação aponta o NOME da intenção do membro que atende quem está nela (`intent_name` é
+ * único por roteador e sobrevive à regravação dos membros, que troca os ids). Situação sem
+ * membro segue a régua de sempre. `null` = o roteador não usa a regra — o caso de toda
+ * instalação sem o módulo carteira.
+ */
+export interface RegraDeRelacionamento {
+  membros: Partial<Record<SituacaoDeRelacionamento, string>>;
+  /**
+   * Cliente ativo que expressa outra intenção com confiança (ex.: "quero abrir outra empresa")
+   * vai para o membro dela — o cross-sell da spec 21 §7.2. `false` = vai sempre ao membro da
+   * situação, e cabe ao prompt dele registrar a oportunidade.
+   */
+  permiteReclassificar: boolean;
 }
 
 export interface LoadedRouter {
@@ -51,6 +71,30 @@ export interface LoadedRouter {
   minConfidence: number;
   fallbackAgentId: string | null;
   members: RouterMember[];
+  /** Ausente ou `null` = sem regra de relacionamento (o roteamento de sempre). */
+  relacionamento?: RegraDeRelacionamento | null;
+}
+
+/**
+ * Leitura DEFENSIVA de `config.relacionamento`, como o resto do `config`: forma errada vira
+ * `null` (sem regra), intenção que não é de nenhum membro é ignorada. Nunca derruba o turno.
+ */
+export function lerRegraDeRelacionamento(
+  bruto: unknown,
+  intencoes: readonly string[],
+): RegraDeRelacionamento | null {
+  if (bruto === null || typeof bruto !== 'object' || Array.isArray(bruto)) return null;
+  const cfg = bruto as Record<string, unknown>;
+  const membros: Partial<Record<SituacaoDeRelacionamento, string>> = {};
+  for (const situacao of SITUACOES_DE_RELACIONAMENTO) {
+    const intencao = cfg[situacao];
+    if (typeof intencao === 'string' && intencoes.includes(intencao)) membros[situacao] = intencao;
+  }
+  if (Object.keys(membros).length === 0) return null;
+  return {
+    membros,
+    permiteReclassificar: typeof cfg.permite_reclassificar === 'boolean' ? cfg.permite_reclassificar : true,
+  };
 }
 
 interface RouterRow {
@@ -98,6 +142,7 @@ export async function loadActiveRouter(
     classifier_provider?: unknown;
     sticky?: unknown;
     min_confidence?: unknown;
+    relacionamento?: unknown;
   };
   const classifierModel =
     typeof cfg.classifier_model === 'string' && cfg.classifier_model.trim() !== ''
@@ -121,6 +166,10 @@ export async function loadActiveRouter(
     sticky,
     minConfidence,
     fallbackAgentId: router.fallback_agent_id,
+    relacionamento: lerRegraDeRelacionamento(
+      cfg.relacionamento,
+      memberRows.map((m) => m.intent_name),
+    ),
     members: memberRows.map((m) => ({
       agentId: m.agent_id,
       intentName: m.intent_name,

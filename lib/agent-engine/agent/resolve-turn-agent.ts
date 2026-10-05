@@ -59,6 +59,11 @@
 import type pg from 'pg';
 
 import { consultarJevNoRoteador } from '@/lib/ai/decisao/roteador';
+import {
+  situacaoDaConversa,
+  type ResolvedorDeRelacionamento,
+  type SituacaoDeRelacionamento,
+} from '@/lib/carteira/resolvedor';
 import type { DependenciasDoPonto } from '@/lib/ai/decisao/ponto';
 
 import type { Logger } from '../obs/logger';
@@ -95,7 +100,11 @@ export interface TurnAgentResolution {
     | 'no_match'
     | 'classifier_failed'
     /** A conversa nasceu de uma campanha que declarou agente (migration 0267). */
-    | 'campanha';
+    | 'campanha'
+    /** Regra 0 (spec 21 §7): o relacionamento do contato decidiu, antes do classificador. */
+    | 'relationship'
+    /** Regra 0 com reclassificação: cliente com outra intenção clara (o cross-sell). */
+    | 'relationship_overridden';
   /**
    * Fluxo de atendimento que o membro casado aponta (migration 0394; 0237 na branch do autor). O turno
    * começa o fluxo para o contato; `null` = nenhum. Só rótulos casados o trazem
@@ -116,6 +125,8 @@ export interface ResolveTurnAgentDeps {
   consultarJev?: typeof consultarJevNoRoteador;
   /** Chave e `fetch` do Jev — dublês só no teste. Default: a chave da organização e o egress com allowlist. */
   jev?: DependenciasDoPonto;
+  /** Quem escreve já é cliente? (regra 0). Default: a leitura do módulo carteira. */
+  resolverRelacionamento?: ResolvedorDeRelacionamento;
 }
 
 /**
@@ -287,7 +298,7 @@ export async function resolveTurnAgent(
     // (mentiria pra telemetria — review T4 finding 4) — cai no fallback do
     // router com log.warn, honesto sobre a causa real.
     const loadMatchedOrFallback = async (
-      outcome: 'sticky' | 'classified' | 'reclassified',
+      outcome: 'sticky' | 'classified' | 'reclassified' | 'relationship' | 'relationship_overridden',
       member: RouterMember,
       intentName: string | null,
       confidence: number | null,
@@ -310,8 +321,13 @@ export async function resolveTurnAgent(
         outcome,
         // Só a intenção casada AGORA começa roteiro. Sticky é o mesmo assunto da
         // conversa em curso: devolvê-lo recomeçaria o roteiro a cada turno — e,
-        // depois de concluído, de novo, para sempre.
-        flowPointerId: outcome === 'sticky' ? null : (member.flowPointerId ?? null),
+        // depois de concluído, de novo, para sempre. A regra 0 decide TODO turno de
+        // quem é cliente: quando ela devolve o agente que já atendia, é continuação,
+        // e vale a mesma régua do sticky.
+        flowPointerId:
+          outcome === 'sticky' || (outcome === 'relationship' && stickyMember?.agentId === agentId)
+            ? null
+            : (member.flowPointerId ?? null),
       };
     };
 
@@ -321,6 +337,76 @@ export async function resolveTurnAgent(
       router.sticky && input.stickyAgentId !== null
         ? router.members.find((m) => m.agentId === input.stickyAgentId)
         : undefined;
+
+    // ─── Regra 0: o relacionamento do contato (spec 21 §7) ───
+    //
+    // Com UM número só, a primeira pergunta não é "sobre o que é a mensagem" e sim "quem
+    // está escrevendo": cliente ativo vai para quem atende cliente, mesmo que diga "quanto
+    // custa…". Só existe quando o roteador declara `config.relacionamento` — sem isso, nada
+    // muda, e é o caso de toda instalação sem o módulo carteira.
+    //
+    // Não vale quando a conversa JÁ saiu do membro da situação por reclassificação (o
+    // cliente pediu outra coisa e foi para o Comercial): aí seguem as regras de sempre, com
+    // o sticky do Comercial — senão a resposta seguinte ("é no ramo de marketing"), sem
+    // intenção clara, devolveria o cliente ao Atendimento no meio da conversa comercial.
+    //
+    // Falha ABERTA: o resolvedor que falha vira `desconhecido`, com aviso.
+    const regra = router.relacionamento ?? null;
+    if (regra !== null) {
+      const _resolver = deps.resolverRelacionamento ?? situacaoDaConversa;
+      let situacao: SituacaoDeRelacionamento = 'desconhecido';
+      try {
+        situacao = await _resolver(db, input.tenantId, input.conversationId);
+      } catch (err) {
+        deps.log.warn('resolve-turn-agent: relacionamento não lido — seguindo como desconhecido', {
+          routerId: router.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+      const intencao = regra.membros[situacao];
+      const membroDaSituacao =
+        intencao !== undefined ? router.members.find((m) => m.intentName === intencao) : undefined;
+      const saiuPorReclassificacao =
+        membroDaSituacao !== undefined &&
+        stickyMember !== undefined &&
+        stickyMember.agentId !== membroDaSituacao.agentId;
+
+      if (membroDaSituacao !== undefined && !saiuPorReclassificacao) {
+        if (input.signal === null || !regra.permiteReclassificar) {
+          return loadMatchedOrFallback('relationship', membroDaSituacao, membroDaSituacao.intentName, null);
+        }
+        const veredito = await _classifyIntent(
+          db,
+          llmCfg,
+          {
+            tenantId: input.tenantId,
+            leadId: input.leadId,
+            jobId: input.jobId,
+            router,
+            signal: input.signal,
+            recentMessages: input.recentMessages ?? [],
+          },
+          { log: deps.log },
+        );
+        const outro =
+          veredito !== null &&
+          veredito.falhou !== true &&
+          veredito.intentName !== null &&
+          veredito.intentName !== membroDaSituacao.intentName &&
+          veredito.confidence >= router.minConfidence
+            ? router.members.find((m) => m.intentName === veredito.intentName)
+            : undefined;
+        if (outro !== undefined) {
+          return loadMatchedOrFallback('relationship_overridden', outro, outro.intentName, veredito!.confidence);
+        }
+        return loadMatchedOrFallback(
+          'relationship',
+          membroDaSituacao,
+          membroDaSituacao.intentName,
+          veredito?.confidence ?? null,
+        );
+      }
+    }
 
     // regra 6: sem mensagem inbound (follow-up) — nunca classifica.
     if (input.signal === null) {

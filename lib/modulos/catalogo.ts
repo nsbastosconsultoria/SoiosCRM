@@ -29,6 +29,22 @@ export const CATALOGO_DE_MODULOS: readonly ModuloCatalogo[] = [
       "de quem não paga depois da carência. Para quem opera a instalação e cobra as empresas " +
       "que atende.",
   },
+  {
+    slug: "carteira",
+    nome: "Carteira de empresas",
+    descricao:
+      "Liga quem escreve às empresas que representa, guarda se cada empresa é prospect ou " +
+      "cliente, quem cuida dela em cada área e de qual empresa é cada conversa. Para quem " +
+      "atende empresas recorrentes por um número só (contabilidade, agência, TI gerenciada).",
+  },
+  {
+    slug: "protocolos",
+    nome: "Protocolos",
+    descricao:
+      "As demandas dos clientes atuais com número, categoria, prioridade, fila por área e prazo " +
+      "de resposta e de resolução (SLA). Para quem precisa saber o que vence hoje e quem é o " +
+      "dono de cada pedido.",
+  },
 ];
 
 export function moduloDoCatalogo(slug: string): ModuloCatalogo | undefined {

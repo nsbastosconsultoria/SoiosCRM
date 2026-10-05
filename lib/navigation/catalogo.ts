@@ -253,6 +253,21 @@ export const NAV_CATALOG = [
     modulo: "crm_b2b",
   },
   {
+    // Módulo opcional (ADR-0002, spec 21), fonte `modulos_instalados`: a porta só existe
+    // depois que o administrador da instalação instala `carteira` em `/admin/modulos`.
+    // Ao lado de Empresas porque é a mesma empresa (`companies`) vista pelo relacionamento:
+    // lá o cadastro, aqui quem é cliente, desde quando e quem cuida dela. Sem sidebar pela
+    // mesma régua de Empresas: mora no hub do CRM.
+    href: "/app/carteira",
+    label: "Carteira de empresas",
+    description: "Quem é cliente, desde quando, quem representa cada empresa e quem cuida dela.",
+    icon: "Buildings",
+    group: "crm",
+    section: "O dia a dia da venda",
+    minRole: "viewer",
+    modulo: "carteira",
+  },
+  {
     href: "/app/people",
     label: "Pessoas",
     description: "Decisores e contatos ligados a empresas, com vários telefones.",

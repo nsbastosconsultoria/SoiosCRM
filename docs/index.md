@@ -79,6 +79,8 @@ Detalham schema SQL e payloads exatos. **Consulte antes de modelar qualquer cois
 | [`specs/17`](specs/17-spec-conversa-vira-lead.md) | **A conversa vira lead** — o elo entre atendimento e CRM |
 | [`specs/17`](specs/17-spec-indice-de-atrito.md) | **Índice de Atrito** — medir o propósito (menor atrito p/ os dois lados), não a atividade |
 | [`specs/18`](specs/18-spec-voice-calls-wacalls.md) | Chamada de voz WhatsApp (WaCalls) — rascunho, sem sub-PRD dedicado |
+| [`specs/21`](specs/21-spec-modulo-carteira.md) | **Módulo `carteira`** — empresas atendidas, vínculo contato × empresa, empresa ativa da conversa e regra de relacionamento no roteador — rascunho |
+| [`specs/22`](specs/22-spec-modulo-protocolos.md) | **Módulo `protocolos`** — demandas operacionais com categoria, prioridade, fila e SLA, ligadas aos casos humanos — rascunho |
 | [`specs/extensoes-declarativas-v1.md`](specs/extensoes-declarativas-v1.md) | **Extensões declarativas v1** — pacote JSON estrito, catálogo admitido pelo dono da instalação, ativação por organização, guia no hub CRM |
 | [`integracao/webhooks-de-saida.md`](integracao/webhooks-de-saida.md) | Webhook de saída do lado de quem recebe: cabeçalhos, assinatura com carimbo de tempo, id de entrega, exemplos em Node e Python |
 | [`specs/RECONCILIATION-LOG.md`](specs/RECONCILIATION-LOG.md) | Log de reconciliação entre specs |
