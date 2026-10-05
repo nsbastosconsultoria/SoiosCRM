@@ -92,6 +92,11 @@ CRONS="
 # O CASO PARADO. De hora em hora, e não a cada 5 minutos: o prazo é de 24h, e
 # uma varredura mais frequente só gastaria consulta para descobrir o mesmo nada.
 7 * * * *|60|api/v1/cron/case-stale-watcher
+# O PRAZO DOS PROTOCOLOS. A cada 5 minutos, e não de hora em hora: um P1 com prazo de 1 hora
+# precisa do aviso de 80 por cento antes de vencer. Sem o módulo instalado, a rodada é uma
+# consulta que responde modulo_instalado=false e termina. (Sem aspas duplas nestes comentários:
+# eles moram DENTRO da string CRONS, e uma aspa dupla a fecha no meio.)
+*/5 * * * *|60|api/v1/cron/protocolos-sla-watcher
 */30 * * * *|60|api/v1/cron/contact-phones
 17 * * * *|60|api/v1/cron/contact-proposals-watcher
 23 * * * *|60|api/v1/cron/followup-sem-agente

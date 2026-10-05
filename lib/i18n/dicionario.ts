@@ -13688,6 +13688,12 @@ export const DICIONARIO: Traducoes = {
   "vencido há": { es: "vencido hace" },
   "Área": { es: "Área" },
   "← Protocolos": { es: "← Protocolos" },
+  // ── Central: avisos de protocolo (migration 0905) ──
+  "O prazo de um protocolo está vencendo": { es: "El plazo de un protocolo está por vencer" },
+  "Um protocolo está numa fila sem ninguém": { es: "Un protocolo está en una cola sin nadie" },
+  "Abra o protocolo e veja se ele precisa de outra pessoa, de outra prioridade ou de um retorno ao cliente.": { es: "Abre el protocolo y revisa si necesita a otra persona, otra prioridad o una respuesta al cliente." },
+  "Atribua o protocolo a alguém, ou ponha pessoas na fila desta área em Configurações › Protocolos.": { es: "Asigna el protocolo a alguien, o agrega personas a la cola de esta área en Configuración › Protocolos." },
+  "Ligado à conversa: o protocolo leva o contato e a empresa dela.": { es: "Vinculado a la conversación: el protocolo lleva el contacto y la empresa de ella." },
 };
 
 /**

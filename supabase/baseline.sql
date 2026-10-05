@@ -10106,6 +10106,11 @@ alter table public.agent_inbox_items
     -- sugerido (plano N1) ou falta preço de catálogo — a Central acompanha
     -- até as duas pendências sumirem, ou até a proposta ser enviada/descartada.
     'proposta_pronta_para_revisao',
+    -- (migration 0905, spec 22) Módulo protocolos: o prazo de um protocolo chegou a 80/100/120%
+    -- (o vigia `protocolos-sla-watcher` escreve, uma vez por marco), e um protocolo novo ficou
+    -- na fila de uma área sem ninguém para pegar. Os dois apontam para `ref_kind='protocolo'`.
+    'protocolo_sla',
+    'protocolo_sem_dono',
     'other'
   ));
 

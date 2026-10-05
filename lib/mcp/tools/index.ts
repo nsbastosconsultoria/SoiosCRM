@@ -57,6 +57,12 @@ import {
   crmCarteiraDefinirEmpresaDaConversa,
   crmCarteiraEmpresasDoContato,
 } from "./carteira";
+import {
+  crmProtocoloAbrir,
+  crmProtocoloCategorias,
+  crmProtocoloComplementar,
+  crmProtocoloConsultar,
+} from "./protocolos";
 import { crmDescribeExternalData, crmQueryExternalData } from "./dados-externos";
 import { crmListPrivacyRequests } from "./privacidade";
 import {
@@ -131,6 +137,10 @@ export const allTools: ReadonlyArray<McpToolDefinition> = [
   crmCarteiraEmpresasDoContato,
   crmCarteiraDefinirEmpresaDaConversa,
   crmCarteiraBuscarEmpresa,
+  crmProtocoloCategorias,
+  crmProtocoloAbrir,
+  crmProtocoloConsultar,
+  crmProtocoloComplementar,
   crmPrepararProposta,
   crmDescribeExternalData,
   crmQueryExternalData,

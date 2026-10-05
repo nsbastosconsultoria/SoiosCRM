@@ -92,6 +92,9 @@ export type InboxKind =
   // A proposta rascunhada pela IA precisa de revisão de uma pessoa — a Central
   // acompanha até resolver.
   | 'proposta_pronta_para_revisao'
+  // (migration 0905, spec 22) módulo protocolos — prazo do protocolo e fila sem dono.
+  | 'protocolo_sla'
+  | 'protocolo_sem_dono'
   | 'other';
 
 export interface InboxItemRow {

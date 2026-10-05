@@ -96,6 +96,9 @@ export const KIND_LABEL = {
   followup_sem_agente: "Um follow-up está publicado e não está disparando",
   proposta_travada: "Uma proposta ficou presa em envio e voltou a rascunho",
   proposta_pronta_para_revisao: "Uma proposta está pronta para revisão",
+  // Módulo protocolos (migration 0905): diz o que espera, não o nome técnico do relógio.
+  protocolo_sla: "O prazo de um protocolo está vencendo",
+  protocolo_sem_dono: "Um protocolo está numa fila sem ninguém",
   other: "Aviso do assistente",
 } as const satisfies Record<InboxKind, string>;
 

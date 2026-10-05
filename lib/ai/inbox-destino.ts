@@ -32,6 +32,10 @@ export const REFERENCIAS_DE_AVISO = {
   // O remédio é recarregar na conta do provedor, fora do CRM; a tela de
   // credenciais é onde se confere QUAL chave é, e onde se troca por outra.
   ai_provider_credential: { tabela: "ai_provider_credentials", papel: "admin", rotulo: "Revisar credencial", href: () => "/app/ai/credentials" },
+  // Módulo protocolos (spec 22). `viewer`, a mesma régua da fila. Sem o módulo instalado a
+  // tabela não existe, a consulta de visibilidade falha, e o aviso fica sem link — nunca um
+  // link para tela que não abre.
+  protocolo: { tabela: "protocolos", papel: "viewer", rotulo: "Abrir protocolo", href: (id: string) => `/app/protocolos/${id}` },
 } satisfies Record<string, Alvo>;
 
 export type InboxRefKind = keyof typeof REFERENCIAS_DE_AVISO | "organization" | "ai_budget" | "job_queue" | "cron_jobs";
@@ -122,6 +126,10 @@ export const POLITICAS_DE_AVISO = {
   },
   // `agent_case`: o caso que a IA abriu, na Central no instante da abertura
   // (`lib/escalacao/caso-na-central.handler.ts`).
+  // O vigia de prazo dos protocolos (`protocolos-sla-watcher`): um aviso por marco de 80/100/120%.
+  protocolo_sla: { refs: ["protocolo"], orientacao: "Abra o protocolo e veja se ele precisa de outra pessoa, de outra prioridade ou de um retorno ao cliente." },
+  // Protocolo numa fila sem membro nem líder: ele não anda até alguém configurar a fila.
+  protocolo_sem_dono: { refs: ["protocolo"], orientacao: "Atribua o protocolo a alguém, ou ponha pessoas na fila desta área em Configurações › Protocolos." },
   other: { refs: ["lead", "channel_session", "appointment", "ai_agent", "ai_provider_credential", "agent_case"], orientacao: "Confira a situação descrita neste aviso com a pessoa responsável." },
 } satisfies Record<InboxKind, Politica>;
 
