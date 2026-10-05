@@ -19,6 +19,7 @@ import type { HandlerCtx } from "@/lib/api/handlers/types";
 import { AREAS_CONTABILIDADE, AREAS_PADRAO, areasDaOrganizacao, type Area } from "@/lib/atendimento/areas";
 import { audit } from "@/lib/audit";
 import { ROLE_RANK, type Role } from "@/lib/auth/types";
+import type { createAdminClient } from "@/lib/supabase/admin";
 
 import { lancarErroDoProtocolo, type ErroDoBanco } from "./erros";
 import { MODELOS_DE_CATEGORIAS } from "./modelos";
@@ -33,6 +34,12 @@ import { expedienteDaOrganizacao, minutosUteisEntre, somarMinutosUteis, type Exp
 import { ESTADOS_ABERTOS, type Distribuicao, type EstadoDoProtocolo, type OrigemDoProtocolo } from "./vocabulario";
 
 type SB = SupabaseClient;
+/**
+ * O cliente de SERVIÇO, provado pelo tipo e não pelo nome: é o que escreve em `organizations`
+ * (`tests/unit/escrita-em-organizations-usa-cliente-admin.test.ts` — com o cliente de sessão a
+ * RLS casa zero linhas e o PostgREST devolve sucesso).
+ */
+type Admin = ReturnType<typeof createAdminClient>;
 
 export const SELECT_DO_PROTOCOLO =
   "id, ano, numero, company_id, contact_id, conversation_id, agent_case_id, lead_id, categoria_id, subcategoria_id, " +
@@ -788,7 +795,7 @@ export async function salvarPolitica(
 }
 
 /** `organizations.settings.<chave>` por MERGE — nunca sobrescrever o jsonb inteiro. */
-async function mesclarSettings(admin: SB, ctx: HandlerCtx, mesclar: (atual: Record<string, unknown>) => Record<string, unknown>) {
+async function mesclarSettings(admin: Admin, ctx: HandlerCtx, mesclar: (atual: Record<string, unknown>) => Record<string, unknown>) {
   const { data, error } = await admin.from("organizations").select("settings").eq("id", ctx.organization_id).single();
   falha(error, ctx);
   const atual = ((data as { settings?: Record<string, unknown> } | null)?.settings ?? {}) as Record<string, unknown>;
@@ -796,7 +803,7 @@ async function mesclarSettings(admin: SB, ctx: HandlerCtx, mesclar: (atual: Reco
   falha(erroGravar, ctx);
 }
 
-export async function salvarExpediente(admin: SB, ctx: HandlerCtx, userId: string, expediente: Expediente | null) {
+export async function salvarExpediente(admin: Admin, ctx: HandlerCtx, userId: string, expediente: Expediente | null) {
   if (expediente && expedienteDaOrganizacao({ protocolos: { expediente } }) === null) {
     invalido(ctx, "Expediente inválido: confira o fuso e se o fim vem depois do início.");
   }
@@ -821,7 +828,7 @@ export async function salvarExpediente(admin: SB, ctx: HandlerCtx, userId: strin
  * configurou é apagado) e as categorias (só as que faltam, pelo slug). Idempotente: aplicar de
  * novo não duplica nada. Políticas de SLA ficam EM BRANCO de propósito — prazo é do escritório.
  */
-export async function aplicarModelo(db: SB, admin: SB, ctx: HandlerCtx, userId: string, modelo: "contabilidade" | "generico") {
+export async function aplicarModelo(db: SB, admin: Admin, ctx: HandlerCtx, userId: string, modelo: "contabilidade" | "generico") {
   const areasDoModelo: readonly Area[] = modelo === "contabilidade" ? AREAS_CONTABILIDADE : AREAS_PADRAO;
   await mesclarSettings(admin, ctx, (s) => {
     const atendimento = (s.atendimento as Record<string, unknown>) ?? {};
