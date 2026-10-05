@@ -2,9 +2,10 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import { sql } from "./gov-helpers";
+import { provisionadorasDoCatalogo } from "./molde-de-provisionadora";
 
 /**
  * TODO `onConflict` APONTA PARA UMA CONSTRAINT QUE EXISTE.
@@ -116,6 +117,16 @@ function conjuntosUnicos(tabela: string): string[][] {
 }
 
 describe("onConflict × constraints reais", () => {
+  // Tabela de MÓDULO (ADR-0002) só existe depois de provisionar, e este banco nasce sem
+  // nenhum instalado: um upsert de módulo seria reprovado por "tabela sem índice único"
+  // quando o defeito é só a tabela ainda não existir. A D8 da ADR pede exatamente isto —
+  // varredura que roda também com os módulos instalados —, e sem ela o upsert de módulo
+  // ficaria FORA da guarda, que é o pior dos dois erros. Provisionar todos (não uma lista)
+  // faz o módulo novo entrar sem ninguém lembrar.
+  beforeAll(() => {
+    for (const p of provisionadorasDoCatalogo()) sql(`select public.${p.nome}();`);
+  });
+
   const arquivos = arquivosDoRepo();
   const todos = arquivos.map(usosDe);
   const usos = todos.flatMap((t) => t.usos);

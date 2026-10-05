@@ -156,6 +156,10 @@ export const ALVO_DE_FUNIL: Record<string, AlvoDeFunil> = {
   crm_create_webhook_source: "sem_funil",
   crm_set_webhook_source_active: "sem_funil",
   crm_set_automation_rule_active: "sem_funil",
+  // Módulo carteira (spec 21 §8): diz de qual EMPRESA é a conversa. Escreve em
+  // `carteira_contexto_conversa`, nunca em `crm_leads`, e o banco já o limita às
+  // empresas ligadas à pessoa da conversa (`fn_carteira_definir_contexto`).
+  crm_carteira_definir_empresa_da_conversa: "sem_funil",
 };
 
 /**

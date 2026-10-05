@@ -19,6 +19,8 @@ import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { useT } from "@/hooks/i18n/useT";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { apiClient } from "@/lib/api/client";
+import { phoneForDisplay } from "@/lib/channels/phone-variants";
+import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { ApiError } from "@/lib/api/types";
 import {
   PAPEIS_DO_VINCULO,
@@ -222,7 +224,7 @@ function Pessoas({
   const telefonesDe = (personId: string): string =>
     ficha.contatos
       .filter((c) => c.person_id === personId)
-      .map((c) => c.phone_number ?? c.display_name ?? "")
+      .map((c) => (c.phone_number ? phoneForDisplay(c.phone_number) : null))
       .filter(Boolean)
       .join(", ");
 
@@ -340,7 +342,7 @@ function LigarContato({ companyId, chave }: { companyId: string; chave: string[]
           <option value="">{t("Escolha")}</option>
           {(contatos.data ?? []).map((c) => (
             <option key={c.id} value={c.id}>
-              {[c.name || c.display_name, c.phone_number].filter(Boolean).join(" · ")}
+              {rotuloDoContato(c, t)}
             </option>
           ))}
         </select>

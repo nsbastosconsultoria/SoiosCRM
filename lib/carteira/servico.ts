@@ -22,6 +22,7 @@ import type { HandlerCtx } from "@/lib/api/handlers/types";
 import { audit } from "@/lib/audit";
 import { createCompanyHandler, getCompanyHandler } from "@/lib/crm-b2b/companies-handler";
 import { normalizeCnpj } from "@/lib/crm-b2b/normalize";
+import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 
 import { areasDaOrganizacao, type Area } from "@/lib/atendimento/areas";
 import { lancarErroDaCarteira, type ErroDoBanco } from "./erros";
@@ -335,7 +336,8 @@ export async function vincularContato(
 
   let personId = c.person_id;
   if (!personId) {
-    const nome = (c.name || c.display_name || c.phone_number || "Contato").trim();
+    // O rótulo canônico (nome, senão o telefone): a pessoa nasce com o nome que a tela já mostra.
+    const nome = rotuloDoContato(c);
     const { data: pessoa, error } = await db
       .from("people")
       .insert({ organization_id: ctx.organization_id, full_name: nome, created_by: userId })

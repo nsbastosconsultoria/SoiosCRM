@@ -59,12 +59,20 @@ function recusada(usuario: string, dml: string): boolean {
   }
 }
 
-/** Abre um protocolo como o serviço faria (postgres no teste; service role em produção). */
-function abrir(org: string, categoria: string, extra = ""): string {
+/**
+ * Abre um protocolo como o serviço faria (postgres no teste; service role em produção).
+ * O `returning` vai dentro de uma CTE: com `-tA`, um INSERT … RETURNING solto imprime a
+ * linha do id E a etiqueta "INSERT 0 1" depois dela, e a última linha deixaria de ser o id.
+ */
+function abrir(org: string, categoria: string, contato: string | null = null): string {
   return um(`
-    insert into public.protocolos (organization_id, categoria_id, titulo, descricao, prioridade, area, origem${extra ? ", " + extra.split("=")[0] : ""})
-    values ('${org}', '${categoria}', 'Guia do DAS', 'Cliente pediu a guia do DAS de setembro', 'P3', 'fiscal', 'humano'${extra ? ", " + extra.split("=")[1] : ""})
-    returning id;`);
+    with novo as (
+      insert into public.protocolos (organization_id, categoria_id, titulo, descricao, prioridade, area, origem, contact_id)
+      values ('${org}', '${categoria}', 'Guia do DAS', 'Cliente pediu a guia do DAS de setembro', 'P3', 'fiscal', 'humano',
+              ${contato ? `'${contato}'` : "null"})
+      returning id
+    )
+    select id from novo;`);
 }
 
 function estado(id: string): string {
@@ -105,8 +113,11 @@ describe("numeração", () => {
 
   it("número enviado por quem grava é ignorado — o gatilho decide", () => {
     const id = um(`
-      insert into public.protocolos (organization_id, categoria_id, titulo, descricao, prioridade, area, origem, numero, ano)
-      values ('${GOV_ORG}', '${CATEGORIA}', 't', 'd', 'P3', 'fiscal', 'humano', 999999, 1999) returning id;`);
+      with novo as (
+        insert into public.protocolos (organization_id, categoria_id, titulo, descricao, prioridade, area, origem, numero, ano)
+        values ('${GOV_ORG}', '${CATEGORIA}', 't', 'd', 'P3', 'fiscal', 'humano', 999999, 1999) returning id
+      )
+      select id from novo;`);
     expect(um(`select (numero <> 999999 and ano <> 1999)::text from public.protocolos where id = '${id}';`)).toBe("true");
   });
 });
@@ -283,7 +294,7 @@ describe("linha do tempo", () => {
 
 describe("LGPD: anonimizar o contato alcança o módulo", () => {
   it("título e descrição viram o rótulo, resumo e eventos de texto viram nulo, a operação fica", () => {
-    const id = abrir(GOV_ORG, CATEGORIA, `contact_id='${GOV_CONTACT_3}'`);
+    const id = abrir(GOV_ORG, CATEGORIA, GOV_CONTACT_3);
     sql(`
       update public.protocolos set resumo = '{"solicitacao":"guia do DAS"}'::jsonb, alterado_por = null where id = '${id}';
       select public.fn_protocolo_registrar_evento('${GOV_ORG}', '${id}', 'complemento_do_cliente', 'meu CPF é 123', null, 'ia');
