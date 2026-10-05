@@ -222,6 +222,17 @@ export function ConversationHeader({
         {activeOrg?.modulos_ligados?.includes("carteira") ? (
           <EmpresaDaConversa conversationId={conversation.id} podeTrocar={activeOrg.role !== "viewer"} />
         ) : null}
+        {/* Abrir protocolo a partir da conversa (módulo protocolos, spec 22): o formulário já vem
+            ligado a ela, e o protocolo herda o contato e a empresa do contexto. */}
+        {activeOrg?.modulos_ligados?.includes("protocolos") && activeOrg.role !== "viewer" ? (
+          <Link
+            href={`/app/protocolos?conversa=${conversation.id}`}
+            className="mt-0.5 inline-block text-xs text-muted-foreground underline-offset-2 hover:underline"
+            data-testid="abrir-protocolo-da-conversa"
+          >
+            {t("Abrir protocolo")}
+          </Link>
+        ) : null}
       </div>
 
       {/* `shrink-0` saiu daqui: era ele que impunha o piso de largura. Agora a

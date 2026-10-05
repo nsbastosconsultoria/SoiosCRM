@@ -99,6 +99,12 @@ const ESCRITA_QUE_E_TRABALHO_DE_ATENDENTE: ReadonlyArray<string> = [
   // conversa é trabalho de quem atende (spec 21 §8). O banco limita o agente às empresas ligadas à
   // pessoa da conversa (`fn_carteira_definir_contexto`, migration 0902); a pessoa da tela, não.
   "crm_carteira_definir_empresa_da_conversa",
+  // `app/api/v1/protocolos/` — POST exige `agent`: abrir protocolo é o trabalho de quem atende
+  // cliente (spec 22 §12). Crítica no catálogo, e por isso ligada uma a uma.
+  "crm_protocolo_abrir",
+  // `app/api/v1/protocolos/[id]/notas/` — POST exige `agent`: acrescentar ao protocolo é a mesma
+  // escrita na linha do tempo, com o texto que o cliente mandou.
+  "crm_protocolo_complementar",
   // `app/api/v1/conversations/[id]/reactivate-bot/` — POST exige `agent`.
   // A regra dura aqui NÃO é o papel: o handler recusa `actor.type === "ai_agent"`
   // com `resume_requires_person`. Proteção dita em voz alta em vez de acidente de

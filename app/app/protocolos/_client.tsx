@@ -7,6 +7,7 @@
  * banco e só muda pelo serviço.
  */
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -86,7 +87,9 @@ export function Protocolos({ podeAtender, podeConfigurar }: { podeAtender: boole
   const qc = useQueryClient();
   const [visao, setVisao] = useState<Visao>(podeAtender ? "minha" : "todos");
   const [area, setArea] = useState("");
-  const [abrindo, setAbrindo] = useState(false);
+  // Vindo da inbox ("Abrir protocolo" no cabeçalho da conversa): o formulário abre ligado a ela.
+  const conversaDaInbox = useSearchParams().get("conversa");
+  const [abrindo, setAbrindo] = useState(Boolean(conversaDaInbox));
 
   const config = useQuery({
     queryKey: ["protocolos", "config"],
@@ -172,7 +175,9 @@ export function Protocolos({ podeAtender, podeConfigurar }: { podeAtender: boole
         ) : null}
       </div>
 
-      {abrindo && config.data ? <FormularioDeAbertura config={config.data} onAberto={() => setAbrindo(false)} /> : null}
+      {abrindo && config.data ? (
+        <FormularioDeAbertura config={config.data} conversationId={conversaDaInbox} onAberto={() => setAbrindo(false)} />
+      ) : null}
 
       <section className="rounded-md border border-border p-3">
         {lista.isError ? (
@@ -225,7 +230,15 @@ export function Protocolos({ podeAtender, podeConfigurar }: { podeAtender: boole
   );
 }
 
-function FormularioDeAbertura({ config, onAberto }: { config: Configuracao; onAberto: () => void }) {
+function FormularioDeAbertura({
+  config,
+  conversationId,
+  onAberto,
+}: {
+  config: Configuracao;
+  conversationId: string | null;
+  onAberto: () => void;
+}) {
   const t = useT();
   const qc = useQueryClient();
   const raizes = config.categorias.filter((c) => c.parent_id === null && c.ativa);
@@ -250,6 +263,7 @@ function FormularioDeAbertura({ config, onAberto }: { config: Configuracao; onAb
         titulo: titulo.trim(),
         descricao: descricao.trim(),
         prazo_cliente: prazo || null,
+        ...(conversationId ? { conversation_id: conversationId } : {}),
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["protocolos", "lista"] });
@@ -269,6 +283,11 @@ function FormularioDeAbertura({ config, onAberto }: { config: Configuracao; onAb
         if (pode && !abrir.isPending) abrir.mutate();
       }}
     >
+      {conversationId ? (
+        <p className="text-xs text-text-muted md:col-span-2" data-testid="novo-protocolo-da-conversa">
+          {t("Ligado à conversa: o protocolo leva o contato e a empresa dela.")}
+        </p>
+      ) : null}
       <label className="flex flex-col gap-1 text-xs text-text-muted">
         {t("Categoria")}
         <select

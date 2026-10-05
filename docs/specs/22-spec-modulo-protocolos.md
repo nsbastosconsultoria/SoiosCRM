@@ -209,7 +209,14 @@ e pela tela — nunca três caminhos.
    são lidos das colunas — o resumo não duplica o que já é coluna (DIRC).
 6. Emite `protocolo.aberto` no `event_log`, audita `protocolos.aberto`, grava `protocolo_eventos`.
 
-## 6. Relação com Casos Humanos (núcleo)
+## 6. Relação com Casos Humanos (núcleo) — ADIADA para o PR-E
+
+> **Estado em 2026-10-05:** não implementada. A abertura pela ferramenta do assistente (PR-D)
+> roda pelo cliente PostgREST do MCP, e a máquina de estados do caso (`human-cases.ts`) roda sobre
+> `pg`, dentro do motor. Ligar os dois a partir da ferramenta exigiria copiar `openCase` — duas
+> portas para a mesma transição, o que a doutrina proíbe. O PR-E faz a ligação do lado do motor,
+> com o desenho abaixo. Até lá, a equipe responde ao cliente pela inbox (link "Abrir a conversa"
+> na ficha do protocolo).
 
 O protocolo **não substitui** o loop da spec 15; ele o usa como canal.
 
@@ -255,12 +262,19 @@ humano.
 
 ## 8. Ferramentas do agente (catálogo MCP, `modulo: "protocolos"`)
 
+Implementadas no PR-D (`lib/mcp/tools/protocolos.ts`, catálogo `lib/mcp/tools/catalogo/protocolos.ts`):
+
 | Tool | Categoria | Risco | Pacotes | O que faz |
 |---|---|---|---|---|
-| `crm_protocolo_categorias` | read | seguro | `atender` | Lista categorias e subcategorias ativas com `descricao_para_ia` e se exigem competência |
-| `crm_protocolo_abrir` | write | **crítica** | — (ligar uma a uma) | Abre (ou complementa, pela deduplicação §5.2) e devolve número e estado. Crítica como a capacidade "casos" de hoje: cria trabalho para a equipe |
-| `crm_protocolo_consultar` | read | seguro | `atender` | Protocolos abertos/recentes do contato ou da empresa do contexto: número, título, estado em linguagem simples |
-| `crm_protocolo_complementar` | write | seguro | `atender` | Acrescenta informação do cliente a um protocolo aberto; reabre um `resolvido` dentro da janela (§10.4) |
+| `crm_protocolo_categorias` | read | seguro | `atender` | Categorias ativas com subcategorias, `quando_usar` (o `descricao_para_ia`) e se pedem competência |
+| `crm_protocolo_abrir` | write | **crítica** | `atender` (liga-se uma a uma) | Abre pela MESMA `abrirProtocolo` da tela, com ator `ia` e origem `agente`. Devolve número, `ja_existia` (deduplicação), situação em palavras e `passou_para_pessoa`. Categoria que exige pessoa dispara o handoff canônico DENTRO da abertura (o handler de `crm_request_human_handoff`, urgência alta) — não depende do modelo lembrar |
+| `crm_protocolo_consultar` | read | seguro | `atender` | Protocolos do contato da conversa (abertos e dos últimos 30 dias): número, título, situação em palavras |
+| `crm_protocolo_complementar` | write | atenção | `atender` | Acrescenta ao protocolo DO contato; resolvido há até 7 dias é reaberto; mais antigo, recusa e ensina a abrir novo |
+
+As duas escritas entram em `ALVO_DE_FUNIL` como `sem_funil` e em
+`ESCRITA_QUE_E_TRABALHO_DE_ATENDENTE` (paridade: `POST /protocolos` e `POST /protocolos/:id/notas`,
+ambos `agent`). Empresa do pedido: a do contexto da carteira; a descrição da ferramenta manda
+confirmar a empresa quando a pessoa representa mais de uma.
 
 ### 8.3 O que a IA nunca recebe nem diz
 
@@ -314,7 +328,7 @@ sair soma o intervalo **útil** em `pausa_acumulada` e empurra `resolucao_vence_
   ⇒ `reaberto`, `reaberturas+1`, relógio de resolução retoma do ponto em que parou.
 - `resolvido` há mais que a janela ⇒ `fechado` pelo watcher; mensagem nova abre protocolo novo.
 
-### 10.5 Watcher — `app/api/v1/cron/protocolos-sla-watcher` (1×/min no `scheduler`)
+### 10.5 Watcher — `app/api/v1/cron/protocolos-sla-watcher` (a cada 5 min no `scheduler`; implementado no PR-D, `lib/protocolos/vigia.ts`)
 
 Para cada relógio não pausado e não cumprido: ao cruzar 80%, 100% e 120%, insere em
 `protocolo_marcos_sla` (a PK garante idempotência no replay) e só então: 80% ⇒ aviso ao responsável;
@@ -324,10 +338,10 @@ Para cada relógio não pausado e não cumprido: ao cruzar 80%, 100% e 120%, ins
 ## 11. Pontos no núcleo
 
 - **`agent_inbox_items.kind`** ganha `protocolo_sla` e `protocolo_sem_dono` — forward-fix do CHECK pela
-  tripla migration + baseline + MANIFEST; a cascata LGPD que resolve avisos do titular passa a
-  alcançar esses kinds (`ref_kind='protocolo'`), e a projeção da Central ganha o destino
-  `/app/protocolos/:id`.
-- **Consumidor de estado do caso** (§6).
+  tripla migration + baseline + MANIFEST (migration 0905, PR-D), e a projeção da Central ganha o
+  destino `/app/protocolos/:id` (`lib/ai/inbox-destino.ts`). A cascata LGPD dos avisos NÃO precisa
+  alcançá-los: o texto leva número, categoria e prazo — nunca título nem descrição do protocolo.
+- **Consumidor de estado do caso** (§6) — PR-E.
 - Nenhuma outra tabela do núcleo muda.
 
 ## 12. API e telas

@@ -160,6 +160,10 @@ export const ALVO_DE_FUNIL: Record<string, AlvoDeFunil> = {
   // `carteira_contexto_conversa`, nunca em `crm_leads`, e o banco já o limita às
   // empresas ligadas à pessoa da conversa (`fn_carteira_definir_contexto`).
   crm_carteira_definir_empresa_da_conversa: "sem_funil",
+  // Módulo protocolos (spec 22 §8): escrevem em `protocolos`/`protocolo_eventos`, nunca em
+  // `crm_leads`. O protocolo pode carregar um `lead_id`, mas a ferramenta não o recebe.
+  crm_protocolo_abrir: "sem_funil",
+  crm_protocolo_complementar: "sem_funil",
 };
 
 /**
