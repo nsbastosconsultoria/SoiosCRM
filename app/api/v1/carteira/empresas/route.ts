@@ -13,7 +13,7 @@ import type { NextRequest } from "next/server";
 import { ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { adicionarEmpresa, listarCarteira } from "@/lib/carteira/servico";
-import { corpoValidado, ctxFromAuthz, handleRouteError, requestIdOf } from "@/lib/carteira/rota";
+import { corpoValidado, ctxFromAuthz, handleRouteError, requestIdOf } from "@/lib/api/rota-de-modulo";
 import { empresaNovaSchema, estadoSchema } from "@/lib/carteira/schemas";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { createAdminClient } from "@/lib/supabase/admin";

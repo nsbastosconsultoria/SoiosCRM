@@ -1,7 +1,7 @@
 /**
- * O que toda rota de `/api/v1/carteira/*` repete: ler o corpo pelo Zod e conferir o id do
- * caminho. `ctxFromAuthz`/`handleRouteError` são os do CRM B2B — a mesma forma de contexto e de
- * erro, porque a carteira chama os handlers de empresa de lá (`lib/crm-b2b/companies-handler.ts`).
+ * O que toda rota de módulo (`/api/v1/carteira/*`, `/api/v1/protocolos/*`) repete: ler o corpo pelo
+ * Zod e conferir o id do caminho. `ctxFromAuthz`/`handleRouteError` são os do CRM B2B — a mesma
+ * forma de contexto e de erro, porque a carteira chama os handlers de empresa de lá.
  */
 import { z, type ZodType } from "zod";
 

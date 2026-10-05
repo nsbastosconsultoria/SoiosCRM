@@ -121,6 +121,10 @@ const TEXTO_DO_MODULO: Record<ModuloOpcional, { nome: string; oQueFaz: string }>
     nome: "Carteira de empresas",
     oQueFaz: "Quem é cliente, desde quando, quem representa cada empresa e quem cuida dela em cada área.",
   },
+  protocolos: {
+    nome: "Protocolos",
+    oQueFaz: "As demandas dos clientes com número, categoria, prioridade, fila por área e prazo de resposta.",
+  },
 };
 
 /**

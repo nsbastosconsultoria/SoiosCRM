@@ -1,37 +1,33 @@
-/**
- * POST /api/v1/carteira/responsaveis/:id/encerrar — encerra a vigência de um responsável
- * (spec 21 §4.5). `manager`. A linha fica, com `vigencia_fim`: "quem cuidou da empresa naquele
- * período" é história, não se apaga.
- */
+/** DELETE /api/v1/protocolos/config/feriados/:id — `admin`. */
 import type { NextRequest } from "next/server";
 
 import { ok } from "@/lib/api/wrappers";
-import { requireRole } from "@/lib/auth/require-role";
 import { ctxFromAuthz, handleRouteError, idDoCaminho, requestIdOf } from "@/lib/api/rota-de-modulo";
-import { encerrarResponsavel } from "@/lib/carteira/servico";
+import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
+import { removerLinhaDeConfig } from "@/lib/protocolos/servico";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
+export async function DELETE(req: NextRequest, ctx: Ctx): Promise<Response> {
   const requestId = requestIdOf(req);
   const supportDenied = await requireSupportWrite();
   if (supportDenied) return supportDenied;
-  const authz = await requireRole("manager", { requestId, resource: "carteira" });
+  const authz = await requireRole("admin", { requestId, resource: "protocolos" });
   if (!authz.ok) return authz.response;
-
   try {
-    const responsavelId = idDoCaminho((await ctx.params).id, requestId);
-    const encerrado = await encerrarResponsavel(
+    const id = idDoCaminho((await ctx.params).id, requestId);
+    const r = await removerLinhaDeConfig(
       await createClient(),
       ctxFromAuthz(authz, requestId),
       authz.user.id,
-      responsavelId,
+      "protocolo_feriados",
+      id,
     );
-    return ok(encerrado, { requestId });
+    return ok(r, { requestId });
   } catch (e) {
     return handleRouteError(e, requestId);
   }

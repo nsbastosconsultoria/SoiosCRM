@@ -13598,6 +13598,10 @@ export const DICIONARIO: Traducoes = {
   "Empresa de que a conversa trata": { es: "Empresa de la que trata la conversación" },
   "Nenhuma definida": { es: "Ninguna definida" },
   "ver ficha": { es: "ver ficha" },
+  // ── Módulo protocolos (spec 22) ──
+  "Protocolos": { es: "Protocolos" },
+  "As demandas dos clientes com número, categoria, prioridade, fila por área e prazo de resposta.": { es: "Las demandas de los clientes con número, categoría, prioridad, cola por área y plazo de respuesta." },
+  "As demandas dos clientes atuais com número, categoria, prioridade, fila por área e prazo de resposta e de resolução (SLA). Para quem precisa saber o que vence hoje e quem é o dono de cada pedido.": { es: "Las demandas de los clientes actuales con número, categoría, prioridad, cola por área y plazo de respuesta y de resolución (SLA). Para quien necesita saber qué vence hoy y quién es el responsable de cada pedido." },
 };
 
 /**

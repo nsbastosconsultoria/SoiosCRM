@@ -10,7 +10,7 @@ import type { NextRequest } from "next/server";
 
 import { ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
-import { corpoValidado, ctxFromAuthz, handleRouteError, idDoCaminho, requestIdOf } from "@/lib/carteira/rota";
+import { corpoValidado, ctxFromAuthz, handleRouteError, idDoCaminho, requestIdOf } from "@/lib/api/rota-de-modulo";
 import { transicaoSchema } from "@/lib/carteira/schemas";
 import { transicionar } from "@/lib/carteira/servico";
 import { requireSupportWrite } from "@/lib/impersonate/support";
