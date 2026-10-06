@@ -1,6 +1,6 @@
 # Spec 23 — Módulo `implantacao` (onboarding de cliente: checklist, pendências e ativação)
 
-> **Status:** rascunho para revisão do dono. Pré-implementação — nada deste documento existe no código.
+> **Status:** aprovada pelo dono em 2026-10-06 (decisões no §12). Pré-implementação — nada deste documento existe no código.
 > **Destino (DoD 18):** **ambos**. O módulo é opcional (ADR-0002); o núcleo ganha três pontos
 > pequenos: dependência entre módulos no catálogo (§11.1), um tipo novo de aviso na Central (§11.2)
 > e um consumidor do evento `lead.won` já existente (§11.3).
@@ -192,13 +192,12 @@ estado, de responsável, de prazo; implantação iniciada, concluída, cancelada
   `concluido` ou `dispensado`. A recusa diz quais faltam.
 - Na mesma transação: implantação → `concluida` e, se a empresa está em `em_implantacao`, carteira →
   `ativo` por `fn_carteira_transicionar` (que grava `cliente_desde` na primeira vez).
-- Ativar **automaticamente** quando o último obrigatório fecha, ou exigir o clique? Q1 — a
-  recomendação é o clique, porque o item opcional ainda aberto pode importar e a ativação muda o que
-  o roteador faz com o cliente.
+- A ativação **exige o clique do gestor** (Q1): o item opcional ainda aberto pode importar, e a
+  ativação muda o que o roteador faz com o cliente. O botão fica destacado quando os obrigatórios fecham.
 - A trava vale pela implantação. O clique manual de estado na carteira (spec 21) continua existindo
   para quem não usa o módulo; com o módulo instalado, `em_implantacao → ativo` pela carteira fica
   **só para admin** e pede confirmação ("há uma implantação em andamento com N itens obrigatórios
-  abertos") — Q2.
+  abertos") — decisão Q2.
 
 ### 5.4 Cancelamento
 
@@ -311,17 +310,17 @@ mora no banco, a tela só explica.
 Handler novo no registry de eventos, ativo só com o módulo instalado e o funil configurado. Não
 altera o evento nem os consumidores existentes.
 
-## 12. Decisões para o dono
+## 12. Decisões do dono (2026-10-06)
 
-| # | Pergunta | Recomendação |
+| # | Pergunta | Decisão |
 |---|---|---|
-| Q1 | Concluir a implantação (e ativar o cliente) é automático quando o último obrigatório fecha, ou exige o clique do gestor? | **Clique**, com o botão liberado e destacado |
-| Q2 | Com o módulo instalado, a carteira ainda permite `em_implantacao → ativo` sem passar pela implantação? | **Só admin, com aviso** do que está aberto |
-| Q3 | Cliente já ativo pode ter implantação (serviço novo contratado)? | **Sim**, sem mudar o estado da carteira |
-| Q4 | Evidência é só texto na v1, ou já com anexo de arquivo? | **Texto** na v1; anexo depois, reaproveitando o Storage |
-| Q5 | A IA pode marcar um item como recebido quando o cliente manda o documento? | **Não** na v1 — só lê as pendências; a equipe confere |
-| Q6 | Prazo do item em dias corridos ou úteis? | **Corridos** na v1 (simples e previsível para o cliente) |
-| Q7 | Início automático pelo negócio ganho entra já na v1? | **Sim** — fecha a lacuna da spec 21 e é o cenário E2E-A do modelo |
+| Q1 | Concluir a implantação (e ativar o cliente) é automático ou exige o clique do gestor? | **Clique do gestor**, com o botão liberado e destacado quando os obrigatórios fecham |
+| Q2 | Com o módulo instalado, a carteira ainda permite `em_implantacao → ativo` sem passar pela implantação? | **Só admin, com aviso** de quantos obrigatórios estão abertos e confirmação |
+| Q3 | Cliente já ativo pode ter implantação (serviço novo contratado)? | Recomendação adotada, revisável: **sim**, sem mudar o estado da carteira |
+| Q4 | Evidência só texto na v1, ou com anexo? | Recomendação adotada, revisável: **texto** na v1 |
+| Q5 | A IA pode marcar um item como recebido? | **Não** — só lê as pendências; a equipe confere e marca |
+| Q6 | Prazo em dias corridos ou úteis? | Recomendação adotada, revisável: **corridos** na v1 |
+| Q7 | Início automático pelo negócio ganho na v1? | **Sim**, no PR-C |
 
 ## 13. Sistema vivo (DoD 13)
 
