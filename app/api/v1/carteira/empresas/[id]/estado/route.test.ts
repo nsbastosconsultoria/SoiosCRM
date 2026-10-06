@@ -23,17 +23,33 @@ const ORG_ID = "22222222-2222-4222-8222-222222222222";
 const USER_ID = "11111111-1111-4111-8111-111111111111";
 const EMPRESA = "33333333-3333-4333-8333-333333333333";
 
-function autorizado(): void {
+function autorizado(role: "manager" | "admin" = "manager"): void {
   vi.mocked(requireRole).mockResolvedValue({
     ok: true,
     user: { id: USER_ID, idioma: "pt-BR" },
-    org: { orgId: ORG_ID, name: "Org", role: "manager" },
+    org: { orgId: ORG_ID, name: "Org", role },
   } as never);
 }
 
-function rpcQueDevolve(resultado: { data: unknown; error: unknown }) {
+/**
+ * O admin client: `rpc` para a transição e `from` para a consulta da implantação (spec 23 Q2).
+ * Por padrão o módulo implantacao NÃO está instalado (PGRST205): a carteira segue como antes.
+ */
+function rpcQueDevolve(
+  resultado: { data: unknown; error: unknown },
+  implantacao: { id: string; abertos: number } | "sem_modulo" = "sem_modulo",
+) {
   const rpc = vi.fn(async () => resultado);
-  vi.mocked(createAdminClient).mockReturnValue({ rpc } as never);
+  const from = (tabela: string) => {
+    const q: Record<string, unknown> = {};
+    for (const m of ["select", "eq", "not"]) q[m] = () => q;
+    q.maybeSingle = async () =>
+      implantacao === "sem_modulo" ? { data: null, error: { code: "PGRST205" } } : { data: { id: implantacao.id }, error: null };
+    q.then = (ok: (r: unknown) => unknown) =>
+      Promise.resolve(tabela === "implantacao_itens" && implantacao !== "sem_modulo" ? { count: implantacao.abertos, error: null } : { data: [], error: null }).then(ok);
+    return q;
+  };
+  vi.mocked(createAdminClient).mockReturnValue({ rpc, from } as never);
   return rpc;
 }
 
@@ -140,5 +156,50 @@ describe("POST /api/v1/carteira/empresas/:id/estado", () => {
     const res = await POST(...post(EMPRESA, { estado: "ativo" }));
     expect(res.status).toBe(409);
     expect((await res.json()).error.code).toBe("module_not_installed");
+  });
+
+  describe("com implantação em andamento e obrigatório aberto (spec 23 Q2)", () => {
+    const IMPLANTACAO = "44444444-4444-4444-8444-444444444444";
+
+    it("gestor → 403, e a transição não roda", async () => {
+      autorizado("manager");
+      const rpc = rpcQueDevolve({ data: null, error: null }, { id: IMPLANTACAO, abertos: 3 });
+      const { POST } = await import("./route");
+      const res = await POST(...post(EMPRESA, { estado: "ativo" }));
+      expect(res.status).toBe(403);
+      expect((await res.json()).error.code).toBe("implantacao_em_andamento_exige_admin");
+      expect(rpc).not.toHaveBeenCalled();
+    });
+
+    it("admin sem confirmar → 409 com a contagem; com confirmação, transiciona", async () => {
+      autorizado("admin");
+      const rpc = rpcQueDevolve(
+        { data: { de: "em_implantacao", para: "ativo", alterado: true, cliente_desde: "2026-10-06" }, error: null },
+        { id: IMPLANTACAO, abertos: 2 },
+      );
+      const { POST } = await import("./route");
+      const recusa = await POST(...post(EMPRESA, { estado: "ativo" }));
+      expect(recusa.status).toBe(409);
+      expect((await recusa.json()).error).toMatchObject({
+        code: "implantacao_em_andamento",
+        details: { abertos: 2, implantacao_id: IMPLANTACAO },
+      });
+      expect(rpc).not.toHaveBeenCalled();
+
+      const res = await POST(...post(EMPRESA, { estado: "ativo", confirmar_implantacao_aberta: true }));
+      expect(res.status).toBe(200);
+      expect(rpc).toHaveBeenCalledTimes(1);
+    });
+
+    it("implantação sem obrigatório aberto: gestor ativa normalmente", async () => {
+      autorizado("manager");
+      const rpc = rpcQueDevolve(
+        { data: { de: "em_implantacao", para: "ativo", alterado: true, cliente_desde: "2026-10-06" }, error: null },
+        { id: IMPLANTACAO, abertos: 0 },
+      );
+      const { POST } = await import("./route");
+      expect((await POST(...post(EMPRESA, { estado: "ativo" }))).status).toBe(200);
+      expect(rpc).toHaveBeenCalledTimes(1);
+    });
   });
 });

@@ -1042,6 +1042,11 @@ export const AUDIT_ACTIONS = [
   "protocolos.config_alterada",
   "protocolos.sla_avisado",
   "protocolos.cliente_contatado",
+  "implantacao.iniciada",
+  "implantacao.item_alterado",
+  "implantacao.concluida",
+  "implantacao.cancelada",
+  "implantacao.config_alterada",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

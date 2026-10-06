@@ -61,10 +61,15 @@ export function FichaDaEmpresa({
   companyId,
   podeGerenciar,
   podeEditarVinculo,
+  ehAdmin = false,
+  comImplantacao = false,
 }: {
   companyId: string;
   podeGerenciar: boolean;
   podeEditarVinculo: boolean;
+  ehAdmin?: boolean;
+  /** Módulo implantacao instalado (spec 23): o cartão da implantação e o botão de iniciar. */
+  comImplantacao?: boolean;
 }) {
   const t = useT();
   const tagDoIdioma = useTagDeIdioma();
@@ -103,8 +108,12 @@ export function FichaDaEmpresa({
         estado={f.perfil.estado}
         clienteDesde={f.perfil.cliente_desde}
         podeGerenciar={podeGerenciar}
+        ehAdmin={ehAdmin}
         chave={chave}
       />
+      {comImplantacao ? (
+        <CartaoDaImplantacao companyId={companyId} estado={f.perfil.estado} podeGerenciar={podeGerenciar} chave={chave} />
+      ) : null}
       <Pessoas
         companyId={companyId}
         ficha={f}
@@ -147,22 +156,38 @@ function Relacionamento({
   estado,
   clienteDesde,
   podeGerenciar,
+  ehAdmin,
   chave,
 }: {
   companyId: string;
   estado: EstadoDaCarteira;
   clienteDesde: string | null;
   podeGerenciar: boolean;
+  ehAdmin: boolean;
   chave: string[];
 }) {
   const t = useT();
   const tagDoIdioma = useTagDeIdioma();
   const qc = useQueryClient();
+  // Spec 23 Q2: ativar com implantação em andamento e obrigatório aberto pede confirmação do admin.
+  const [confirmacao, setConfirmacao] = useState<string | null>(null);
   const mudar = useMutation({
-    mutationFn: (para: EstadoDaCarteira) =>
-      apiClient.post(`/api/v1/carteira/empresas/${companyId}/estado`, { estado: para }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: chave }),
-    onError: showApiError,
+    mutationFn: ({ para, confirmar }: { para: EstadoDaCarteira; confirmar?: boolean }) =>
+      apiClient.post(`/api/v1/carteira/empresas/${companyId}/estado`, {
+        estado: para,
+        ...(confirmar ? { confirmar_implantacao_aberta: true } : {}),
+      }),
+    onSuccess: () => {
+      setConfirmacao(null);
+      void qc.invalidateQueries({ queryKey: chave });
+    },
+    onError: (e) => {
+      if (e instanceof ApiError && e.code === "implantacao_em_andamento" && ehAdmin) {
+        setConfirmacao(e.message);
+        return;
+      }
+      showApiError(e);
+    },
   });
 
   return (
@@ -187,13 +212,116 @@ function Relacionamento({
               variant="outline"
               disabled={mudar.isPending}
               data-testid={`carteira-transicao-${para}`}
-              onClick={() => mudar.mutate(para)}
+              onClick={() => mudar.mutate({ para })}
             >
               {`${t("Mover para")} ${rotuloDoEstado(para, t)}`}
             </Button>
           ))}
         </div>
       ) : null}
+      {confirmacao ? (
+        <div className="mt-2 rounded-md border border-warning p-2 text-sm" role="alert" data-testid="carteira-confirmar-ativacao">
+          <p>{confirmacao}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button size="sm" variant="destructive" disabled={mudar.isPending} onClick={() => mudar.mutate({ para: "ativo", confirmar: true })}>
+              {t("Ativar mesmo assim")}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setConfirmacao(null)}>
+              {t("Voltar")}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+type ResumoDaImplantacao = {
+  obrigatorios: number;
+  obrigatorios_fechados: number;
+  vencidos: number;
+  aguardando_cliente: number;
+  pode_concluir: boolean;
+};
+type ImplantacaoDaEmpresa = {
+  id: string;
+  estado: "em_andamento" | "concluida" | "cancelada";
+  iniciada_em: string;
+  concluida_em: string | null;
+  resumo: ResumoDaImplantacao;
+};
+
+/**
+ * O cartão da implantação (spec 23 §8): a em andamento, com o progresso dos obrigatórios e o link
+ * para a ficha; sem nenhuma, o botão de iniciar (gestor) para empresa que ainda não é cliente ou
+ * que é ativa e contratou um serviço novo.
+ */
+function CartaoDaImplantacao({
+  companyId,
+  estado,
+  podeGerenciar,
+  chave,
+}: {
+  companyId: string;
+  estado: EstadoDaCarteira;
+  podeGerenciar: boolean;
+  chave: string[];
+}) {
+  const t = useT();
+  const tagDoIdioma = useTagDeIdioma();
+  const qc = useQueryClient();
+  const chaveDaImplantacao = ["implantacoes", "empresa", companyId];
+  const lista = useQuery({
+    queryKey: chaveDaImplantacao,
+    queryFn: async () =>
+      (await apiClient.get<{ data: ImplantacaoDaEmpresa[] }>(`/api/v1/implantacoes?company_id=${companyId}`)).data,
+    retry: false,
+  });
+  const iniciar = useMutation({
+    mutationFn: () => apiClient.post("/api/v1/implantacoes", { company_id: companyId }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: chaveDaImplantacao });
+      void qc.invalidateQueries({ queryKey: chave });
+    },
+    onError: showApiError,
+  });
+
+  const emAndamento = lista.data?.find((i) => i.estado === "em_andamento");
+  const ultimaConcluida = lista.data?.find((i) => i.estado === "concluida");
+  const podeIniciar = ["prospect", "em_qualificacao", "proposta", "em_implantacao", "ativo"].includes(estado);
+
+  return (
+    <section className="rounded-md border border-border p-3" data-testid="carteira-implantacao">
+      <h2 className="mb-2 text-sm font-semibold">{t("Implantação")}</h2>
+      {lista.error instanceof ApiError ? (
+        <p className="text-sm text-text-muted">{lista.error.message}</p>
+      ) : !lista.data ? (
+        <p className="text-sm text-text-muted">{t("Carregando…")}</p>
+      ) : emAndamento ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+          <span>
+            {`${emAndamento.resumo.obrigatorios_fechados}/${emAndamento.resumo.obrigatorios} ${t("obrigatórios fechados")}`}
+            {emAndamento.resumo.vencidos > 0 ? ` · ${emAndamento.resumo.vencidos} ${t("vencido(s)")}` : ""}
+            {emAndamento.resumo.pode_concluir ? ` · ${t("Pronta para concluir")}` : ""}
+          </span>
+          <Link href={`/app/implantacoes/${emAndamento.id}`} className="underline">
+            {t("Abrir a implantação")}
+          </Link>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+          <span className="text-text-muted">
+            {ultimaConcluida?.concluida_em
+              ? `${t("Implantação concluída em")} ${new Date(ultimaConcluida.concluida_em).toLocaleDateString(tagDoIdioma)}`
+              : t("Nenhuma implantação em andamento.")}
+          </span>
+          {podeGerenciar && podeIniciar ? (
+            <Button size="sm" variant="outline" disabled={iniciar.isPending} onClick={() => iniciar.mutate()} data-testid="carteira-iniciar-implantacao">
+              {t("Iniciar implantação")}
+            </Button>
+          ) : null}
+        </div>
+      )}
     </section>
   );
 }

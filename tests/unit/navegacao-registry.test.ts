@@ -181,6 +181,7 @@ describe("hubSections", () => {
       "/app/contacts",
       "/app/companies",
       "/app/carteira",
+      "/app/implantacoes",
       "/app/people",
       "/app/tasks",
       "/app/calls",
@@ -205,6 +206,13 @@ describe("hubSections", () => {
       hubSections("crm", true, null, undefined, modulos).flatMap((s) => s.items.map((i) => i.href));
     expect(hrefs([])).not.toContain("/app/carteira");
     expect(hrefs(["carteira"])).toContain("/app/carteira");
+  });
+
+  it("a implantação de clientes só existe com o módulo implantacao instalado (spec 23)", () => {
+    const hrefs = (modulos: readonly ModuloOpcional[]) =>
+      hubSections("crm", true, null, undefined, modulos).flatMap((s) => s.items.map((i) => i.href));
+    expect(hrefs(["carteira"])).not.toContain("/app/implantacoes");
+    expect(hrefs(["carteira", "implantacao"])).toContain("/app/implantacoes");
   });
 
   it("agrupa a IA nas três etapas da jornada, na ordem", () => {

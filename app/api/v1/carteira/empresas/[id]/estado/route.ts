@@ -5,11 +5,18 @@
  * o service role executa: a rota autentica e passa a organização do cookie e o usuário como
  * ator. Transição fora da tabela → 409 `carteira_transicao_invalida`; a mesma transição duas
  * vezes → 200 com `alterado: false`, sem auditar.
+ *
+ * Com o módulo implantacao (spec 23 Q2): ir para `ativo` com implantação em andamento e item
+ * obrigatório aberto é atalho por fora da trava — só `admin`, e só com
+ * `confirmar_implantacao_aberta: true`. Sem a confirmação, 409 `implantacao_em_andamento` com a
+ * contagem; gestor, 403 `implantacao_em_andamento_exige_admin`.
  */
 import type { NextRequest } from "next/server";
 
-import { ok } from "@/lib/api/wrappers";
+import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
+import { ROLE_RANK } from "@/lib/auth/types";
+import { obrigatoriosAbertosDaEmpresa } from "@/lib/implantacao/servico";
 import { corpoValidado, ctxFromAuthz, handleRouteError, idDoCaminho, requestIdOf } from "@/lib/api/rota-de-modulo";
 import { transicaoSchema } from "@/lib/carteira/schemas";
 import { transicionar } from "@/lib/carteira/servico";
@@ -29,9 +36,31 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
 
   try {
     const companyId = idDoCaminho((await ctx.params).id, requestId);
-    const { estado } = await corpoValidado(req, transicaoSchema, requestId);
+    const { estado, confirmar_implantacao_aberta } = await corpoValidado(req, transicaoSchema, requestId);
+    const admin = createAdminClient();
+    if (estado === "ativo") {
+      const pendente = await obrigatoriosAbertosDaEmpresa(admin, authz.org.orgId, companyId);
+      if (pendente && pendente.abertos > 0) {
+        if (ROLE_RANK[authz.org.role] < ROLE_RANK.admin) {
+          return fail(
+            "implantacao_em_andamento_exige_admin",
+            `A implantação desta empresa ainda tem ${pendente.abertos} item(ns) obrigatório(s) aberto(s). Conclua a implantação, ou peça a um administrador.`,
+            403,
+            { requestId },
+          );
+        }
+        if (!confirmar_implantacao_aberta) {
+          return fail(
+            "implantacao_em_andamento",
+            `A implantação desta empresa ainda tem ${pendente.abertos} item(ns) obrigatório(s) aberto(s). Confirme para ativar mesmo assim.`,
+            409,
+            { requestId, details: { abertos: pendente.abertos, implantacao_id: pendente.implantacao_id } },
+          );
+        }
+      }
+    }
     const resultado = await transicionar(
-      createAdminClient(),
+      admin,
       ctxFromAuthz(authz, requestId),
       authz.user.id,
       companyId,

@@ -2,6 +2,8 @@ import { notFound, redirect } from "next/navigation";
 
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
+import { moduloLigado } from "@/lib/instalacao/modulos";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 import { FichaDaEmpresa } from "./_client";
 
@@ -27,6 +29,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       companyId={id}
       podeGerenciar={ROLE_RANK[org.role] >= ROLE_RANK.manager}
       podeEditarVinculo={ROLE_RANK[org.role] >= ROLE_RANK.agent}
+      ehAdmin={ROLE_RANK[org.role] >= ROLE_RANK.admin}
+      comImplantacao={await moduloLigado(createAdminClient(), "implantacao")}
     />
   );
 }
