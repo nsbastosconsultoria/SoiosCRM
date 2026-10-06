@@ -8,6 +8,123 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
 
 ## [Não lançado]
 
+## [1.66.0] — 2026-10-06
+
+### Adicionado
+
+- **Carteira de empresas — módulo instalável (base de dados)** Novo módulo opcional **Carteira de empresas**, para quem atende empresas recorrentes por um único
+  número de WhatsApp (contabilidade, agência, TI gerenciada). Instale em
+  **Modo administrador › Módulos**. Quem não instala não carrega nenhuma tabela, e nada muda.
+
+  Esta versão traz a base do módulo. Ela usa o vínculo entre pessoa e empresa que o CRM já tem e
+  acrescenta o papel de cada pessoa (sócio, financeiro, RH…) e as áreas que ela recebe. Registra se
+  cada empresa é prospect, cliente ativo, suspensa ou inativa, e desde quando é cliente. Guarda
+  também o grupo empresarial, matriz e filial, quem cuida da empresa em cada área e de qual empresa
+  é cada conversa, com histórico de troca.
+
+  A tela da carteira, a empresa da conversa na caixa de entrada e as ferramentas do assistente de IA
+  chegam na próxima versão do módulo.
+
+- **Carteira de empresas — a tela e a API** Com o módulo **Carteira de empresas** instalado, o CRM ganha a tela **CRM › Carteira de empresas**.
+
+  Ela lista as empresas atendidas, com filtro por estado (prospect, cliente ativo, suspenso, inativo…)
+  e busca por nome ou CNPJ. Uma empresa entra na carteira pelo CNPJ: se ainda não existe no CRM, é
+  criada e completada pela Receita, como na tela de Empresas. Marque **Já é cliente** para carregar
+  quem já é cliente há tempo.
+
+  A ficha de cada empresa mostra:
+
+  - o estado do relacionamento, com botões só para as mudanças permitidas, e desde quando é cliente;
+  - as pessoas que representam a empresa, com o WhatsApp de cada uma e o papel (sócio, financeiro,
+    RH…). Ligar um contato à empresa usa o mesmo vínculo da tela de Pessoas;
+  - quem da equipe cuida da empresa em cada área;
+  - a linha do tempo de tudo o que mudou.
+
+  Quem tem papel de leitura só vê. Editar o papel de uma pessoa vale para atendentes. Pôr empresa na
+  carteira, mudar o estado, ligar contatos e definir responsáveis exige gestor.
+
+- **Carteira de empresas no atendimento — roteador, assistente e caixa de entrada** Com o módulo **Carteira de empresas** instalado, o atendimento passa a saber quem já é cliente.
+
+  - **Roteador:** o novo quadro **Quem já é cliente** manda o cliente ativo direto para a intenção
+    escolhida, em geral o atendimento, mesmo que a mensagem pareça comercial. Se o cliente pedir outra
+    coisa com clareza, como abrir outra empresa, ele segue para a intenção pedida. Dá para desligar
+    esse desvio. Sem o quadro preenchido, o roteador funciona como antes.
+  - **Assistente de IA:** três capacidades novas no pacote de atendimento. Ver as empresas de quem
+    está na conversa, registrar de qual empresa é a conversa e procurar uma empresa da carteira pelo
+    nome ou pelo CNPJ. O assistente só registra empresas ligadas à pessoa no cadastro, e o CNPJ
+    aparece para ele só pelos 4 últimos dígitos.
+  - **Caixa de entrada:** o cabeçalho da conversa mostra de qual empresa ela trata, com troca num
+    clique e um atalho para a ficha da empresa. Trocar a empresa vale daqui para frente: o que já foi
+    tratado não muda de empresa.
+
+  Inclui uma atualização no banco que permite registrar essas decisões do roteador. Ela não muda nada
+  para quem não usa a carteira.
+
+- **Protocolos — falar com o cliente pela ficha, com a IA levando a mensagem** Com o módulo **Protocolos** instalado, a ficha do protocolo ganha **Falar com o cliente**:
+
+  - **Pedir informação ao cliente:** a IA leva a pergunta pela conversa, e o protocolo fica
+    aguardando o cliente, com o prazo pausado. Quando o cliente responde, a resposta aparece na linha
+    do tempo do protocolo e o prazo volta a correr sozinho.
+  - **Avisar que resolveu:** a IA avisa o cliente, e o protocolo passa para resolvido.
+
+  A ação não aparece para protocolos sem conversa. Ela é recusada quando a conversa está com uma
+  pessoa da equipe (nesse caso, responda pela inbox) ou quando já existe um chamado aberto na
+  conversa. Para a resposta do cliente voltar ao protocolo, o agente precisa estar com a capacidade
+  de chamados ligada.
+
+  Inclui uma atualização no banco que permite registrar casos abertos a partir de um protocolo. Ela
+  não muda nada para quem não usa protocolos.
+
+- **Protocolos — a fila, a ficha e a configuração** Com o módulo **Protocolos** instalado, o atendimento ganha a tela **Protocolos**. Ela abre pela
+  busca (⌘K), e a empresa pode pôr a tela no menu lateral em **Configurações › Interface**. O menu
+  tem limite de itens, por isso a tela não entra nele sozinha.
+
+  - **A fila:** quatro visões. *Minha fila*, *Fila da área* (com o botão *Assumir*), *Vencendo* e
+    *Todos*. Cada protocolo mostra o número, a prioridade e quanto falta para o prazo de resolução.
+  - **Abrir um protocolo:** escolha a categoria e a subcategoria e descreva o pedido. Informe a
+    competência quando a categoria pedir e, se houver, o prazo dado pelo cliente. A prioridade sai da
+    categoria e sobe sozinha quando o prazo do cliente está perto: hoje ou vencido vira P1, e até 2
+    dias úteis vira P2. Se já existe um protocolo aberto para o mesmo pedido da mesma empresa, a
+    informação nova entra nele em vez de abrir outro.
+  - **Distribuição:** o protocolo vai para quem cuida da empresa naquela área, pela Carteira de
+    empresas. Se ninguém cuida, vai para a fila da área. Se a área não tem fila, vai para o líder.
+  - **A ficha:** responsável, prazos de primeira resposta e de resolução e só os botões de estado
+    permitidos. Tem também a mudança de prioridade com motivo (baixar a prioridade é só para gestor),
+    as notas internas e a linha do tempo. Enquanto o protocolo espera o cliente, o prazo de resolução
+    fica pausado.
+
+  Em **Configurações › Protocolos** (administrador): aplique o modelo **Escritório de contabilidade**
+  para criar as áreas e as categorias com um clique. Depois defina o expediente, os prazos por
+  prioridade, quem atende cada fila e os feriados. Os prazos começam em branco: cada escritório define
+  os seus.
+
+- **Protocolos no atendimento — assistente de IA, avisos de prazo e atalho na conversa** Com o módulo **Protocolos** instalado:
+
+  - **Assistente de IA:** quatro capacidades novas no pacote de atendimento. Ver as categorias,
+    abrir um protocolo, consultar os protocolos do cliente e acrescentar informação a um protocolo.
+    Ao abrir, o assistente informa o número ao cliente e nunca promete prazo de conclusão. Quando a
+    categoria pede uma pessoa, como numa notificação ou intimação, a conversa passa para a equipe
+    na mesma hora. "Abrir protocolo" é uma capacidade crítica e precisa ser ligada no agente uma a
+    uma.
+  - **Avisos de prazo na Central:** quando o prazo de primeira resposta ou de resolução chega a 80%,
+    vence ou passa muito do prazo, a equipe recebe um aviso na Central, um por etapa. Protocolo
+    parado numa fila sem ninguém também gera aviso.
+  - **Atalho na conversa:** o cabeçalho da conversa ganha "Abrir protocolo", que já traz o contato e
+    a empresa da conversa.
+
+  Inclui uma atualização no banco que permite esses dois novos tipos de aviso. Ela não muda nada para
+  quem não usa protocolos.
+
+- **Protocolos — módulo instalável (base de dados)** Novo módulo opcional **Protocolos**, para as demandas dos clientes atuais: número por ano,
+  categoria, competência, prioridade de P1 a P4, fila por área, responsável e prazos de primeira
+  resposta e de resolução (SLA). Instale em **Modo administrador › Módulos**. Quem não instala não
+  carrega nenhuma tabela, e nada muda.
+
+  Esta versão traz a base do módulo: numeração, as regras de mudança de estado e o histórico de cada
+  protocolo. Ao anonimizar um contato, os textos que ele escreveu nos protocolos também são
+  anonimizados. A tela de protocolos, as filas, os prazos e o assistente de IA abrindo protocolos
+  chegam nas próximas versões do módulo.
+
 ## [1.65.3] — 2026-10-03
 
 ### Corrigido
@@ -9733,7 +9850,8 @@ Primeira versão marcada do DeskcommCRM. O projeto vinha sendo desenvolvido publ
 
 - **Node 22 é obrigatório para desenvolvimento.** A suíte de invariantes instancia o cliente do Supabase, que exige o `WebSocket` global — nativo apenas a partir do Node 22. Isso não afeta quem apenas hospeda: a VPS roda a imagem pronta.
 
-[Não lançado]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.3...HEAD
+[Não lançado]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.66.0...HEAD
+[1.66.0]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.3...v1.66.0
 [1.65.3]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.2...v1.65.3
 [1.65.2]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.1...v1.65.2
 [1.65.1]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.0...v1.65.1
