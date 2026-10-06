@@ -98,7 +98,7 @@ beforeAll(() => {
   sql(`
     select public.fn_protocolos_provisionar();
     insert into public.protocolo_categorias (id, organization_id, parent_id, nome, slug, area)
-      values ('${CATEGORIA}', '${GOV_ORG}', null, 'Fiscal 0906', 'fiscal-0906', 'fiscal') on conflict do nothing;
+      values ('${CATEGORIA}', '${GOV_ORG}', null, 'Fiscal 0906', 'fiscal_0906', 'fiscal') on conflict do nothing;
     insert into public.protocolo_politicas_sla
       (id, organization_id, prioridade, categoria_id, primeira_resposta_min, resolucao_min, em_horario_util, pausa_aguardando_cliente)
       values ('${POLITICA}', '${GOV_ORG}', 'P3', '${CATEGORIA}', 60, 2880, false, true) on conflict do nothing;
