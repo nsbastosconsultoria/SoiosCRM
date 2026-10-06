@@ -186,4 +186,14 @@ describe("instalarModulo — dependência entre módulos (spec 23 §11.1)", () =
     });
     expect(await instalarModulo(ACTOR, OPERATION, "implantacao")).toEqual({ operationId: OPERATION, appliedNow: true });
   });
+
+  it("a provisionadora recusou na corrida (implantacao_exige_carteira): a mesma recusa explicada, não um 503", async () => {
+    mocks.admin = fakeAdmin([{ modulo: "carteira", estado: "ativo" }], {
+      fn_modulo_instalar: () => ({ data: null, error: { code: "P0001", message: "implantacao_exige_carteira" } }),
+    });
+    await expect(instalarModulo(ACTOR, OPERATION, "implantacao")).rejects.toMatchObject({
+      code: "modulo_requer_outro",
+      status: 409,
+    });
+  });
 });

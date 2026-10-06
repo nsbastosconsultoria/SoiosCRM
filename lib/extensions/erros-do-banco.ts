@@ -90,12 +90,6 @@ export const SQL_ERRORS: Readonly<Record<string, { message: string; status: numb
     message: "O limite de pacotes desta instalação foi atingido.",
     status: 409,
   },
-  // A provisionadora da implantação recusa sem a carteira (0907). `instalarModulo` já recusa
-  // antes com o nome do que falta; isto cobre a corrida e a reaplicação no update.
-  implantacao_exige_carteira: {
-    message: "Instale antes o módulo Carteira de empresas. A implantação de clientes depende dele.",
-    status: 409,
-  },
   extension_module_unknown: {
     message: "Este módulo não existe nesta versão do sistema. Atualize a instalação e tente de novo.",
     status: 404,

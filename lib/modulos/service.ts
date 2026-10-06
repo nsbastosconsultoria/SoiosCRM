@@ -75,13 +75,17 @@ async function exigirModulosRequeridos(admin: ReturnType<typeof createAdminClien
   const ativos = new Set(((data ?? []) as Array<{ modulo: string }>).map((m) => m.modulo));
   const faltam = requer.filter((r) => !ativos.has(r));
   if (faltam.length > 0) {
-    const nomes = faltam.map((r) => moduloDoCatalogo(r)?.nome ?? r).join(", ");
-    throw new ExtensionServiceError(
-      "modulo_requer_outro",
-      `Instale antes: ${nomes}. Este módulo depende dele para funcionar.`,
-      409,
-    );
+    throw requerOutro(faltam);
   }
+}
+
+function requerOutro(faltam: readonly string[]): ExtensionServiceError {
+  const nomes = faltam.map((r) => moduloDoCatalogo(r)?.nome ?? r).join(", ");
+  return new ExtensionServiceError(
+    "modulo_requer_outro",
+    `Instale antes: ${nomes}. Este módulo depende dele para funcionar.`,
+    409,
+  );
 }
 
 /** O catálogo (vitrine) cruzado com o que já está instalado nesta instância. */
@@ -122,6 +126,12 @@ export async function instalarModulo(
     p_operation: operationId,
     p_modulo: modulo,
   });
+  // A provisionadora também recusa sem o módulo requerido (`<modulo>_exige_<outro>`, ex.:
+  // `implantacao_exige_carteira`, 0907) — a corrida entre a conferência acima e a instalação.
+  // O código não é `extension_*` (não mora em SQL_ERRORS); vira a mesma recusa explicada.
+  if (resultado.error?.code === "P0001" && resultado.error.message === `${modulo}_exige_${moduloDoCatalogo(modulo)?.requer?.[0]}`) {
+    throw requerOutro(moduloDoCatalogo(modulo)?.requer ?? []);
+  }
   dbFailure(resultado.error);
 
   const receipt = operationRowSchema.parse(resultado.data);
