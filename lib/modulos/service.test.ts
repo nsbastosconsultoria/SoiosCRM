@@ -14,9 +14,17 @@ function fakeAdmin(
     from(table: string) {
       if (table !== "modulos_instalados") throw new Error(`tabela inesperada: ${table}`);
       const rows = [...modulosInstalados];
+      let filtrados = rows;
       const builder = {
         select: () => builder,
         order: () => Promise.resolve({ data: rows, error: null }),
+        // `exigirModulosRequeridos`: .in("modulo", requer).eq("estado", "ativo")
+        in: (_coluna: string, valores: string[]) => {
+          filtrados = filtrados.filter((r) => valores.includes(String(r.modulo)));
+          return builder;
+        },
+        eq: (coluna: string, valor: unknown) =>
+          Promise.resolve({ data: filtrados.filter((r) => r[coluna] === valor), error: null }),
       };
       return builder;
     },
@@ -138,6 +146,54 @@ describe("instalarModulo", () => {
 
     await expect(instalarModulo(ACTOR, OPERATION, "honorarios")).rejects.toMatchObject({
       code: "extension_core_update_in_progress",
+    });
+  });
+});
+
+describe("instalarModulo — dependência entre módulos (spec 23 §11.1)", () => {
+  const RECIBO = {
+    id: OPERATION,
+    kind: "module_install",
+    status: "completed",
+    actor_id: ACTOR,
+    name: "implantacao",
+    result: { modulo: "implantacao" },
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+    applied_now: true,
+  };
+
+  it("sem a carteira instalada, recusa antes de chamar o banco e diz o que falta", async () => {
+    mocks.admin = fakeAdmin([], { fn_modulo_instalar: () => ({ data: RECIBO, error: null }) });
+    await expect(instalarModulo(ACTOR, OPERATION, "implantacao")).rejects.toMatchObject({
+      code: "modulo_requer_outro",
+      status: 409,
+      message: expect.stringContaining("Carteira de empresas"),
+    });
+    expect((mocks.admin as ReturnType<typeof fakeAdmin>).rpcCalls).toHaveLength(0);
+  });
+
+  it("carteira SUSPENSA não conta como instalada", async () => {
+    mocks.admin = fakeAdmin([{ modulo: "carteira", estado: "suspenso" }], {
+      fn_modulo_instalar: () => ({ data: RECIBO, error: null }),
+    });
+    await expect(instalarModulo(ACTOR, OPERATION, "implantacao")).rejects.toMatchObject({ code: "modulo_requer_outro" });
+  });
+
+  it("com a carteira ativa, instala", async () => {
+    mocks.admin = fakeAdmin([{ modulo: "carteira", estado: "ativo" }], {
+      fn_modulo_instalar: () => ({ data: RECIBO, error: null }),
+    });
+    expect(await instalarModulo(ACTOR, OPERATION, "implantacao")).toEqual({ operationId: OPERATION, appliedNow: true });
+  });
+
+  it("a provisionadora recusou na corrida (implantacao_exige_carteira): a mesma recusa explicada, não um 503", async () => {
+    mocks.admin = fakeAdmin([{ modulo: "carteira", estado: "ativo" }], {
+      fn_modulo_instalar: () => ({ data: null, error: { code: "P0001", message: "implantacao_exige_carteira" } }),
+    });
+    await expect(instalarModulo(ACTOR, OPERATION, "implantacao")).rejects.toMatchObject({
+      code: "modulo_requer_outro",
+      status: 409,
     });
   });
 });

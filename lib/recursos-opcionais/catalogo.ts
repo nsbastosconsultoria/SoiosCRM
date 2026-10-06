@@ -125,6 +125,10 @@ const TEXTO_DO_MODULO: Record<ModuloOpcional, { nome: string; oQueFaz: string }>
     nome: "Protocolos",
     oQueFaz: "As demandas dos clientes com número, categoria, prioridade, fila por área e prazo de resposta.",
   },
+  implantacao: {
+    nome: "Implantação de clientes",
+    oQueFaz: "O checklist de implantação de cada cliente novo, e a empresa só vira cliente ativo quando ele fecha.",
+  },
 };
 
 /**

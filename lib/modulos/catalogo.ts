@@ -11,6 +11,12 @@ export interface ModuloCatalogo {
   slug: string;
   nome: string;
   descricao: string;
+  /**
+   * Módulos que precisam estar instalados ANTES deste (spec 23 §11.1). A tela desabilita
+   * "Instalar" e diz o que falta; `instalarModulo` recusa com `modulo_requer_outro`; e a
+   * provisionadora recusa no banco — a régua mora lá, a tela e o serviço só explicam.
+   */
+  requer?: readonly string[];
 }
 
 export const CATALOGO_DE_MODULOS: readonly ModuloCatalogo[] = [
@@ -44,6 +50,15 @@ export const CATALOGO_DE_MODULOS: readonly ModuloCatalogo[] = [
       "As demandas dos clientes atuais com número, categoria, prioridade, fila por área e prazo " +
       "de resposta e de resolução (SLA). Para quem precisa saber o que vence hoje e quem é o " +
       "dono de cada pedido.",
+  },
+  {
+    slug: "implantacao",
+    nome: "Implantação de clientes",
+    descricao:
+      "O checklist de implantação de cada cliente novo (contrato, documentos, acessos…), com de " +
+      "quem é a vez em cada item e a empresa só virando cliente ativo na carteira quando os itens " +
+      "obrigatórios estão concluídos. Para quem implanta o cliente antes de atendê-lo de rotina.",
+    requer: ["carteira"],
   },
 ];
 

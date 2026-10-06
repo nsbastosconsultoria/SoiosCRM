@@ -13703,6 +13703,12 @@ export const DICIONARIO: Traducoes = {
   "O que a IA deve dizer ao cliente": { es: "Lo que la IA debe decirle al cliente" },
   "Pedir informação ao cliente": { es: "Pedir información al cliente" },
   "Avisar que resolveu": { es: "Avisar que se resolvió" },
+  // ── Módulo implantacao (spec 23) ──
+  "Implantação de clientes": { es: "Implementación de clientes" },
+  "O checklist de implantação de cada cliente novo (contrato, documentos, acessos…), com de quem é a vez em cada item e a empresa só virando cliente ativo na carteira quando os itens obrigatórios estão concluídos. Para quem implanta o cliente antes de atendê-lo de rotina.": { es: "La lista de verificación de implementación de cada cliente nuevo (contrato, documentos, accesos…), con a quién le toca cada ítem, y la empresa solo pasa a cliente activo en la cartera cuando los ítems obligatorios están completos. Para quien implementa al cliente antes de atenderlo de rutina." },
+  "Requer:": { es: "Requiere:" },
+  "Instale antes o módulo de que este depende.": { es: "Instala antes el módulo del que este depende." },
+  "O checklist de implantação de cada cliente novo, e a empresa só vira cliente ativo quando ele fecha.": { es: "La lista de verificación de implementación de cada cliente nuevo; la empresa solo pasa a cliente activo cuando se completa." },
 };
 
 /**
