@@ -1,6 +1,7 @@
 import { prospectingConversationContext } from "@/lib/prospecting/context";
 import { setExecutionAgentOperation } from '@/lib/atendimento/fronteira-server';
 import { TIPOS_DE_CASO, TIPOS_DE_CASO_PARA_A_IA } from "@/lib/ai/case-copy";
+import { registrarRespostaNoProtocolo } from "@/lib/protocolos/resposta-do-cliente";
 import { DEFAULT_CHANNEL_PROVIDER } from '@/lib/channels/capabilities';
 import { applyPreviewPolicy, previewGateContext, type TurnPreview } from './preview';
 import { claimOfJob } from '../queue/claim';
@@ -3739,6 +3740,25 @@ async function executarTurnoDoAgente(
             { caseId: parsed.data.case_id, info: parsed.data.info },
           );
           if (!res.ok) return res;
+          // Caso aberto pela ficha de um protocolo (spec 22 §6, módulo protocolos): a resposta
+          // entra no protocolo, o prazo volta a correr e o caso fecha. Sem o módulo, ou caso sem
+          // protocolo, devolve null e segue o caminho de sempre. Falhar aqui não desfaz o update:
+          // o caso fica em awaiting_human, visível em Chamados.
+          let protocolo: { numero: string } | null = null;
+          try {
+            protocolo = await registrarRespostaNoProtocolo(pool, tenantId, parsed.data.case_id, parsed.data.info);
+          } catch (err) {
+            runLog.error('resposta do cliente não registrada no protocolo — o caso segue em Chamados', {
+              case_id: parsed.data.case_id,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+          if (protocolo) {
+            return {
+              ok: true,
+              message: `informação registrada no protocolo ${protocolo.numero}; diga ao cliente que a equipe recebeu e segue com o pedido. Não prometa prazo.`,
+            };
+          }
           return {
             ok: true,
             message: 'informação enviada ao responsável; aguarde o retorno pelo caso.',

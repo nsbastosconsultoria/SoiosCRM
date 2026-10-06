@@ -13694,6 +13694,15 @@ export const DICIONARIO: Traducoes = {
   "Abra o protocolo e veja se ele precisa de outra pessoa, de outra prioridade ou de um retorno ao cliente.": { es: "Abre el protocolo y revisa si necesita a otra persona, otra prioridad o una respuesta al cliente." },
   "Atribua o protocolo a alguém, ou ponha pessoas na fila desta área em Configurações › Protocolos.": { es: "Asigna el protocolo a alguien, o agrega personas a la cola de esta área en Configuración › Protocolos." },
   "Ligado à conversa: o protocolo leva o contato e a empresa dela.": { es: "Vinculado a la conversación: el protocolo lleva el contacto y la empresa de ella." },
+  "Falar com o cliente pela IA está indisponível nesta instalação.": { es: "Hablar con el cliente a través de la IA no está disponible en esta instalación." },
+  // ── Protocolos: falar com o cliente pela ficha (spec 22 §6) ──
+  "Pronto: a IA vai levar a mensagem ao cliente pela conversa.": { es: "Listo: la IA llevará el mensaje al cliente por la conversación." },
+  "A IA vai levar a mensagem, mas o estado do protocolo não mudou. Atualize o estado à mão.": { es: "La IA llevará el mensaje, pero el estado del protocolo no cambió. Actualiza el estado manualmente." },
+  "Falar com o cliente": { es: "Hablar con el cliente" },
+  "A IA leva a sua mensagem ao cliente pela conversa. Quando ele responder, a resposta entra aqui.": { es: "La IA lleva tu mensaje al cliente por la conversación. Cuando responda, la respuesta aparecerá aquí." },
+  "O que a IA deve dizer ao cliente": { es: "Lo que la IA debe decirle al cliente" },
+  "Pedir informação ao cliente": { es: "Pedir información al cliente" },
+  "Avisar que resolveu": { es: "Avisar que se resolvió" },
 };
 
 /**
