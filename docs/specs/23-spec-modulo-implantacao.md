@@ -145,15 +145,23 @@ O item da implantação é o compromisso daquele cliente.
 Linha do tempo campo a campo, escrita por gatilho AFTER (molde `protocolo_eventos`): item mudou de
 estado, de responsável, de prazo; implantação iniciada, concluída, cancelada.
 
-### 4.5 Quem escreve
+### 4.5 Quem escreve (decidido na implementação, migration 0907)
 
 - **Configuração** (`modelos`, `modelo_itens`): `admin` pela RLS.
-- **Implantação e itens:** só pelas funções do módulo (`security definer`, só `service_role`),
-  chamadas pela API com o papel conferido. `authenticated` só lê. Motivo: a **ativação** precisa ser
-  atômica com a checagem dos obrigatórios — escrita direta pelo PostgREST deixaria marcar a empresa
-  ativa com item pendente.
-- Funções: `fn_implantacao_iniciar`, `fn_implantacao_item_alterar`, `fn_implantacao_concluir`,
-  `fn_implantacao_cancelar`.
+- **Nascimento e encerramento só por função** (`security definer`, só `service_role`, chamadas pela
+  rota depois do `requireRole`): `fn_implantacao_iniciar`, `fn_implantacao_concluir`,
+  `fn_implantacao_cancelar`. O `service_role` não tem INSERT nem DELETE em `implantacoes` e
+  `implantacao_itens`: implantação nasce pela função e só se encerra, nunca some; item se dispensa.
+- **Itens** são alterados pelo serviço (UPDATE com `alterado_por`). O que não depende de papel mora em
+  **gatilho** e vale para qualquer escritor: a tabela de transições, evidência exigida para concluir
+  (e para manter concluído), dispensa só com motivo, `obrigatorio`/`exige_evidencia`/`vez_de`
+  imutáveis (afrouxá-los no meio afrouxaria a trava), implantação encerrada congela os itens.
+- **A trava da ativação também é de gatilho:** `implantacoes.estado = 'concluida'` é recusado com
+  obrigatório aberto (`implantacao_obrigatorios_abertos`, com a contagem), mesmo por UPDATE direto do
+  service role. A função só junta a conclusão e a carteira na mesma transação.
+- **Papel** (dispensar, concluir e cancelar são de gestor) é da rota: com o service role não há
+  `auth.uid()` para o gatilho conferir.
+- `implantacao_eventos` é append-only para os três papéis; só os gatilhos escrevem.
 
 ## 5. Regras
 
@@ -201,8 +209,10 @@ estado, de responsável, de prazo; implantação iniciada, concluída, cancelada
 
 ### 5.4 Cancelamento
 
-Gestor, com motivo. A empresa em `em_implantacao` volta para o estado que tinha antes de começar
-(guardado no evento de início) ou vai para `inativo`, à escolha de quem cancela.
+Gestor, com motivo. A carteira só sai de `em_implantacao` para `ativo` ou `inativo` (tabela de
+transições da 0902), então cancelar **não volta** ao estado anterior: ou a empresa fica como está, ou
+vai para `inativo` — quem cancela escolhe. O estado da carteira no início fica gravado na implantação
+(`estado_carteira_no_inicio`) e na linha do tempo, para quem precisar reconstituir.
 
 ### 5.5 Prazos e avisos
 
@@ -275,8 +285,10 @@ marca o item (Q5): diz que a equipe vai conferir. A equipe vê a mensagem na inb
 - **`event_log`:** nenhum evento novo até haver consumidor (o módulo de rotinas será o primeiro).
 - **Métricas** (tela da lista): tempo médio até a ativação; itens que mais atrasam; implantações
   paradas há mais de N dias.
-- **LGPD (D8):** `observacao` e `evidencia` são texto livre e podem falar da pessoa. O módulo registra
-  seções em `modulo_secoes_lgpd` (esses campos viram nulo na anonimização do titular), como a 0904.
+- **LGPD:** sem seção em `modulo_secoes_lgpd`, como a carteira (0902). A anonimização é por
+  **titular** (contato), e nada aqui se liga a um contato: os itens são da empresa (pessoa jurídica).
+  `observacao` e `evidencia` falam da operação da empresa; a tela orienta a não registrar dado
+  pessoal neles. A linha do tempo não copia texto livre (só estado, responsável e prazo).
 
 ## 10. Testes
 
@@ -336,8 +348,8 @@ altera o evento nem os consumidores existentes.
 
 ## 14. Ordem de implementação sugerida (PRs)
 
-1. **PR-A — schema:** provisionadora 09xx (tabelas, gatilhos, funções, RLS, LGPD) + `requer` no
-   catálogo de módulos + invariantes.
+1. **PR-A — schema:** provisionadora 0907 (tabelas, gatilhos, funções, RLS) + `requer` no catálogo
+   de módulos (tela, serviço e provisionadora) + espelho TS do vocabulário + invariantes.
 2. **PR-B — serviço, API e telas:** lista, ficha, cartão na carteira, configuração, modelos de nicho,
    i18n.
 3. **PR-C — automações:** consumidor de `lead.won`, vigia diário + kind da Central, ferramenta da IA.

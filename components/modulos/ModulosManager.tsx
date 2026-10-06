@@ -13,6 +13,7 @@ interface ModuloCatalogo {
   slug: string;
   nome: string;
   descricao: string;
+  requer?: readonly string[];
 }
 
 interface ModuloInstalado {
@@ -64,6 +65,7 @@ export function ModulosManager({ inicial }: { inicial: ListagemDeModulos }) {
   }, []);
 
   const instaladoPorSlug = new Map(estado.instalados.map((m) => [m.modulo, m]));
+  const nomeDo = (slug: string) => estado.disponiveis.find((m) => m.slug === slug)?.nome ?? slug;
 
   return (
     <div className="space-y-4">
@@ -74,6 +76,8 @@ export function ModulosManager({ inicial }: { inicial: ListagemDeModulos }) {
       ) : null}
       {estado.disponiveis.map((modulo) => {
         const instalado = instaladoPorSlug.get(modulo.slug);
+        // Dependência (spec 23 §11.1): sem o módulo requerido ATIVO, "Instalar" fica desabilitado.
+        const faltam = (modulo.requer ?? []).filter((r) => instaladoPorSlug.get(r)?.estado !== "ativo");
         return (
           <Card key={modulo.slug} className="p-5" data-testid={`modulo-${modulo.slug}`}>
             <div className="flex items-start justify-between gap-4">
@@ -87,6 +91,11 @@ export function ModulosManager({ inicial }: { inicial: ListagemDeModulos }) {
                   ) : null}
                 </div>
                 <p className="mt-1 max-w-xl text-sm text-text-muted">{t(modulo.descricao)}</p>
+                {modulo.requer?.length ? (
+                  <p className="mt-1 text-xs text-text-muted" data-testid={`requer-${modulo.slug}`}>
+                    {t("Requer:")} {modulo.requer.map((r) => t(nomeDo(r))).join(", ")}
+                  </p>
+                ) : null}
                 {instalado?.motivo_suspensao ? (
                   <p className="mt-1 text-xs text-destructive">
                     {t("Suspenso")}: {instalado.motivo_suspensao}
@@ -97,7 +106,8 @@ export function ModulosManager({ inicial }: { inicial: ListagemDeModulos }) {
                 <Button
                   size="sm"
                   onClick={() => void instalar(modulo.slug)}
-                  disabled={instalando === modulo.slug}
+                  disabled={instalando === modulo.slug || faltam.length > 0}
+                  title={faltam.length > 0 ? t("Instale antes o módulo de que este depende.") : undefined}
                   data-testid={`instalar-${modulo.slug}`}
                 >
                   {instalando === modulo.slug ? t("Instalando…") : t("Instalar")}

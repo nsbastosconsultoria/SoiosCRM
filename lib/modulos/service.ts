@@ -58,6 +58,32 @@ function dbFailure(error: { code?: string; message?: string } | null): void {
   );
 }
 
+/**
+ * Os módulos de que este depende precisam estar instalados e ATIVOS (spec 23 §11.1). A
+ * provisionadora também recusa no banco; aqui a recusa chega antes, com o nome do que falta, em
+ * vez do erro técnico de dentro da instalação.
+ */
+async function exigirModulosRequeridos(admin: ReturnType<typeof createAdminClient>, modulo: string): Promise<void> {
+  const requer = moduloDoCatalogo(modulo)?.requer ?? [];
+  if (requer.length === 0) return;
+  const { data, error } = await admin
+    .from("modulos_instalados")
+    .select("modulo")
+    .in("modulo", [...requer])
+    .eq("estado", "ativo");
+  dbFailure(error);
+  const ativos = new Set(((data ?? []) as Array<{ modulo: string }>).map((m) => m.modulo));
+  const faltam = requer.filter((r) => !ativos.has(r));
+  if (faltam.length > 0) {
+    const nomes = faltam.map((r) => moduloDoCatalogo(r)?.nome ?? r).join(", ");
+    throw new ExtensionServiceError(
+      "modulo_requer_outro",
+      `Instale antes: ${nomes}. Este módulo depende dele para funcionar.`,
+      409,
+    );
+  }
+}
+
 /** O catálogo (vitrine) cruzado com o que já está instalado nesta instância. */
 export async function listarModulos(): Promise<{
   disponiveis: typeof CATALOGO_DE_MODULOS;
@@ -90,6 +116,7 @@ export async function instalarModulo(
   }
 
   const admin = createAdminClient();
+  await exigirModulosRequeridos(admin, modulo);
   const resultado = await admin.rpc("fn_modulo_instalar", {
     p_actor: actorId,
     p_operation: operationId,
