@@ -8,6 +8,63 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
 
 ## [Não lançado]
 
+## [1.67.0] — 2026-10-07
+
+### Adicionado
+
+- **Implantação de clientes — início automático, aviso de atraso e assistente** Com o módulo **Implantação de clientes** instalado:
+
+  - **Início automático:** em **Configurações › Implantação**, escolha o funil comercial. Quando um
+    negócio for ganho nesse funil, a implantação da empresa começa sozinha, com o modelo padrão. A
+    empresa vem do contato do negócio e só é usada quando ele representa uma empresa só. Um mesmo
+    negócio nunca abre duas implantações.
+  - **Aviso de atraso na Central:** uma vez por dia, de manhã, cada implantação com item vencido
+    gera um aviso, que mostra quantos itens estão com a equipe, com o cliente e com terceiros. Não é
+    aberto um segundo aviso enquanto o primeiro estiver aberto.
+  - **Assistente de IA:** a nova capacidade "Ver o que falta o cliente entregar na implantação",
+    no pacote **Não perder o cliente**, responde ao cliente o que ainda falta mandar. Ela mostra só os itens
+    que estão com o cliente e não marca nada como recebido: quem confere é a equipe.
+
+  Inclui uma atualização no banco que permite o novo tipo de aviso. Ela não muda nada para quem não
+  usa a implantação.
+
+- **Implantação de clientes — módulo instalável (base de dados)** Novo módulo opcional **Implantação de clientes**, para quem implanta o cliente antes de atendê-lo
+  de rotina (contabilidade, TI gerenciada, agência). Ele depende da **Carteira de empresas**: em
+  **Modo administrador › Módulos**, o botão **Instalar** só fica disponível depois que a Carteira
+  estiver instalada, e a tela mostra essa exigência. Quem não instala não carrega nenhuma tabela, e
+  nada muda.
+
+  Esta versão traz a base do módulo:
+
+  - modelos de checklist, com grupo, de quem é a vez em cada item (escritório, cliente ou terceiro),
+    área, prazo, obrigatoriedade e se o item exige evidência;
+  - uma implantação por empresa, com os itens copiados do modelo no início;
+  - a regra de ativação: a empresa só passa a cliente ativo na Carteira quando todos os itens
+    obrigatórios estão concluídos ou dispensados com motivo.
+
+  As telas de implantação, o cartão na ficha da Carteira e o início automático pelo negócio ganho
+  chegam nas próximas versões do módulo.
+
+- **Implantação de clientes — telas, checklist e ativação pela ficha** Com o módulo **Implantação de clientes** instalado:
+
+  - **Na ficha da empresa, na Carteira:** o novo cartão **Implantação** mostra o progresso dos itens
+    obrigatórios e tem o botão **Iniciar implantação**. Ao iniciar, a empresa passa a "em
+    implantação", e cada item ganha prazo e responsável, que é quem cuida daquela área na Carteira.
+  - **Implantação de clientes**, no hub do CRM: a lista das implantações em andamento, com quatro
+    filtros (todas, minhas, com item vencido e esperando o cliente).
+  - **Ficha da implantação:** os itens por grupo, cada um com responsável, prazo, observação e
+    evidência.
+    - Itens que exigem evidência só são concluídos com ela.
+    - Dispensar um item pede motivo e é permitido só a gestores.
+    - **Concluir implantação e ativar o cliente** só fica disponível quando todos os itens
+      obrigatórios estão fechados, e a empresa vira cliente ativo na Carteira.
+    - A implantação também pode ser cancelada, com motivo, e a empresa pode ser marcada como inativa.
+  - **Configurações › Implantação:** os modelos de checklist, criados a partir de um modelo pronto
+    (escritório de contabilidade ou genérico) e editáveis. Mudar um modelo não altera implantações já
+    começadas.
+  - **Na Carteira:** ativar direto uma empresa que tem implantação em andamento, com itens
+    obrigatórios abertos, passa a ser permitido só a administradores, e mesmo assim pede confirmação.
+
 ## [1.66.0] — 2026-10-06
 
 ### Adicionado
@@ -9850,7 +9907,8 @@ Primeira versão marcada do DeskcommCRM. O projeto vinha sendo desenvolvido publ
 
 - **Node 22 é obrigatório para desenvolvimento.** A suíte de invariantes instancia o cliente do Supabase, que exige o `WebSocket` global — nativo apenas a partir do Node 22. Isso não afeta quem apenas hospeda: a VPS roda a imagem pronta.
 
-[Não lançado]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.66.0...HEAD
+[Não lançado]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.67.0...HEAD
+[1.67.0]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.66.0...v1.67.0
 [1.66.0]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.3...v1.66.0
 [1.65.3]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.2...v1.65.3
 [1.65.2]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.65.1...v1.65.2
