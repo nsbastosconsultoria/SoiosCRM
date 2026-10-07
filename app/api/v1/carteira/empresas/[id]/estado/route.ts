@@ -15,7 +15,7 @@ import type { NextRequest } from "next/server";
 
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
-import { ROLE_RANK } from "@/lib/auth/types";
+import { roleAtLeast } from "@/lib/auth/types";
 import { obrigatoriosAbertosDaEmpresa } from "@/lib/implantacao/servico";
 import { corpoValidado, ctxFromAuthz, handleRouteError, idDoCaminho, requestIdOf } from "@/lib/api/rota-de-modulo";
 import { transicaoSchema } from "@/lib/carteira/schemas";
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
     if (estado === "ativo") {
       const pendente = await obrigatoriosAbertosDaEmpresa(admin, authz.org.orgId, companyId);
       if (pendente && pendente.abertos > 0) {
-        if (ROLE_RANK[authz.org.role] < ROLE_RANK.admin) {
+        if (!roleAtLeast(authz.org.role, "admin")) {
           return fail(
             "implantacao_em_andamento_exige_admin",
             `A implantação desta empresa ainda tem ${pendente.abertos} item(ns) obrigatório(s) aberto(s). Conclua a implantação, ou peça a um administrador.`,
