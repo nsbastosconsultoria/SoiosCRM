@@ -26,6 +26,7 @@ import { webPushInboundHandler } from "@/lib/notifications/push.handler";
 import { conversaoDeQualificacaoHandler } from "@/lib/conversoes/qualificacao.handler";
 import { conversaoDeVendaHandler } from "@/lib/conversoes/envio.handler";
 import { avisoDeEtapaHandler } from "@/lib/leads/aviso-de-etapa.handler";
+import { negocioGanhoHandler } from "@/lib/implantacao/negocio-ganho.handler";
 import { avisoDeCasoAoSuporteHandler } from "@/lib/escalacao/aviso-ao-suporte.handler";
 import { avisoDePropostaNoWhatsAppHandler } from "@/lib/propostas/aviso-no-whatsapp.handler";
 import { registerHandler } from "@/lib/event-log/dispatcher";
@@ -56,6 +57,9 @@ export function ensureHandlersRegistered(): void {
   // Escrita curta no banco (um item na Central), vizinha do gatilho de etapa
   // que consome o mesmo evento.
   registerHandler(avisoDeEtapaHandler);
+  // Módulo implantacao (spec 23 §5.1): o negócio ganho no funil comercial inicia a implantação.
+  // Só escreve no banco, ao lado dos outros consumidores de etapa; sem o módulo, pula na 1ª query.
+  registerHandler(negocioGanhoHandler);
   registerHandler(followupGatilhoLeadHandler);
   registerHandler(followupGatilhoCasoHandler);
   // O caso aberto na Central, na hora — escrita curta no banco (um item), ao

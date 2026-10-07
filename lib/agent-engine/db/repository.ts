@@ -95,6 +95,7 @@ export type InboxKind =
   // (migration 0905, spec 22) módulo protocolos — prazo do protocolo e fila sem dono.
   | 'protocolo_sla'
   | 'protocolo_sem_dono'
+  | 'implantacao_atrasada'
   | 'other';
 
 export interface InboxItemRow {

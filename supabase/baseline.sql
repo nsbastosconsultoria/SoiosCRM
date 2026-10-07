@@ -10111,6 +10111,9 @@ alter table public.agent_inbox_items
     -- na fila de uma área sem ninguém para pegar. Os dois apontam para `ref_kind='protocolo'`.
     'protocolo_sla',
     'protocolo_sem_dono',
+    -- (migration 0908, spec 23) Módulo implantacao: uma implantação em andamento tem item vencido
+    -- (o vigia diário `implantacao-watcher` escreve, um por implantação). `ref_kind='implantacao'`.
+    'implantacao_atrasada',
     'other'
   ));
 

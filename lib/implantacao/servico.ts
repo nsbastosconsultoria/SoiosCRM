@@ -20,6 +20,7 @@ import { ROLE_RANK, type Role } from "@/lib/auth/types";
 import type { createAdminClient } from "@/lib/supabase/admin";
 
 import { lancarErroDaImplantacao, moduloImplantacaoAusente, type ErroDoBanco } from "./erros";
+import { funilComercialDe } from "./negocio-ganho.handler";
 import { MODELOS_DE_IMPLANTACAO } from "./modelos";
 import type {
   EntradaDeInicio,
@@ -398,18 +399,51 @@ export async function obrigatoriosAbertosDaEmpresa(
 // ─── configuração ────────────────────────────────────────────────────────────
 
 export async function lerConfiguracao(db: SB, ctx: HandlerCtx) {
-  const [modelos, itens, org] = await Promise.all([
+  const [modelos, itens, org, funis] = await Promise.all([
     db.from("implantacao_modelos").select("*").eq("organization_id", ctx.organization_id).order("nome"),
     db.from("implantacao_modelo_itens").select("*").eq("organization_id", ctx.organization_id).order("posicao").order("titulo"),
     db.from("organizations").select("settings").eq("id", ctx.organization_id).maybeSingle(),
+    db.from("crm_pipelines").select("id, name").eq("organization_id", ctx.organization_id).order("name"),
   ]);
   falha(modelos.error, ctx);
   falha(itens.error, ctx);
+  const settings = (org.data as { settings?: unknown } | null)?.settings;
   return {
     modelos: modelos.data ?? [],
     itens: itens.data ?? [],
-    areas: areasDaOrganizacao((org.data as { settings?: unknown } | null)?.settings),
+    areas: areasDaOrganizacao(settings),
+    funis: (funis.data ?? []) as Array<{ id: string; name: string }>,
+    funil_comercial_id: funilComercialDe(settings),
   };
+}
+
+/**
+ * O funil cujo negócio ganho inicia a implantação (spec 23 §5.1). Grava em
+ * `organizations.settings.implantacao.funil_comercial_id` por merge, com o cliente de SERVIÇO
+ * (a RLS de `organizations` casaria zero linhas com o da sessão). `null` desliga.
+ */
+export async function salvarFunilComercial(admin: Admin, ctx: HandlerCtx, userId: string, pipelineId: string | null) {
+  if (pipelineId) {
+    const { data, error } = await admin
+      .from("crm_pipelines")
+      .select("id")
+      .eq("organization_id", ctx.organization_id)
+      .eq("id", pipelineId)
+      .maybeSingle();
+    falha(error, ctx);
+    if (!data) throw new ApiError(422, "validation_failed", undefined, ctx.requestId, "Funil inexistente nesta organização.");
+  }
+  const { data, error } = await admin.from("organizations").select("settings").eq("id", ctx.organization_id).single();
+  falha(error, ctx);
+  const atual = ((data as { settings?: Record<string, unknown> } | null)?.settings ?? {}) as Record<string, unknown>;
+  const implantacao = (atual.implantacao as Record<string, unknown> | undefined) ?? {};
+  const { error: erroGravar } = await admin
+    .from("organizations")
+    .update({ settings: { ...atual, implantacao: { ...implantacao, funil_comercial_id: pipelineId } } })
+    .eq("id", ctx.organization_id);
+  falha(erroGravar, ctx);
+  await auditarConfig(ctx, userId, { funil_comercial: pipelineId ? "definido" : "desligado" });
+  return { funil_comercial_id: pipelineId };
 }
 
 async function auditarConfig(ctx: HandlerCtx, userId: string, metadata: Record<string, unknown>) {

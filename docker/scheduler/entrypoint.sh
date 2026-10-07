@@ -97,6 +97,11 @@ CRONS="
 # consulta que responde modulo_instalado=false e termina. (Sem aspas duplas nestes comentários:
 # eles moram DENTRO da string CRONS, e uma aspa dupla a fecha no meio.)
 */5 * * * *|60|api/v1/cron/protocolos-sla-watcher
+# AS IMPLANTACOES ATRASADAS. Uma vez por dia, as 11:00 UTC (08:00 em Brasilia): o prazo de um
+# item de implantacao e em dias, e um aviso logo cedo e o que a equipe trata. Sem o modulo
+# instalado, a rodada responde modulo_instalado=false e termina. (Sem aspas duplas aqui: estes
+# comentarios moram dentro da string CRONS.)
+0 11 * * *|60|api/v1/cron/implantacao-watcher
 */30 * * * *|60|api/v1/cron/contact-phones
 17 * * * *|60|api/v1/cron/contact-proposals-watcher
 23 * * * *|60|api/v1/cron/followup-sem-agente

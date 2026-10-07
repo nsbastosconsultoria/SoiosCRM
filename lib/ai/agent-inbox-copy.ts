@@ -99,6 +99,8 @@ export const KIND_LABEL = {
   // Módulo protocolos (migration 0905): diz o que espera, não o nome técnico do relógio.
   protocolo_sla: "O prazo de um protocolo está vencendo",
   protocolo_sem_dono: "Um protocolo está numa fila sem ninguém",
+  // Módulo implantacao (migration 0908).
+  implantacao_atrasada: "Uma implantação de cliente tem item vencido",
   other: "Aviso do assistente",
 } as const satisfies Record<InboxKind, string>;
 

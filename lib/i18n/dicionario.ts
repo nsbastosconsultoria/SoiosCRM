@@ -13774,6 +13774,14 @@ export const DICIONARIO: Traducoes = {
   "vencido": { es: "vencido" },
   "vencido(s)": { es: "vencido(s)" },
   "← Implantação de clientes": { es: "← Implementación de clientes" },
+  // ── Central: aviso de implantação (migration 0908) ──
+  "Uma implantação de cliente tem item vencido": { es: "Una implementación de cliente tiene un ítem vencido" },
+  "Abra a implantação e veja de quem é a vez em cada item vencido: cobre o cliente, o terceiro ou a pessoa da equipe.": { es: "Abre la implementación y revisa a quién le toca cada ítem vencido: recuérdaselo al cliente, al tercero o a la persona del equipo." },
+  // ── Implantação: início automático (spec 23 §5.1) ──
+  "Início automático": { es: "Inicio automático" },
+  "Quando um negócio é ganho neste funil, a implantação da empresa começa sozinha, com o modelo padrão. A empresa vem do contato do negócio e só é usada quando ele representa uma empresa só.": { es: "Cuando se gana un negocio en este embudo, la implementación de la empresa empieza sola, con el modelo predeterminado. La empresa sale del contacto del negocio y solo se usa cuando representa a una sola empresa." },
+  "Funil comercial": { es: "Embudo comercial" },
+  "Escolha um modelo padrão abaixo: sem ele, o início automático não acontece.": { es: "Elige un modelo predeterminado abajo: sin él, el inicio automático no ocurre." },
 };
 
 /**

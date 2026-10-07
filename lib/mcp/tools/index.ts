@@ -63,6 +63,7 @@ import {
   crmProtocoloComplementar,
   crmProtocoloConsultar,
 } from "./protocolos";
+import { crmImplantacaoPendenciasDoCliente } from "./implantacao";
 import { crmDescribeExternalData, crmQueryExternalData } from "./dados-externos";
 import { crmListPrivacyRequests } from "./privacidade";
 import {
@@ -141,6 +142,7 @@ export const allTools: ReadonlyArray<McpToolDefinition> = [
   crmProtocoloAbrir,
   crmProtocoloConsultar,
   crmProtocoloComplementar,
+  crmImplantacaoPendenciasDoCliente,
   crmPrepararProposta,
   crmDescribeExternalData,
   crmQueryExternalData,
