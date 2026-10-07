@@ -265,7 +265,7 @@ regra do modelo de categorias da spec 22).
 
 | Tool | Categoria | Risco | Pacotes | O que faz |
 |---|---|---|---|---|
-| `crm_implantacao_pendencias_do_cliente` | read | seguro | `atender` | Para a empresa do contexto da conversa (carteira, período corrente): os itens com `vez_de = 'cliente'` ainda abertos — só **título** e **orientação**, nunca observação, evidência, responsável nem prazo interno. Sem empresa definida, ensina a definir com `crm_carteira_definir_empresa_da_conversa`. Implementada no PR-C (`lib/mcp/tools/implantacao.ts`) |
+| `crm_implantacao_pendencias_do_cliente` | read | seguro | `reter` (o `atender` está no teto de 27 vagas — decisão do dono, 07/10/2026) | Para a empresa do contexto da conversa (carteira, período corrente): os itens com `vez_de = 'cliente'` ainda abertos — só **título** e **orientação**, nunca observação, evidência, responsável nem prazo interno. Sem empresa definida, ensina a definir com `crm_carteira_definir_empresa_da_conversa`. Implementada no PR-C (`lib/mcp/tools/implantacao.ts`) |
 
 Responde "o que ainda falta eu mandar?". Ao receber o documento pelo WhatsApp, o assistente **não**
 marca o item (Q5): diz que a equipe vai conferir. A equipe vê a mensagem na inbox e atualiza a ficha.

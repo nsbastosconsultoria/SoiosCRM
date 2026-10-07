@@ -14,7 +14,7 @@ Com o módulo **Implantação de clientes** instalado:
   gera um aviso, que mostra quantos itens estão com a equipe, com o cliente e com terceiros. Não é
   aberto um segundo aviso enquanto o primeiro estiver aberto.
 - **Assistente de IA:** a nova capacidade "Ver o que falta o cliente entregar na implantação",
-  no pacote de atendimento, responde ao cliente o que ainda falta mandar. Ela mostra só os itens
+  no pacote **Não perder o cliente**, responde ao cliente o que ainda falta mandar. Ela mostra só os itens
   que estão com o cliente e não marca nada como recebido: quem confere é a equipe.
 
 Inclui uma atualização no banco que permite o novo tipo de aviso. Ela não muda nada para quem não
