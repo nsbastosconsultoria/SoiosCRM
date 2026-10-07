@@ -351,5 +351,10 @@ altera o evento nem os consumidores existentes.
 1. **PR-A — schema:** provisionadora 0907 (tabelas, gatilhos, funções, RLS) + `requer` no catálogo
    de módulos (tela, serviço e provisionadora) + espelho TS do vocabulário + invariantes.
 2. **PR-B — serviço, API e telas:** lista, ficha, cartão na carteira, configuração, modelos de nicho,
-   i18n.
+   i18n. Feito: `lib/implantacao/servico.ts`; rotas `/api/v1/implantacoes` (lista, início, ficha,
+   concluir, cancelar, PATCH de item) e `/api/v1/implantacao/config` (modelos, itens, modelo de
+   nicho); telas `/app/implantacoes`, `/app/implantacoes/:id`, `/app/settings/tenant/implantacao`;
+   cartão e "Iniciar implantação" na ficha da carteira. A regra Q2 mora na rota de estado da
+   carteira: `ativo` com obrigatório aberto → 403 para gestor, 409 `implantacao_em_andamento` para
+   admin até `confirmar_implantacao_aberta: true`.
 3. **PR-C — automações:** consumidor de `lead.won`, vigia diário + kind da Central, ferramenta da IA.

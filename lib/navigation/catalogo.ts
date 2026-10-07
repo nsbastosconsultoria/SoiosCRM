@@ -286,6 +286,20 @@ export const NAV_CATALOG = [
     modulo: "carteira",
   },
   {
+    // Módulo opcional (ADR-0002, spec 23), fonte `modulos_instalados`: a porta só existe depois
+    // que o administrador instala `implantacao` (que requer a carteira). Ao lado da carteira
+    // porque implantar é o passo entre o negócio ganho e o cliente ativo. Sem sidebar pelo teto
+    // de 15 itens; mora no hub do CRM, e o cartão da ficha da empresa leva até ela.
+    href: "/app/implantacoes",
+    label: "Implantação de clientes",
+    description: "O checklist de cada cliente novo, de quem é a vez em cada item e quando ele pode virar cliente ativo.",
+    icon: "ListChecks",
+    group: "crm",
+    section: "O dia a dia da venda",
+    minRole: "viewer",
+    modulo: "implantacao",
+  },
+  {
     href: "/app/people",
     label: "Pessoas",
     description: "Decisores e contatos ligados a empresas, com vários telefones.",
@@ -402,6 +416,18 @@ export const NAV_CATALOG = [
     section: "Sua empresa",
     minRole: "admin",
     modulo: "protocolos",
+  },
+  {
+    // Configuração do módulo implantacao (spec 23 §8): os modelos de checklist. Só com o módulo
+    // instalado, e só `admin` (a RLS da 0907 exige o mesmo).
+    href: "/app/settings/tenant/implantacao",
+    label: "Implantação",
+    description: "Os modelos de checklist que cada cliente novo segue.",
+    icon: "ListChecks",
+    group: "organizacao",
+    section: "Sua empresa",
+    minRole: "admin",
+    modulo: "implantacao",
   },
   {
     // A promessa que o comentário da Agenda fazia desde que ela nasceu. Aqui se

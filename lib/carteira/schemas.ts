@@ -34,7 +34,17 @@ export const patchDoPerfilSchema = z
   .refine((p) => Object.keys(p).length > 0, "nada para alterar");
 export type PatchDoPerfil = z.infer<typeof patchDoPerfilSchema>;
 
-export const transicaoSchema = z.object({ estado: estadoSchema }).strict();
+export const transicaoSchema = z
+  .object({
+    estado: estadoSchema,
+    /**
+     * Com o módulo implantacao instalado, `ativo` com implantação em andamento e item obrigatório
+     * aberto exige `admin` E esta confirmação explícita (spec 23 Q2). Sem ela, 409
+     * `implantacao_em_andamento`, com a contagem — a tela mostra e pergunta.
+     */
+    confirmar_implantacao_aberta: z.boolean().optional(),
+  })
+  .strict();
 
 export const vinculoNovoSchema = z
   .object({
