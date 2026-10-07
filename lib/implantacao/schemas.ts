@@ -71,5 +71,8 @@ export const itemDeModeloSchema = z
   .strict();
 export type EntradaDeItemDeModelo = z.infer<typeof itemDeModeloSchema>;
 
+/** O funil cujo negócio ganho inicia a implantação (spec 23 §5.1). `null` desliga. */
+export const funilSchema = z.object({ pipeline_id: uuid.nullable() }).strict();
+
 export const modeloDeNichoSchema = z.object({ modelo: z.enum(["contabilidade", "generico"]) }).strict();
 export type ModeloDeNicho = z.infer<typeof modeloDeNichoSchema>["modelo"];

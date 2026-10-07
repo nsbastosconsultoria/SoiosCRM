@@ -30,7 +30,13 @@ type ItemDeModelo = {
   prazo_dias: number | null;
   exige_evidencia: boolean;
 };
-type Configuracao = { modelos: Modelo[]; itens: ItemDeModelo[]; areas: Array<{ slug: string; rotulo: string }> };
+type Configuracao = {
+  modelos: Modelo[];
+  itens: ItemDeModelo[];
+  areas: Array<{ slug: string; rotulo: string }>;
+  funis: Array<{ id: string; name: string }>;
+  funil_comercial_id: string | null;
+};
 
 const CAMPO = "rounded-md border border-border bg-surface-elevated p-2 text-sm text-text";
 const CHAVE = ["implantacao", "config"];
@@ -147,10 +153,61 @@ export function ConfiguracaoDaImplantacao() {
         </form>
       </section>
 
+      <InicioAutomatico funis={c.funis} atual={c.funil_comercial_id} temPadrao={c.modelos.some((m) => m.padrao && m.ativo)} onFeito={recarregar} />
+
       {atual ? (
         <ItensDoModelo modelo={atual} itens={c.itens.filter((i) => i.modelo_id === atual.id)} areas={c.areas} onFeito={recarregar} />
       ) : null}
     </div>
+  );
+}
+
+/**
+ * O funil cujo negócio ganho inicia a implantação (spec 23 §5.1). Sem modelo padrão o início
+ * automático não tem o que copiar — a tela diz isso em vez de deixar falhar calado.
+ */
+function InicioAutomatico({
+  funis,
+  atual,
+  temPadrao,
+  onFeito,
+}: {
+  funis: Array<{ id: string; name: string }>;
+  atual: string | null;
+  temPadrao: boolean;
+  onFeito: () => void;
+}) {
+  const t = useT();
+  const salvar = useMutation({
+    mutationFn: (pipelineId: string | null) => apiClient.put("/api/v1/implantacao/config/funil", { pipeline_id: pipelineId }),
+    onSuccess: onFeito,
+    onError: showApiError,
+  });
+  return (
+    <section className="rounded-md border border-border p-3" data-testid="implantacao-inicio-automatico">
+      <h2 className="mb-1 text-sm font-semibold">{t("Início automático")}</h2>
+      <p className="mb-2 text-xs text-text-muted">
+        {t("Quando um negócio é ganho neste funil, a implantação da empresa começa sozinha, com o modelo padrão. A empresa vem do contato do negócio e só é usada quando ele representa uma empresa só.")}
+      </p>
+      <select
+        id="implantacao-funil-comercial"
+        aria-label={t("Funil comercial")}
+        className={CAMPO}
+        value={atual ?? ""}
+        disabled={salvar.isPending}
+        onChange={(e) => salvar.mutate(e.target.value || null)}
+      >
+        <option value="">{t("Desligado")}</option>
+        {funis.map((f) => (
+          <option key={f.id} value={f.id}>
+            {f.name}
+          </option>
+        ))}
+      </select>
+      {atual && !temPadrao ? (
+        <p className="mt-2 text-xs text-warning">{t("Escolha um modelo padrão abaixo: sem ele, o início automático não acontece.")}</p>
+      ) : null}
+    </section>
   );
 }
 

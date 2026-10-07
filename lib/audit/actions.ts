@@ -1047,6 +1047,7 @@ export const AUDIT_ACTIONS = [
   "implantacao.concluida",
   "implantacao.cancelada",
   "implantacao.config_alterada",
+  "implantacao.atraso_avisado",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

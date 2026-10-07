@@ -36,6 +36,7 @@ export const REFERENCIAS_DE_AVISO = {
   // tabela não existe, a consulta de visibilidade falha, e o aviso fica sem link — nunca um
   // link para tela que não abre.
   protocolo: { tabela: "protocolos", papel: "viewer", rotulo: "Abrir protocolo", href: (id: string) => `/app/protocolos/${id}` },
+  implantacao: { tabela: "implantacoes", papel: "viewer", rotulo: "Abrir a implantação", href: (id: string) => `/app/implantacoes/${id}` },
 } satisfies Record<string, Alvo>;
 
 export type InboxRefKind = keyof typeof REFERENCIAS_DE_AVISO | "organization" | "ai_budget" | "job_queue" | "cron_jobs";
@@ -130,6 +131,8 @@ export const POLITICAS_DE_AVISO = {
   protocolo_sla: { refs: ["protocolo"], orientacao: "Abra o protocolo e veja se ele precisa de outra pessoa, de outra prioridade ou de um retorno ao cliente." },
   // Protocolo numa fila sem membro nem líder: ele não anda até alguém configurar a fila.
   protocolo_sem_dono: { refs: ["protocolo"], orientacao: "Atribua o protocolo a alguém, ou ponha pessoas na fila desta área em Configurações › Protocolos." },
+  // O vigia diário da implantação (`implantacao-watcher`): um aviso por implantação com item vencido.
+  implantacao_atrasada: { refs: ["implantacao"], orientacao: "Abra a implantação e veja de quem é a vez em cada item vencido: cobre o cliente, o terceiro ou a pessoa da equipe." },
   other: { refs: ["lead", "channel_session", "appointment", "ai_agent", "ai_provider_credential", "agent_case"], orientacao: "Confira a situação descrita neste aviso com a pessoa responsável." },
 } satisfies Record<InboxKind, Politica>;
 

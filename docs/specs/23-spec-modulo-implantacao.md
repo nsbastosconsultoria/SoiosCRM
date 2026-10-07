@@ -171,11 +171,21 @@ estado, de responsável, de prazo; implantação iniciada, concluída, cancelada
    modelo. Empresa em `prospect`, `em_qualificacao` ou `proposta` vai para `em_implantacao`
    (por `fn_carteira_transicionar`, na mesma transação). Empresa já `ativo` pode iniciar uma
    implantação sem mudar de estado — é o caso do cliente que contrata um serviço novo (Q3).
-2. **Negócio ganho:** com `settings.implantacao.funil_comercial_id` apontando para um funil, o
-   evento `lead.won` de um lead daquele funil, **ligado a uma empresa** (`crm_lead_links` para
-   `companies`), inicia a implantação com o modelo padrão (`origem = 'negocio_ganho'`). Isto cumpre a
-   regra 5 do §6 da spec 21, que ficou sem código. Lead sem empresa ligada: nada acontece e o
-   consumidor registra o motivo (a empresa nasce por CNPJ, nunca inventada — spec 21 §6.1).
+2. **Negócio ganho** (PR-C, `lib/implantacao/negocio-ganho.handler.ts`): com
+   `settings.implantacao.funil_comercial_id` apontando para um funil (Configurações › Implantação),
+   o negócio ganho naquele funil inicia a implantação com o modelo padrão (`origem = 'negocio_ganho'`,
+   `lead_id` gravado). Isto cumpre a regra 5 do §6 da spec 21, que ficou sem código.
+   - **Duas portas:** escuta `lead.won` e `lead.stage_changed` (arrastar no kanban e mover em lote
+     não emitem `lead.won`) e relê `crm_leads`: só segue com `status = 'won'`.
+   - **Qual empresa** (correção ao rascunho, medida no schema): `crm_lead_links` NÃO aceita empresa
+     como destino. A empresa vem do contato do negócio pelo vínculo da carteira —
+     `contacts.person_id` → `company_people`, vínculo sem detalhe ou com detalhe ativo — e só com
+     **exatamente uma** empresa. Zero ou várias: nada acontece, e o motivo fica no resultado do evento
+     (a carteira não escolhe empresa por quem escreve quando há mais de um vínculo; a empresa nasce
+     por CNPJ, nunca inventada — spec 21 §6.1).
+   - **Uma vez por negócio:** já havendo implantação com aquele `lead_id`, em qualquer estado, não abre
+     outra. Sem modelo padrão, pula (`sem_modelo_padrao`) — a tela avisa.
+   - Responsável da implantação: o dono do negócio, se ainda for da equipe.
 3. Uma em andamento por empresa (índice parcial). Iniciar de novo devolve a existente.
 4. Responsável de cada item no início: o responsável da empresa **na área do item**
    (`carteira_responsaveis`); sem área ou sem responsável, o responsável da implantação.
@@ -255,7 +265,7 @@ regra do modelo de categorias da spec 22).
 
 | Tool | Categoria | Risco | Pacotes | O que faz |
 |---|---|---|---|---|
-| `crm_implantacao_pendencias_do_cliente` | read | seguro | `atender` | Para a empresa do contexto da conversa (carteira): os itens com `vez_de = 'cliente'` ainda abertos — só **título** e **orientação**, nunca observação, evidência, responsável nem prazo interno |
+| `crm_implantacao_pendencias_do_cliente` | read | seguro | `atender` | Para a empresa do contexto da conversa (carteira, período corrente): os itens com `vez_de = 'cliente'` ainda abertos — só **título** e **orientação**, nunca observação, evidência, responsável nem prazo interno. Sem empresa definida, ensina a definir com `crm_carteira_definir_empresa_da_conversa`. Implementada no PR-C (`lib/mcp/tools/implantacao.ts`) |
 
 Responde "o que ainda falta eu mandar?". Ao receber o documento pelo WhatsApp, o assistente **não**
 marca o item (Q5): diz que a equipe vai conferir. A equipe vê a mensagem na inbox e atualiza a ficha.
@@ -358,3 +368,8 @@ altera o evento nem os consumidores existentes.
    carteira: `ativo` com obrigatório aberto → 403 para gestor, 409 `implantacao_em_andamento` para
    admin até `confirmar_implantacao_aberta: true`.
 3. **PR-C — automações:** consumidor de `lead.won`, vigia diário + kind da Central, ferramenta da IA.
+   Feito: handler `implantacao.negocio-ganho` (registrado em `lib/event-log/register-handlers.ts`),
+   `PUT /api/v1/implantacao/config/funil` e a seção **Início automático** na configuração; vigia
+   `app/api/v1/cron/implantacao-watcher` (`lib/implantacao/vigia.ts`), 1×/dia às 11:00 UTC no
+   `scheduler`; migration 0908 com o kind `implantacao_atrasada` (destino `/app/implantacoes/:id`
+   na Central); ferramenta `crm_implantacao_pendencias_do_cliente`.
