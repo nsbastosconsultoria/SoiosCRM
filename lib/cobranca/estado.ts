@@ -1,150 +1,111 @@
 /**
- * A REGRA DA COBRANÇA — o que muda numa assinatura, sem I/O.
+ * A MÁQUINA DA ASSINATURA, PURA (spec cobrança do revendedor §3.2).
  *
- * Recebe os fatos (assinatura, faturas em aberto, situação da organização, o dia de hoje) e
- * devolve o veredito. Quem executa é `aplicar.ts`, chamado pelo cron `cobranca-watcher` e pelas
- * rotas que dão baixa numa fatura — os dois recebem a MESMA resposta para a mesma pergunta.
- *
- * O ciclo:
- *
- *   trialing ──fim do teste──▶ active ──fatura vence──▶ past_due ──fim da carência──▶ suspended
- *       ▲                         ▲                         │                             │
- *       └──── nada mais em atraso (fatura paga ou cancelada) ◀────────────────────────────┘
- *
- * ⚠️ NA DÚVIDA, NÃO SUSPENDE. Suspender por engano tira a equipe do CRM no meio do expediente;
- * deixar de suspender custa, no pior caso, um dia a mais de uso sem pagar. Data que não se lê,
- * carência inválida ou fatura sem vencimento nunca levam à suspensão.
- *
- * ⚠️ SUSPENDER E REATIVAR SÃO ASSIMÉTRICOS DE PROPÓSITO. A suspensão por cobrança só alcança
- * organização ATIVA — uma que alguém suspendeu à mão já está parada, e marcá-la como "suspensa
- * pela cobrança" faria o próximo pagamento religá-la por cima da decisão daquela pessoa. E a
- * reativação só desfaz o que a cobrança fez (`suspensaPorCobranca`).
+ * `traduzirSituacao` diz em que estado a assinatura está a partir do que o
+ * provedor respondeu na RELEITURA — nunca do corpo do webhook. `aplicarLeitura`
+ * diz o que essa leitura muda na linha, com as regras de gravação:
+ *   - a dívida é monotônica: `vencidaDesde` só recua, e só zera ao voltar a
+ *     ativa/trial (cancelar e reassinar não reinicia o relógio);
+ *   - o período pago nunca é apagado por leitura nula;
+ *   - transição PARA ativa/trial zera o aviso da régua;
+ *   - o plano agendado vira só quando um período novo foi PAGO, e morre com a
+ *     assinatura que o carregava (cancelada, ou saindo de cancelada).
+ * Sem banco e sem relógio: `lidoEm` é injetado. Quem grava é `sincronizar`.
  */
+import type { Situacao } from "@/lib/cobranca/provedores/contrato";
+import type { ErroDeLeitura, EstadoDaAssinatura } from "@/lib/cobranca/vocabulario";
 
-export type StatusDaAssinatura = "trialing" | "active" | "past_due" | "suspended" | "canceled";
-export type StatusDaFatura = "open" | "paid" | "overdue" | "canceled";
-
-export interface AssinaturaFatos {
-  readonly status: StatusDaAssinatura;
-  /** `YYYY-MM-DD`; o teste vale ENQUANTO hoje for anterior a esta data. */
-  readonly trialEndsAt: string | null;
-  readonly graceDays: number;
-  readonly suspensaPorCobranca: boolean;
+export function traduzirSituacao(s: Situacao, trialAte: Date | null, agora: Date): EstadoDaAssinatura {
+  if (s.cancelada && !s.cancelaNoFim) return "cancelada";
+  if (s.existe) return s.emAtraso ? "em_atraso" : "ativa";
+  if (s.jaPagou) return "cancelada";
+  if (s.emTesteNoProvedorAte !== null && s.emTesteNoProvedorAte > agora) return "trial";
+  // ponytail: sem data de teste conta como teste vencido (falha fechada); a régua avisa antes de suspender.
+  return trialAte !== null && trialAte > agora ? "trial" : "em_atraso";
 }
 
-export interface FaturaFatos {
-  readonly id: string;
-  /** `YYYY-MM-DD` */
-  readonly dueDate: string;
-  readonly status: StatusDaFatura;
+/** O que `sincronizar` lê da linha antes de aplicar a leitura. */
+export interface AssinaturaAtual {
+  readonly estado: EstadoDaAssinatura;
+  readonly planoId: string;
+  readonly planoAgendadoId: string | null;
+  readonly trialAte: Date | null;
+  readonly vencidaDesde: Date | null;
+  readonly proximoVencimento: Date | null;
+  readonly provedorAssinaturaId: string | null;
 }
 
-export interface DecisaoDeCobranca {
-  /** Faturas `open` cujo vencimento passou: viram `overdue`. */
-  readonly faturasQueVenceram: readonly string[];
-  readonly novoStatus: StatusDaAssinatura;
-  /** Suspender a organização agora (ela estava ativa). */
-  readonly suspender: boolean;
-  /** Tirar da suspensão agora (foi a cobrança que suspendeu, e nada mais está em atraso). */
-  readonly reativar: boolean;
-  /** A fatura em atraso mais antiga, quando há — é ela que conta a carência. */
-  readonly faturaMaisAntigaEmAtraso: { readonly id: string; readonly dueDate: string } | null;
-  readonly diasDeAtraso: number;
+/** O que `sincronizar` grava. Cada campo é uma coluna de `cobranca_assinaturas`. */
+export interface LeituraAplicada {
+  readonly estado: EstadoDaAssinatura;
+  readonly mudouEstado: boolean;
+  readonly vencidaDesde: Date | null;
+  readonly proximoVencimento: Date | null;
+  readonly cancelaNoFim: boolean;
+  readonly planoId: string;
+  readonly planoAgendadoId: string | null;
+  readonly planoAplicado: boolean;
+  readonly provedorAssinaturaId: string | null;
+  readonly assinaturasVivas: number;
+  readonly relidaEm: Date;
+  readonly ultimoErro: ErroDeLeitura | null;
+  /** true → `ultimo_aviso = null, ultimo_aviso_em = null`. */
+  readonly zerarAviso: boolean;
+  /** true → `checkout_url = null, checkout_expira_em = null, checkout_sessao_id = null`. */
+  readonly limparCheckout: boolean;
+  /**
+   * true → `plano_agendado_id = null` SEM tocar `plano_id` e sem audit de troca.
+   * Separado de `planoAplicado` porque quem grava só escreve o plano quando ele vira:
+   * sem este sinal o descarte ficaria só no retorno e o agendado velho viraria
+   * na renovação seguinte.
+   */
+  readonly descartarAgendado: boolean;
 }
 
-const DATA = /^\d{4}-\d{2}-\d{2}$/;
-
-/** Dias civis de `de` até `ate` (positivo quando `ate` é depois). `null` se alguma não se lê. */
-export function diasEntre(de: string, ate: string): number | null {
-  if (!DATA.test(de) || !DATA.test(ate)) return null;
-  const [a, b] = [de, ate].map((d) => {
-    const [y, m, dia] = d.split("-").map(Number) as [number, number, number];
-    return Date.UTC(y, m - 1, dia);
-  }) as [number, number];
-  if (Number.isNaN(a) || Number.isNaN(b)) return null;
-  return Math.round((b - a) / 86_400_000);
+function menor(a: Date, b: Date): Date {
+  return a <= b ? a : b;
 }
 
-/** Soma dias a uma data civil. */
-export function somarDias(data: string, dias: number): string {
-  const [y, m, d] = data.split("-").map(Number) as [number, number, number];
-  return new Date(Date.UTC(y, m - 1, d + dias)).toISOString().slice(0, 10);
-}
+export function aplicarLeitura(atual: AssinaturaAtual, s: Situacao, lidoEm: Date): LeituraAplicada {
+  const estado = traduzirSituacao(s, atual.trialAte, lidoEm);
+  const emDia = estado === "ativa" || estado === "trial";
 
-/**
- * Soma meses a uma data civil, prendendo no último dia do mês quando o dia não existe (31/01 +
- * 1 mês = 28 ou 29/02) — a mesma regra de `competenciaDoMes` das recorrências do caixa.
- */
-export function somarMeses(data: string, meses: number): string {
-  const [y, m, d] = data.split("-").map(Number) as [number, number, number];
-  const alvo = new Date(Date.UTC(y, m - 1 + meses, 1));
-  const ultimo = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate();
-  alvo.setUTCDate(Math.min(d, ultimo));
-  return alvo.toISOString().slice(0, 10);
-}
-
-/** O dia civil de hoje num fuso — `YYYY-MM-DD`. */
-export function hojeNoFuso(agora: Date, fuso: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: fuso,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(agora);
-}
-
-export function decidirCobranca(
-  assinatura: AssinaturaFatos,
-  faturas: readonly FaturaFatos[],
-  organizacaoAtiva: boolean,
-  hoje: string,
-): DecisaoDeCobranca {
-  const nada: DecisaoDeCobranca = {
-    faturasQueVenceram: [],
-    novoStatus: assinatura.status,
-    suspender: false,
-    reativar: false,
-    faturaMaisAntigaEmAtraso: null,
-    diasDeAtraso: 0,
-  };
-  // Cancelada é terminal: nem cobra, nem suspende, nem religa.
-  if (assinatura.status === "canceled" || !DATA.test(hoje)) return nada;
-
-  const queVenceram = faturas.filter((f) => {
-    if (f.status !== "open") return false;
-    const dias = diasEntre(f.dueDate, hoje);
-    return dias !== null && dias > 0;
-  });
-  const emAtraso = faturas
-    .filter((f) => f.status === "overdue" || queVenceram.includes(f))
-    .filter((f) => diasEntre(f.dueDate, hoje) !== null)
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-  const maisAntiga = emAtraso[0] ?? null;
-
-  if (maisAntiga) {
-    const dias = diasEntre(maisAntiga.dueDate, hoje) ?? 0;
-    const carencia = Number.isInteger(assinatura.graceDays) && assinatura.graceDays >= 0
-      ? assinatura.graceDays
-      : null;
-    // Carência 7: vence dia 10, dias 11 a 17 são aviso, no dia 18 (8 dias de atraso) suspende.
-    const passouDaCarencia = carencia !== null && dias > carencia;
-    return {
-      faturasQueVenceram: queVenceram.map((f) => f.id),
-      novoStatus: passouDaCarencia ? "suspended" : "past_due",
-      suspender: passouDaCarencia && organizacaoAtiva,
-      reativar: false,
-      faturaMaisAntigaEmAtraso: { id: maisAntiga.id, dueDate: maisAntiga.dueDate },
-      diasDeAtraso: dias,
-    };
+  let vencidaDesde = emDia ? null : atual.vencidaDesde;
+  if (estado === "em_atraso") {
+    const doTesteVencido = !s.existe && !s.jaPagou;
+    const x = (doTesteVencido ? atual.trialAte : s.vencidaDesde) ?? lidoEm;
+    vencidaDesde = menor(atual.vencidaDesde ?? x, x);
   }
 
-  // Nada em atraso: em teste enquanto o teste não acabou; senão, em dia.
-  const emTeste =
-    assinatura.trialEndsAt !== null &&
-    (diasEntre(hoje, assinatura.trialEndsAt) ?? 0) > 0;
+  // Período novo pago: o fim do período avançou com a assinatura em dia, OU o
+  // atraso acabou de ser pago — a Stripe abre o período novo ANTES de cobrar
+  // (past_due já traz o current_period_end novo), então pagar o atraso é pagar
+  // o período em que o plano agendado deveria valer.
+  const periodoNovoPago =
+    estado === "ativa" &&
+    s.proximoVencimento !== null &&
+    (atual.proximoVencimento === null || s.proximoVencimento > atual.proximoVencimento || atual.estado === "em_atraso");
+  // O agendado pertence à assinatura em que trocarPlano mexeu no preço. Cancelada,
+  // ela morreu; saindo de cancelada, a assinatura é NOVA e cobra o plano do checkout
+  // (inclusive cancelada → em_atraso → ativa). Nos dois lados o agendado é descartado.
+  const assinaturaMorreu = estado === "cancelada" || atual.estado === "cancelada";
+  const agendado = periodoNovoPago && !assinaturaMorreu ? atual.planoAgendadoId : null;
+
   return {
-    ...nada,
-    novoStatus: emTeste ? "trialing" : "active",
-    reativar: assinatura.suspensaPorCobranca && !organizacaoAtiva,
+    estado,
+    mudouEstado: estado !== atual.estado,
+    vencidaDesde,
+    proximoVencimento: s.proximoVencimento ?? atual.proximoVencimento,
+    cancelaNoFim: s.cancelaNoFim,
+    planoId: agendado ?? atual.planoId,
+    planoAgendadoId: agendado || assinaturaMorreu ? null : atual.planoAgendadoId,
+    planoAplicado: agendado !== null,
+    provedorAssinaturaId: s.assinaturaRef ?? atual.provedorAssinaturaId,
+    assinaturasVivas: s.assinaturasVivas,
+    relidaEm: lidoEm,
+    ultimoErro: s.pagamentoSemAssinaturaViva ? "pagamento_de_assinatura_cancelada" : null,
+    zerarAviso: emDia && estado !== atual.estado,
+    limparCheckout: s.assinaturasVivas > 0,
+    descartarAgendado: assinaturaMorreu && atual.planoAgendadoId !== null,
   };
 }

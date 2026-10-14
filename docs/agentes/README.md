@@ -46,7 +46,7 @@ pessoa é o prompt. Um agente deixado em rascunho cai no legado, e o gate volta.
 - **Assinatura digital do contrato** (o `03` conduz até ela): o contrato de honorários existe no
   módulo, a coleta de assinatura não.
 - **Gerar boleto ou Pix pelo sistema**: a instrução de pagamento é colada pelo escritório. Gerar
-  e dar baixa automática é o gateway do plano de cobrança
-  (`docs/superpowers/plans/cobranca-dos-tenants.md`).
+  e dar baixa automática não existe para honorários: a cobrança com gateway (Asaas, em
+  `/admin/cobranca`) é a das empresas da instalação, não a do cliente do escritório.
 - **Estado estruturado da conversa** (`pendencias`, `intencoes_secundarias` do `06`): hoje vive no
   histórico que o agente lê, não em campos.

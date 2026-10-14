@@ -1,76 +1,68 @@
 /**
- * Planos da cobrança dos tenants (módulo `cobranca`, migration 0493).
+ * POST /api/v1/admin/cobranca/planos — o dono da instalação cria um plano de
+ * cobrança (spec da cobrança do revendedor §2.2, §7g).
  *
- * GET  — o catálogo de planos da instalação.
- * POST — cria um plano. Só o administrador da plataforma (guarda + RLS da provisionadora).
+ * Plano é da INSTALAÇÃO (sem `organization_id`). Escrita de platform admin
+ * (scope full + MFA); 404 com a chave `cobranca` desligada. Dois planos do
+ * cadastro ao mesmo tempo → 409 `state_conflict` (índice
+ * `cobranca_planos_um_padrao`). Sem `Idempotency-Key`: o recibo de
+ * `lib/api/idempotency.ts` é por organização, e um clique duplo aqui gera um
+ * plano a mais, que se arquiva.
  */
+import { type NextRequest } from "next/server";
 import { randomUUID } from "node:crypto";
-
-import type { NextRequest } from "next/server";
-import { z } from "zod";
 
 import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import {
-  COLUNAS_DO_PLANO,
-  guardaDaCobranca,
-  primeiraMensagem,
-  respostaDoErroDeCobranca,
-} from "@/lib/cobranca/rota";
+  falhaDaEscritaDePlatformAdmin,
+  requirePlatformAdminEscrita,
+  type PlatformAdminContext,
+} from "@/lib/auth/requirePlatformAdmin";
 import { requireSupportWrite } from "@/lib/impersonate/support";
+import { moduloLigado } from "@/lib/instalacao/modulos";
+import { COLUNAS_DO_PLANO, novoPlanoSchema } from "@/lib/schemas/cobranca-plano";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-export const dynamic = "force-dynamic";
-
-const corpoSchema = z.object({
-  name: z.string().trim().min(1, "Dê um nome ao plano").max(120),
-  price_cents: z.number().int().min(0).max(1_000_000_000),
-  currency: z.string().regex(/^[A-Z]{3}$/).default("BRL"),
-  interval_months: z.union([z.literal(1), z.literal(3), z.literal(6), z.literal(12)]).default(1),
-  trial_days: z.number().int().min(0).max(365).default(0),
-});
-
-export async function GET(): Promise<Response> {
-  const requestId = randomUUID();
-  const guarda = await guardaDaCobranca(requestId);
-  if (!guarda.ok) return guarda.response;
-
-  const { data, error } = await guarda.db
-    .from("billing_plans")
-    .select(COLUNAS_DO_PLANO)
-    .order("is_active", { ascending: false })
-    .order("name");
-  if (error) return respostaDoErroDeCobranca(error, requestId, "listar os planos");
-  return ok(data ?? [], { requestId });
-}
-
-export async function POST(req: NextRequest): Promise<Response> {
-  const requestId = randomUUID();
+export async function POST(req: NextRequest) {
   const supportDenied = await requireSupportWrite();
   if (supportDenied) return supportDenied;
+  const requestId = randomUUID();
 
-  const guarda = await guardaDaCobranca(requestId);
-  if (!guarda.ok) return guarda.response;
-
-  const lido = corpoSchema.safeParse(await req.json().catch(() => ({})));
-  if (!lido.success) {
-    return fail("validation_failed", primeiraMensagem(lido.error.issues), 422, { requestId });
+  let adminCtx: PlatformAdminContext;
+  try {
+    adminCtx = await requirePlatformAdminEscrita();
+  } catch (err) {
+    return falhaDaEscritaDePlatformAdmin(err, requestId);
   }
 
-  const { data, error } = await guarda.db
-    .from("billing_plans")
-    .insert(lido.data)
+  const admin = createAdminClient();
+  if (!(await moduloLigado(admin, "cobranca"))) return fail("not_found", "Not found", 404, { requestId });
+
+  const corpo = novoPlanoSchema.safeParse(await req.json().catch(() => null));
+  if (!corpo.success) {
+    return fail("validation_failed", "Plano inválido", 400, { requestId, details: corpo.error.flatten() });
+  }
+
+  const { data: plano, error } = await admin
+    .from("cobranca_planos")
+    .insert({ ...corpo.data, updated_by: adminCtx.user.id })
     .select(COLUNAS_DO_PLANO)
     .single();
-  if (error) return respostaDoErroDeCobranca(error, requestId, "criar o plano");
+  if (error?.code === "23505") {
+    return fail("state_conflict", "Já existe um plano do cadastro. Desmarque o outro antes.", 409, { requestId });
+  }
+  if (error || !plano) return fail("internal_error", "Não foi possível salvar o plano", 500, { requestId });
 
-  await audit({
-    action: "cobranca.plano_criado",
-    actorUserId: guarda.user.id,
+  void audit({
+    action: "cobranca.plano_salvo",
+    actorUserId: adminCtx.user.id,
     actingAsPlatformAdmin: true,
-    resourceType: "billing_plan",
-    resourceId: data.id as string,
+    bypassedRls: true,
+    resourceType: "cobranca_plano",
+    resourceId: plano.id,
     requestId,
-    metadata: { ...lido.data },
+    metadata: { criado: true, ...corpo.data },
   });
-  return ok(data, { requestId, status: 201 });
+  return ok(plano, { status: 201, requestId });
 }

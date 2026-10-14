@@ -173,5 +173,8 @@ async function handle(row: EventRow): Promise<HandlerResult> {
 export const negocioGanhoHandler: EventHandler = {
   key: CONSUMER_KEY,
   events: ["lead.won", "lead.stage_changed"],
+  // Escrita interna (o checklist da implantação), sem custo e sem sair da instalação: segue
+  // normal com a organização parada, como a comanda do ganho.
+  naOrgParada: "roda",
   handle,
 };
