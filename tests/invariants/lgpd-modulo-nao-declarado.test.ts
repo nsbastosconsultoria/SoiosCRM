@@ -100,6 +100,20 @@ const ALLOWLIST: Record<string, string> = {
     "quantidade, reason em vocabulário do programa e idempotency_key são dado " +
     "do programa de fidelidade, e a pessoa por trás já está anônima na cascata " +
     "(contact_id vira contato anonimizado, não contato legível).",
+  // Os três do Soios abaixo caem na régua só pela coluna `nome`, que é rótulo de configuração
+  // da organização. Declarar seção faria a anonimização de UM contato apagar o rótulo de todos.
+  "carteira.carteira_grupos":
+    "carteira_grupos não tem ligação com a pessoa: `nome` é o rótulo do grupo de empresas que " +
+    "a organização cria para organizar a carteira (ex.: 'Simples Nacional'). Não há contact_id " +
+    "nem person_id na tabela; a régua cai pelo regex achar a palavra `nome`, não pelo dado.",
+  "protocolos.protocolo_categorias":
+    "protocolo_categorias é o cadastro de categorias e subcategorias de protocolo da " +
+    "organização (ex.: 'Folha de pagamento'): `nome` é rótulo de configuração, sem contato, " +
+    "pessoa ou texto do cliente. O dado da pessoa mora em `protocolos`, que declara a seção.",
+  "implantacao.implantacao_modelos":
+    "implantacao_modelos é o modelo de checklist de implantação que a organização reaproveita " +
+    "entre clientes: `nome` é o título do modelo, sem contato nem pessoa. A implantação de um " +
+    "cliente específico mora em `implantacoes`, que não tem coluna de dado pessoal.",
 };
 
 /**

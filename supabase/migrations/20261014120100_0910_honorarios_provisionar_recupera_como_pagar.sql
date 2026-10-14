@@ -215,15 +215,14 @@ begin
   -- atualizações (fn_reaplicar_modulos_instalados) roda esta função de novo.
   alter table public.honorarios_parcelas
     add column if not exists instrucao_pagamento text;
-  if not exists (
-    select 1 from pg_constraint
-     where conrelid = 'public.honorarios_parcelas'::regclass
-       and conname = 'honorarios_parcelas_instrucao_pagamento_tamanho'
-  ) then
-    alter table public.honorarios_parcelas
-      add constraint honorarios_parcelas_instrucao_pagamento_tamanho
-      check (instrucao_pagamento is null or char_length(instrucao_pagamento) between 1 and 1000);
-  end if;
+  -- `drop if exists` + `add`, e não `if not exists` no catálogo: a guarda de
+  -- tests/unit/reconstruir-constraint-derruba-antes.test.ts só reconhece o `if not exists`
+  -- dentro de `do $$`, e aqui o corpo é `$f$`. O efeito é o mesmo — a constraint fica.
+  alter table public.honorarios_parcelas
+    drop constraint if exists honorarios_parcelas_instrucao_pagamento_tamanho;
+  alter table public.honorarios_parcelas
+    add constraint honorarios_parcelas_instrucao_pagamento_tamanho
+    check (instrucao_pagamento is null or char_length(instrucao_pagamento) between 1 and 1000);
   comment on column public.honorarios_parcelas.instrucao_pagamento is
     'Como pagar esta parcela, como o escritório escreveu: link do boleto, Pix copia-e-cola ou linha digitável. null = não informado. O agente repassa sem alterar; nunca é gerado pelo sistema.';
 

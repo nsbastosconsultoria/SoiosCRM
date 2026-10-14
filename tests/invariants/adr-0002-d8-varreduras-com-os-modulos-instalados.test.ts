@@ -153,6 +153,13 @@ beforeAll(() => {
  * O formato é `<arquivo> + razão`; a razão precisa de ≥ 40 caracteres (a régua da casa) e o
  * arquivo tem de EXISTIR: exceção que aponta para teste que sumiu não prova nada.
  */
+const SOIOS_ISOLAMENTO = "tests/invariants/soios-modulos-isolamento-entre-organizacoes.test.ts";
+const RAZAO_SOIOS =
+  "JWT real (`countAs` como membro da organização A) contra linha REAL da organização B semeada " +
+  "pelos caminhos do produto (gatilhos de linha do tempo, fn_carteira_definir_contexto, " +
+  "fn_implantacao_iniciar): o vizinho conta zero, e um caso de controle reprova se alguma tabela " +
+  "ficou sem linha de B. Tabela fechada para authenticated é provada pela recusa.";
+
 const PROVA_DE_MODULO: Record<string, { readonly arquivo: string; readonly razao: string }> = {
   honorarios_contratos: {
     arquivo: "tests/invariants/honorarios-rls-por-operacao.test.ts",
@@ -208,6 +215,83 @@ const PROVA_DE_MODULO: Record<string, { readonly arquivo: string; readonly razao
       "Extrato de pontos semeado por organização (`insert into public.loyalty_ledger`) na " +
       "lista org-scoped: vizinho vê zero movimentações. A leitura é medida aqui; a decisão de " +
       "NÃO redigir (razão `manter` do #1504) mora no redact-unificado, e é outra régua.",
+  },  // Módulos do Soios (carteira, protocolos, implantação): a prova é UM arquivo para as 19
+  // tabelas — linha real da organização vizinha em cada uma, e o membro de A conta zero.
+  carteira_grupos: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
+  },
+  carteira_perfis: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
+  },
+  carteira_vinculo_detalhes: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
+  },
+  carteira_responsaveis: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
+  },
+  carteira_contexto_conversa: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
+  },
+  carteira_eventos: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
+  },
+  protocolo_categorias: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
+  },
+  protocolo_politicas_sla: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
+  },
+  protocolo_area_membros: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
+  },
+  protocolo_feriados: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
+  },
+  protocolo_contadores: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
+  },
+  protocolos: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
+  },
+  protocolo_eventos: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
+  },
+  protocolo_marcos_sla: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
+  },
+  implantacao_modelos: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
+  },
+  implantacao_modelo_itens: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
+  },
+  implantacoes: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
+  },
+  implantacao_itens: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
+  },
+  implantacao_eventos: {
+    arquivo: SOIOS_ISOLAMENTO,
+    razao: RAZAO_SOIOS,
   },
 };
 
