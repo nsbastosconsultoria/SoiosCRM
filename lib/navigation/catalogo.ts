@@ -221,15 +221,15 @@ export const NAV_CATALOG = [
     //
     // SEM `sidebar`, e não por falta de importância: o menu lateral tem TETO de 15 itens (a dobra
     // a 1280x900 — `tests/unit/interface-por-empresa.test.ts`), e um módulo não pode furá-lo para
-    // toda instalação que o liga. Como "atendimento" não tem hub, a empresa que vive na fila
-    // escolhe pôr Protocolos no menu em Configurações › Interface (os destinos de grupo sem hub
-    // entram por escolha — `lib/navigation/registry.ts`), trocando por algo que usa menos. Até
-    // lá, o ⌘K acha a tela pelo nome.
+    // toda instalação que o liga. Mora no hub do CRM, ao lado da Carteira e da Implantação: desde
+    // a 1.80.0 do original toda porta de módulo vive em grupo COM hub
+    // (`tests/unit/porta-do-modulo-ligado.test.tsx`), e "atendimento" não tem.
     href: "/app/protocolos",
     label: "Protocolos",
     description: "As demandas dos clientes com número, categoria, prioridade, fila por área e prazo de resposta.",
     icon: "ClipboardText",
-    group: "atendimento",
+    group: "crm",
+    section: "O dia a dia da venda",
     minRole: "viewer",
     modulo: "protocolos",
   },

@@ -96,6 +96,18 @@ export const ESCOPO_DAS_ESCRITAS: Readonly<Record<string, Readonly<Record<string
   crm_cancel_followup: { followup_id: "retorno" },
   crm_enroll_followup_flow: { contact_id: "contato", flow_id: "configuracao" },
 
+  // ---- carteira e protocolos (módulos do Soios) ----
+  // `company_id` não é conferido aqui: a `fn_carteira_definir_contexto` recusa empresa a
+  // que o contato DA CONVERSA não está ligado (`carteira_contato_sem_vinculo_com_a_empresa`), e a conversa já é conferida acima.
+  crm_carteira_definir_empresa_da_conversa: { conversation_id: "conversa", company_id: "configuracao" },
+  crm_protocolo_abrir: {
+    conversation_id: "conversa",
+    categoria_id: "configuracao",
+    subcategoria_id: "configuracao",
+  },
+  // O protocolo é achado pelo `numero` E pelo contato da conversa (`crmProtocoloComplementar`).
+  crm_protocolo_complementar: { conversation_id: "conversa" },
+
   // ---- sem registro de cliente ----
   crm_save_org_memory: {},
 };
