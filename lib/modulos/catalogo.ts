@@ -28,12 +28,18 @@ export const CATALOGO_DE_MODULOS: readonly ModuloCatalogo[] = [
       "do núcleo. Para escritórios de advocacia que cobram por caso.",
   },
   {
-    slug: "cobranca",
-    nome: "Cobrança dos tenants",
+    // #1907 item 4 — sem esta linha `service.ts:84` recusava o slug fora do
+    // catálogo (`extension_module_unknown`) e não havia como instalar a
+    // comanda em lugar nenhum: as telas e as rotas ficariam mortas para
+    // sempre, mesmo com a provisionadora pronta.
+    slug: "financeiro",
+    // As cinco tabelas da comanda nascem SÓ onde o módulo é instalado (ADR-0002
+    // D2/D3). O texto abaixo é o que quem administra lê em `/admin/modulos`.
+    nome: "Comandas",
     descricao:
-      "Planos, assinatura por empresa e faturas, com aviso de atraso e suspensão automática " +
-      "de quem não paga depois da carência. Para quem opera a instalação e cobra as empresas " +
-      "que atende.",
+      "A comanda do atendimento: itens, forma de pagamento, comissões e fidelidade. O caixa " +
+      "continua no sistema mesmo sem este módulo. Toda instalação anterior a esta versão " +
+      "continua com Comandas ligada.",
   },
   {
     slug: "carteira",

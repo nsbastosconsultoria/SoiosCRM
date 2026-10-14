@@ -1,175 +1,234 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  decidirCobranca,
-  diasEntre,
-  hojeNoFuso,
-  somarMeses,
-  type AssinaturaFatos,
-  type FaturaFatos,
-} from "./estado";
+import type { Situacao } from "@/lib/cobranca/provedores/contrato";
 
-const EM_DIA: AssinaturaFatos = {
-  status: "active",
-  trialEndsAt: null,
-  graceDays: 7,
-  suspensaPorCobranca: false,
-};
+import { aplicarLeitura, traduzirSituacao, type AssinaturaAtual } from "./estado";
 
-const fatura = (id: string, dueDate: string, status: FaturaFatos["status"] = "open"): FaturaFatos => ({
-  id,
-  dueDate,
-  status,
-});
+const AGORA = new Date("2026-10-10T12:00:00Z");
+const ANTEONTEM = new Date("2026-10-08T12:00:00Z");
+const ONTEM = new Date("2026-10-09T12:00:00Z");
+const AMANHA = new Date("2026-10-11T12:00:00Z");
+const MES_QUE_VEM = new Date("2026-11-10T12:00:00Z");
 
-describe("vencimento e carência (7 dias, decisão de 2026-09-29)", () => {
-  it("no dia do vencimento a fatura ainda não venceu", () => {
-    const d = decidirCobranca(EM_DIA, [fatura("f1", "2026-10-10")], true, "2026-10-10");
-    expect(d.faturasQueVenceram).toEqual([]);
-    expect(d.novoStatus).toBe("active");
-  });
+function situacao(p: Partial<Situacao> = {}): Situacao {
+  return {
+    assinaturaRef: null, existe: false, assinaturasVivas: 0, cancelada: false, cancelaNoFim: false,
+    emAtraso: false, vencidaDesde: null, proximoVencimento: null, jaPagou: false,
+    emTesteNoProvedorAte: null, pagamentoSemAssinaturaViva: false, linkDePagamento: null,
+    statusBruto: "teste", precoCents: null, ...p,
+    };
+}
 
-  it("no dia seguinte vira atraso: past_due, sem suspender", () => {
-    const d = decidirCobranca(EM_DIA, [fatura("f1", "2026-10-10")], true, "2026-10-11");
-    expect(d.faturasQueVenceram).toEqual(["f1"]);
-    expect(d.novoStatus).toBe("past_due");
-    expect(d.suspender).toBe(false);
-    expect(d.diasDeAtraso).toBe(1);
-  });
+function atual(p: Partial<AssinaturaAtual> = {}): AssinaturaAtual {
+  return {
+    estado: "trial", planoId: "plano-a", planoAgendadoId: null, trialAte: AMANHA, vencidaDesde: null,
+    proximoVencimento: null, provedorAssinaturaId: null, ...p,
+  };
+}
 
-  it("7 dias de atraso ainda é carência", () => {
-    const d = decidirCobranca(EM_DIA, [fatura("f1", "2026-10-10", "overdue")], true, "2026-10-17");
-    expect(d.novoStatus).toBe("past_due");
-    expect(d.suspender).toBe(false);
-  });
-
-  it("⭐ no 8º dia de atraso suspende", () => {
-    const d = decidirCobranca(EM_DIA, [fatura("f1", "2026-10-10", "overdue")], true, "2026-10-18");
-    expect(d.novoStatus).toBe("suspended");
-    expect(d.suspender).toBe(true);
-    expect(d.faturaMaisAntigaEmAtraso).toEqual({ id: "f1", dueDate: "2026-10-10" });
-  });
-
-  it("a carência conta da fatura em atraso MAIS ANTIGA", () => {
-    const d = decidirCobranca(
-      EM_DIA,
-      [fatura("nova", "2026-11-10", "overdue"), fatura("velha", "2026-10-10", "overdue")],
-      true,
-      "2026-11-12",
-    );
-    expect(d.faturaMaisAntigaEmAtraso?.id).toBe("velha");
-    expect(d.suspender).toBe(true);
-  });
-
-  it("fatura paga ou cancelada não conta como atraso", () => {
-    const d = decidirCobranca(
-      EM_DIA,
-      [fatura("p", "2026-10-10", "paid"), fatura("c", "2026-10-10", "canceled")],
-      true,
-      "2026-12-01",
-    );
-    expect(d.novoStatus).toBe("active");
-    expect(d.suspender).toBe(false);
+describe("traduzirSituacao — a tabela de §3.2, em ordem", () => {
+  it.each([
+    ["cancelada sem cancelar no fim", situacao({ cancelada: true, jaPagou: true }), AMANHA, "cancelada"],
+    ["cancelada com cancelaNoFim cai nas linhas seguintes (já pagou → cancelada)", situacao({ cancelada: true, cancelaNoFim: true, jaPagou: true }), AMANHA, "cancelada"],
+    ["existe e em atraso", situacao({ existe: true, emAtraso: true, assinaturasVivas: 1 }), ONTEM, "em_atraso"],
+    ["existe e em dia", situacao({ existe: true, assinaturasVivas: 1 }), ONTEM, "ativa"],
+    ["existe e em dia, com cancelamento no fim do período", situacao({ existe: true, cancelaNoFim: true, assinaturasVivas: 1 }), ONTEM, "ativa"],
+    ["não existe e já pagou (cancelou, ou reassinou sem o 1º pagamento)", situacao({ jaPagou: true, assinaturasVivas: 1 }), AMANHA, "cancelada"],
+    ["em teste no provedor, mesmo com o teste local vencido", situacao({ emTesteNoProvedorAte: AMANHA, assinaturasVivas: 1 }), ONTEM, "trial"],
+    ["teste no provedor já vencido e sem pagamento: vale o teste local", situacao({ emTesteNoProvedorAte: ONTEM }), AMANHA, "trial"],
+    ["nunca pagou, dentro do teste local", situacao(), AMANHA, "trial"],
+    ["nunca pagou, teste local vencido", situacao(), ONTEM, "em_atraso"],
+    ["nunca pagou, sem data de teste (falha fechada)", situacao(), null, "em_atraso"],
+    ["⭐ clicou em Assinar e não pagou (incomplete) não reativa", situacao({ assinaturasVivas: 1 }), ONTEM, "em_atraso"],
+  ] as const)("%s", (_, s, trialAte, esperado) => {
+    expect(traduzirSituacao(s, trialAte, AGORA)).toBe(esperado);
   });
 });
 
-describe("suspender e reativar só o que é da cobrança", () => {
-  it("⭐ organização já suspensa À MÃO não é marcada como suspensa pela cobrança", () => {
-    const d = decidirCobranca(EM_DIA, [fatura("f1", "2026-10-10", "overdue")], false, "2026-10-30");
-    expect(d.novoStatus).toBe("suspended");
-    expect(d.suspender).toBe(false);
+describe("aplicarLeitura — a dívida é monotônica", () => {
+  it("em atraso pela primeira vez na Stripe: a dívida começa quando a vimos", () => {
+    const r = aplicarLeitura(atual({ estado: "ativa" }), situacao({ existe: true, emAtraso: true, assinaturasVivas: 1 }), AGORA);
+    expect(r.estado).toBe("em_atraso");
+    expect(r.vencidaDesde).toEqual(AGORA);
+    expect(r.mudouEstado).toBe(true);
   });
 
-  it("pagou a fatura: reativa a organização que a cobrança suspendeu", () => {
-    const d = decidirCobranca(
-      { ...EM_DIA, status: "suspended", suspensaPorCobranca: true },
-      [fatura("f1", "2026-10-10", "paid")],
-      false,
-      "2026-10-30",
-    );
-    expect(d.novoStatus).toBe("active");
-    expect(d.reativar).toBe(true);
+  it("o Asaas sabe a data: vale a data do provedor", () => {
+    const r = aplicarLeitura(atual({ estado: "ativa" }), situacao({ existe: true, emAtraso: true, vencidaDesde: ONTEM }), AGORA);
+    expect(r.vencidaDesde).toEqual(ONTEM);
   });
 
-  it("⭐ não reativa a organização que alguém suspendeu à mão", () => {
-    const d = decidirCobranca(
-      { ...EM_DIA, status: "suspended", suspensaPorCobranca: false },
-      [fatura("f1", "2026-10-10", "paid")],
-      false,
-      "2026-10-30",
-    );
-    expect(d.novoStatus).toBe("active");
-    expect(d.reativar).toBe(false);
+  it("⭐ releitura sem data não empurra a dívida para frente", () => {
+    const r = aplicarLeitura(atual({ estado: "em_atraso", vencidaDesde: ONTEM }), situacao({ existe: true, emAtraso: true }), AGORA);
+    expect(r.vencidaDesde).toEqual(ONTEM);
+    expect(r.mudouEstado).toBe(false);
   });
 
-  it("ainda com outra fatura em atraso, não reativa", () => {
-    const d = decidirCobranca(
-      { ...EM_DIA, status: "suspended", suspensaPorCobranca: true },
-      [fatura("paga", "2026-10-10", "paid"), fatura("outra", "2026-10-15", "overdue")],
-      false,
-      "2026-10-30",
+  it("recua quando o provedor informa uma data mais antiga", () => {
+    const r = aplicarLeitura(
+      atual({ estado: "em_atraso", vencidaDesde: ONTEM }),
+      situacao({ existe: true, emAtraso: true, vencidaDesde: ANTEONTEM }),
+      AGORA,
     );
-    expect(d.reativar).toBe(false);
-    expect(d.novoStatus).toBe("suspended");
+    expect(r.vencidaDesde).toEqual(ANTEONTEM);
+  });
+
+  it("teste vencido sem pagamento: a dívida começa no fim do teste", () => {
+    const r = aplicarLeitura(atual({ trialAte: ONTEM }), situacao(), AGORA);
+    expect(r.estado).toBe("em_atraso");
+    expect(r.vencidaDesde).toEqual(ONTEM);
+  });
+
+  it("⭐ cancelar e reassinar não zera vencida_desde", () => {
+    let a = atual({ estado: "em_atraso", vencidaDesde: ONTEM });
+    const leituras = [
+      situacao({ cancelada: true, jaPagou: true }),
+      situacao({ jaPagou: true, assinaturasVivas: 1 }),
+      situacao({ existe: true, emAtraso: true, jaPagou: true, assinaturasVivas: 1 }),
+    ];
+    const estados: string[] = [];
+    for (const s of leituras) {
+      const r = aplicarLeitura(a, s, AGORA);
+      estados.push(r.estado);
+      expect(r.vencidaDesde).toEqual(ONTEM);
+      a = { ...a, estado: r.estado, vencidaDesde: r.vencidaDesde };
+    }
+    expect(estados).toEqual(["cancelada", "cancelada", "em_atraso"]);
+  });
+
+  it("pagou: volta a ativa, zera a dívida e o aviso da régua", () => {
+    const r = aplicarLeitura(atual({ estado: "em_atraso", vencidaDesde: ONTEM }), situacao({ existe: true, assinaturasVivas: 1 }), AGORA);
+    expect(r.estado).toBe("ativa");
+    expect(r.vencidaDesde).toBeNull();
+    expect(r.zerarAviso).toBe(true);
+  });
+
+  it("controle: sem transição, o aviso fica (ativa → ativa, trial → trial)", () => {
+    expect(aplicarLeitura(atual({ estado: "ativa" }), situacao({ existe: true, assinaturasVivas: 1 }), AGORA).zerarAviso).toBe(false);
+    expect(aplicarLeitura(atual({ estado: "trial" }), situacao(), AGORA).zerarAviso).toBe(false);
   });
 });
 
-describe("teste grátis e casos terminais", () => {
-  it("em teste enquanto hoje é antes do fim do teste", () => {
-    const d = decidirCobranca(
-      { ...EM_DIA, status: "trialing", trialEndsAt: "2026-10-15" },
-      [],
-      true,
-      "2026-10-14",
-    );
-    expect(d.novoStatus).toBe("trialing");
+describe("aplicarLeitura — período pago e plano agendado", () => {
+  it("⭐ leitura sem próximo vencimento não apaga o período pago", () => {
+    const r = aplicarLeitura(atual({ estado: "ativa", proximoVencimento: MES_QUE_VEM }), situacao({ existe: true, assinaturasVivas: 1 }), AGORA);
+    expect(r.proximoVencimento).toEqual(MES_QUE_VEM);
   });
 
-  it("no dia em que o teste acaba, a assinatura fica ativa", () => {
-    const d = decidirCobranca(
-      { ...EM_DIA, status: "trialing", trialEndsAt: "2026-10-15" },
-      [],
-      true,
-      "2026-10-15",
+  it("o plano agendado vira na virada paga", () => {
+    const r = aplicarLeitura(
+      atual({ estado: "ativa", planoAgendadoId: "plano-b", proximoVencimento: AMANHA }),
+      situacao({ existe: true, assinaturasVivas: 1, proximoVencimento: MES_QUE_VEM }),
+      AGORA,
     );
-    expect(d.novoStatus).toBe("active");
+    expect(r.planoId).toBe("plano-b");
+    expect(r.planoAgendadoId).toBeNull();
+    expect(r.planoAplicado).toBe(true);
+    expect(r.descartarAgendado).toBe(false);
   });
 
-  it("assinatura cancelada não muda, nem com fatura muito atrasada", () => {
-    const d = decidirCobranca(
-      { ...EM_DIA, status: "canceled" },
-      [fatura("f1", "2026-01-10", "overdue")],
-      true,
-      "2026-10-30",
+  it("⭐ reassinar depois de cancelar descarta o agendado: o checkout cobrou o plano atual", () => {
+    const r = aplicarLeitura(
+      atual({ estado: "cancelada", planoAgendadoId: "plano-b", proximoVencimento: AMANHA }),
+      situacao({ existe: true, assinaturasVivas: 1, proximoVencimento: MES_QUE_VEM }),
+      AGORA,
     );
-    expect(d.novoStatus).toBe("canceled");
-    expect(d.suspender).toBe(false);
+    expect(r.estado).toBe("ativa");
+    expect(r.planoId).toBe("plano-a");
+    expect(r.planoAgendadoId).toBeNull();
+    expect(r.planoAplicado).toBe(false);
+    // Quem grava só escreve o plano quando planoAplicado: o descarte precisa de sinal próprio.
+    expect(r.descartarAgendado).toBe(true);
   });
 
-  it("⭐ na dúvida não suspende: carência inválida ou data ilegível", () => {
-    expect(
-      decidirCobranca({ ...EM_DIA, graceDays: Number.NaN }, [fatura("f1", "2026-01-10", "overdue")], true, "2026-10-30")
-        .suspender,
-    ).toBe(false);
-    expect(decidirCobranca(EM_DIA, [fatura("f1", "10/01/2026", "overdue")], true, "2026-10-30").suspender).toBe(false);
-    expect(decidirCobranca(EM_DIA, [fatura("f1", "2026-01-10", "overdue")], true, "ontem").suspender).toBe(false);
+  it("⭐ a assinatura que carregava o agendado foi cancelada: ele é descartado já na entrada", () => {
+    const r = aplicarLeitura(
+      atual({ estado: "ativa", planoAgendadoId: "plano-b", proximoVencimento: AMANHA }),
+      situacao({ cancelada: true, jaPagou: true }),
+      AGORA,
+    );
+    expect(r.estado).toBe("cancelada");
+    expect(r.planoId).toBe("plano-a");
+    expect(r.planoAgendadoId).toBeNull();
+    expect(r.planoAplicado).toBe(false);
+    expect(r.descartarAgendado).toBe(true);
+  });
+
+  it("⭐ reassinar e cair em atraso antes da 1ª releitura em dia: o agendado velho não vira ao pagar", () => {
+    const linha = atual({ estado: "cancelada", planoAgendadoId: "plano-b", proximoVencimento: AMANHA });
+    const emAtraso = aplicarLeitura(
+      linha,
+      situacao({ existe: true, emAtraso: true, assinaturasVivas: 1, proximoVencimento: MES_QUE_VEM }),
+      AGORA,
+    );
+    expect(emAtraso.estado).toBe("em_atraso");
+    expect(emAtraso.descartarAgendado).toBe(true);
+    const pago = aplicarLeitura(
+      { ...linha, estado: emAtraso.estado, planoAgendadoId: emAtraso.planoAgendadoId, proximoVencimento: emAtraso.proximoVencimento },
+      situacao({ existe: true, assinaturasVivas: 1, proximoVencimento: MES_QUE_VEM }),
+      AGORA,
+    );
+    expect(pago.planoId).toBe("plano-a");
+    expect(pago.planoAplicado).toBe(false);
+  });
+
+  it("controle: mesmo período (nada pago de novo), o agendado espera", () => {
+    const r = aplicarLeitura(
+      atual({ estado: "ativa", planoAgendadoId: "plano-b", proximoVencimento: AMANHA }),
+      situacao({ existe: true, assinaturasVivas: 1, proximoVencimento: AMANHA }),
+      AGORA,
+    );
+    expect(r.planoId).toBe("plano-a");
+    expect(r.planoAgendadoId).toBe("plano-b");
+    expect(r.planoAplicado).toBe(false);
+    expect(r.descartarAgendado).toBe(false);
+  });
+
+  it("período avançou mas em atraso (a Stripe abre o período antes de cobrar): o agendado espera", () => {
+    const r = aplicarLeitura(
+      atual({ estado: "ativa", planoAgendadoId: "plano-b", proximoVencimento: AMANHA }),
+      situacao({ existe: true, emAtraso: true, assinaturasVivas: 1, proximoVencimento: MES_QUE_VEM }),
+      AGORA,
+    );
+    expect(r.planoId).toBe("plano-a");
+    expect(r.proximoVencimento).toEqual(MES_QUE_VEM);
+  });
+
+  it("⭐ e quando esse atraso é pago, o agendado vira — mesmo sem o período avançar de novo", () => {
+    const r = aplicarLeitura(
+      atual({ estado: "em_atraso", planoAgendadoId: "plano-b", proximoVencimento: MES_QUE_VEM, vencidaDesde: ONTEM }),
+      situacao({ existe: true, assinaturasVivas: 1, proximoVencimento: MES_QUE_VEM }),
+      AGORA,
+    );
+    expect(r.estado).toBe("ativa");
+    expect(r.planoId).toBe("plano-b");
+    expect(r.planoAplicado).toBe(true);
   });
 });
 
-describe("datas civis", () => {
-  it("dias entre datas atravessa mês e ano", () => {
-    expect(diasEntre("2026-12-30", "2027-01-02")).toBe(3);
-    expect(diasEntre("2026-10-10", "2026-10-10")).toBe(0);
+describe("aplicarLeitura — o resto da linha", () => {
+  it("assinaturas vivas, releitura, cancelamento no fim e a referência da principal", () => {
+    const r = aplicarLeitura(
+      atual({ estado: "ativa", provedorAssinaturaId: "sub_velha" }),
+      situacao({ existe: true, assinaturasVivas: 2, cancelaNoFim: true, assinaturaRef: "sub_nova" }),
+      AGORA,
+    );
+    expect(r.assinaturasVivas).toBe(2);
+    expect(r.relidaEm).toEqual(AGORA);
+    expect(r.cancelaNoFim).toBe(true);
+    expect(r.provedorAssinaturaId).toBe("sub_nova");
+    expect(aplicarLeitura(atual({ provedorAssinaturaId: "sub_velha" }), situacao(), AGORA).provedorAssinaturaId).toBe("sub_velha");
   });
 
-  it("somar meses prende no último dia do mês", () => {
-    expect(somarMeses("2026-01-31", 1)).toBe("2026-02-28");
-    expect(somarMeses("2028-01-31", 1)).toBe("2028-02-29");
-    expect(somarMeses("2026-10-10", 12)).toBe("2027-10-10");
+  it("pagamento de assinatura cancelada vira ultimo_erro; leitura limpa zera", () => {
+    expect(aplicarLeitura(atual(), situacao({ jaPagou: true, pagamentoSemAssinaturaViva: true }), AGORA).ultimoErro).toBe(
+      "pagamento_de_assinatura_cancelada",
+    );
+    expect(aplicarLeitura(atual(), situacao(), AGORA).ultimoErro).toBeNull();
   });
 
-  it("hoje é o dia civil do fuso, não o do UTC", () => {
-    // 01:30 UTC de 11/10 ainda é 10/10 em São Paulo (UTC-3).
-    expect(hojeNoFuso(new Date("2026-10-11T01:30:00Z"), "America/Sao_Paulo")).toBe("2026-10-10");
+  it("checkout concluído (há assinatura viva) limpa o link de checkout; sem assinatura viva, mantém", () => {
+    expect(aplicarLeitura(atual(), situacao({ assinaturasVivas: 1 }), AGORA).limparCheckout).toBe(true);
+    expect(aplicarLeitura(atual(), situacao(), AGORA).limparCheckout).toBe(false);
   });
 });

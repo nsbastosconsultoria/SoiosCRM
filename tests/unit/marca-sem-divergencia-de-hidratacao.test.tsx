@@ -236,20 +236,14 @@ describe("catraca: `branding()` é server-only", () => {
     expect(semComentarios(`const nome = branding().name; // usa a marca`)).toMatch(/\bbranding\(\)/);
   });
 
-  it("os call sites REAIS de `branding()` continuam visíveis à varredura", () => {
+  it("o texto de `branding()` no CÓDIGO continua visível à varredura", () => {
     // A guarda contra o erro NOVO que o corte por bloco introduz: se o regex de
     // `/* … */` engolisse código, esta lista esvaziaria e a catraca ficaria verde
     // por cegueira — o mesmo defeito que ela existe para impedir, do lado do
-    // instrumento.
-    //
-    // Login, cadastro, onboarding e texto legal chamavam `branding()` direto e
-    // eram os controles daqui. Login, cadastro e texto legal passaram a
-    // `brandingDoServidor()` (fork Soios) e o onboarding a `marcaDaSaida()`
-    // (original, 1.64): os dois leem o banco, e com `branding()` mostravam o
-    // `APP_NAME` do `.env` e ignoravam a marca salva em `/admin/marca`. Nenhum call site de servidor resta; o
-    // controle vira a própria DEFINIÇÃO em `lib/branding.ts`
-    // (`export function branding(): …`), que é código e não comentário — se o
-    // corte engolir código, ela some da varredura e este caso reprova.
+    // instrumento. Os três call sites de produto (`app/legal/layout.tsx`,
+    // `lib/legal/operador.ts` e `app/(public)/signup/page.tsx`) saíram pelo
+    // resolvedor do banco, issue #2511; o que resta é a PRÓPRIA DECLARAÇÃO em
+    // `lib/branding.ts`, e ela tem de continuar visível ao corte.
     const esperados = ["lib/branding.ts"];
     const vistos = varridos.filter(chamaBranding).map((f) => relativoEmBarraNormal(RAIZ, f));
     expect(esperados.filter((e) => !vistos.includes(e))).toEqual([]);

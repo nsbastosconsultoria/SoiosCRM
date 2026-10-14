@@ -71,21 +71,30 @@ function texto(t: string) {
   };
 }
 
-/** O texto da ÚLTIMA mensagem de usuário do prompt — é onde a instrução de fechamento vai. */
-function ultimaFalaDoUsuario(prompt: unknown): string {
+/** O texto de cada mensagem de usuário do prompt, na ordem. */
+function falasDoUsuario(prompt: unknown): string[] {
   const msgs = (prompt ?? []) as Array<{ role: string; content?: unknown }>;
-  for (let i = msgs.length - 1; i >= 0; i--) {
-    const msg = msgs[i]!;
-    if (msg.role !== "user") continue;
-    if (typeof msg.content === "string") return msg.content;
-    if (Array.isArray(msg.content)) {
-      return (msg.content as Array<{ type?: string; text?: string }>)
-        .map((p) => (p.type === "text" ? (p.text ?? "") : ""))
-        .join("");
-    }
-    return "";
-  }
-  return "";
+  return msgs
+    .filter((msg) => msg.role === "user")
+    .map((msg) => {
+      if (typeof msg.content === "string") return msg.content;
+      if (Array.isArray(msg.content)) {
+        return (msg.content as Array<{ type?: string; text?: string }>)
+          .map((p) => (p.type === "text" ? (p.text ?? "") : ""))
+          .join("");
+      }
+      return "";
+    });
+}
+
+/**
+ * É chamada de FECHAMENTO quando a instrução de fechamento está entre as falas do usuário — e
+ * não só na última: na correção (`fecharOTurno`, desde a sincronização com o original 1.80.0)
+ * a última fala é o pedido de correção, que vem DEPOIS da instrução e da resposta recusada.
+ */
+function ehFechamento(prompt: unknown): boolean {
+  const marca = m.CHECKPOINT_INSTRUCTION.slice(0, 40);
+  return falasDoUsuario(prompt).some((t) => t.includes(marca));
 }
 
 /**
@@ -96,7 +105,7 @@ function ultimaFalaDoUsuario(prompt: unknown): string {
  */
 function modelo(fechamentos: string[]) {
   return async (opts: { prompt?: unknown }) => {
-    if (ultimaFalaDoUsuario(opts.prompt).includes(m.CHECKPOINT_INSTRUCTION.slice(0, 40))) {
+    if (ehFechamento(opts.prompt)) {
       const t = fechamentos[Math.min(chamadasDeFechamento, fechamentos.length - 1)]!;
       chamadasDeFechamento++;
       return texto(t);

@@ -111,6 +111,26 @@ export const NAV_GROUPS: NavGroup[] = [
 export const GRUPO_NO_RODAPE: NavGroupId = "organizacao";
 
 /**
+ * A PORTA SOBE AO MENU LATERAL? — a regra, num lugar só.
+ *
+ * `sidebarGroups` (`lib/navigation/registry.ts`) e o texto de "onde o módulo aparece"
+ * (`lib/navigation/onde-o-modulo-aparece.ts`) precisam concordar: se o primeiro desenha a porta no
+ * menu e o segundo anuncia o passo do hub, o produto mente para quem liga o módulo. A condição
+ * estava ESCRITA NOS DOIS — copiada —, e cópia de regra diverge sem avisar.
+ *
+ * `temEscolhaExplicita` é "a empresa escreveu lista de áreas à mão". Ele só importa para grupo SEM
+ * hub: ali não há "Ver tudo" para hospedar a porta, então ela sobe ao menu quando a empresa
+ * personalizou. Com hub, quem decide é só o `sidebar` do destino.
+ */
+export function sobeAoMenuLateral(
+  d: Pick<NavMetadata, "sidebar" | "group">,
+  temEscolhaExplicita: boolean,
+): boolean {
+  const grupo = NAV_GROUPS.find((g) => g.id === d.group);
+  return !!d.sidebar || (!grupo?.hub && temEscolhaExplicita);
+}
+
+/**
  * Como `minRole` foi escolhido — medido tela a tela, não estimado:
  *
  *   1. A página redireciona por papel?  → usa esse papel. Assim a navegação
@@ -194,24 +214,6 @@ export const NAV_CATALOG = [
     icon: "FileText",
     group: "atendimento",
     sidebar: true,
-  },
-  {
-    // Módulo opcional (ADR-0002, spec 22), fonte `modulos_instalados`: a porta só existe depois
-    // que o administrador da instalação instala `protocolos`.
-    //
-    // SEM `sidebar`, e não por falta de importância: o menu lateral tem TETO de 15 itens (a dobra
-    // a 1280x900 — `tests/unit/interface-por-empresa.test.ts`), e um módulo não pode furá-lo para
-    // toda instalação que o liga. Como "atendimento" não tem hub, a empresa que vive na fila
-    // escolhe pôr Protocolos no menu em Configurações › Interface (os destinos de grupo sem hub
-    // entram por escolha — `lib/navigation/registry.ts`), trocando por algo que usa menos. Até
-    // lá, o ⌘K acha a tela pelo nome.
-    href: "/app/protocolos",
-    label: "Protocolos",
-    description: "As demandas dos clientes com número, categoria, prioridade, fila por área e prazo de resposta.",
-    icon: "ClipboardText",
-    group: "atendimento",
-    minRole: "viewer",
-    modulo: "protocolos",
   },
 
   // ---- CRM — o funil ----
@@ -300,6 +302,24 @@ export const NAV_CATALOG = [
     modulo: "implantacao",
   },
   {
+    // Módulo opcional (ADR-0002, spec 22), fonte `modulos_instalados`: a porta só existe depois
+    // que o administrador da instalação instala `protocolos`.
+    //
+    // SEM `sidebar`, e não por falta de importância: o menu lateral tem TETO de 15 itens (a dobra
+    // a 1280x900 — `tests/unit/interface-por-empresa.test.ts`), e um módulo não pode furá-lo para
+    // toda instalação que o liga. Mora no hub do CRM, ao lado da Carteira e da Implantação: desde
+    // a 1.80.0 do original toda porta de módulo vive em grupo COM hub
+    // (`tests/unit/porta-do-modulo-ligado.test.tsx`), e "atendimento" não tem.
+    href: "/app/protocolos",
+    label: "Protocolos",
+    description: "As demandas dos clientes com número, categoria, prioridade, fila por área e prazo de resposta.",
+    icon: "ClipboardText",
+    group: "crm",
+    section: "O dia a dia da venda",
+    minRole: "viewer",
+    modulo: "protocolos",
+  },
+  {
     href: "/app/people",
     label: "Pessoas",
     description: "Decisores e contatos ligados a empresas, com vários telefones.",
@@ -323,6 +343,20 @@ export const NAV_CATALOG = [
     group: "crm",
     section: "O dia a dia da venda",
     sidebar: true,
+  },
+  {
+    // A porta dos planos de tarefa (#1752): montar a sequência UMA vez e o
+    // `apply_task_plan` aplicá-la a cada negócio. Fica no MESMO hub de Tarefas,
+    // mas SEM `sidebar` pelo critério já usado em Empresas/Pessoas: é
+    // CADASTRO, não uso diário — quem monta um plano abre esta tela poucas
+    // vezes, e o menu de 900px (`tests/e2e/navegacao.spec.ts`) não ganha mais
+    // um pixel por isso.
+    href: "/app/tasks/planos",
+    label: "Planos de tarefa",
+    description: "Sequências reutilizáveis de tarefas — montar uma vez e aplicar a cada negócio.",
+    icon: "FlowArrow",
+    group: "crm",
+    section: "O dia a dia da venda",
   },
   {
     // Módulo VoIP (migration 0347). No grupo do CRM pelo mesmo critério de
@@ -502,6 +536,10 @@ export const NAV_CATALOG = [
     // O balcão continua a um clique: CRM › Ver tudo em CRM › "O dia a dia da
     // venda", e pelo ⌘K digitando "comanda".
     minRole: "viewer",
+    // Módulo de tabela (ADR-0002, #1907): as cinco tabelas da comanda nascem na
+    // instalação do `financeiro` em `/admin/modulos`; sem ele a porta some, como
+    // `/app/honorarios`. O caixa (Configurações › Financeiro) é núcleo e fica.
+    modulo: "financeiro",
   },
   {
     // O catálogo financeiro: contas, formas de pagamento e plano de contas.
@@ -944,6 +982,20 @@ export const NAV_CATALOG = [
     minRole: "manager",
   },
   {
+    // A porta do freio POR EMPRESA do passo `ai_decide` (issue #2367). O #2228
+    // criou o passo e o deixou opcional POR REGRA; sem esta tela, desligar de
+    // uma vez todos os `ai_decide` de uma organização só existiria como
+    // `UPDATE` à mão no `organizations.settings` — o anti-exemplo de "toda
+    // configuração tem superfície" (docs/doctrine/restricao-de-canal.md).
+    href: "/app/settings/automacoes",
+    label: "Automações",
+    description: "O freio único do passo em que a IA escolhe entre as opções de uma regra, para a empresa inteira.",
+    icon: "FlowArrow",
+    group: "organizacao",
+    section: "Sua empresa",
+    minRole: "manager",
+  },
+  {
     // A porta que faltava para o vocabulário de etiquetas (issue #852). Até
     // aqui a etiqueta só ENTRAva no vocabulário — cada agente escrevia a que
     // quisesse em `add_tag` — e não havia por onde corrigir, juntar as duas
@@ -1041,8 +1093,10 @@ export const NAV_CATALOG = [
   },
   {
     href: "/app/settings/billing",
-    label: "Billing",
-    description: "Plano e cobrança.",
+    // Spec da cobrança §9: as mensagens de limite e a Central mandam para
+    // "Configurações › Plano e cobrança" — o item precisa ter esse nome.
+    label: "Plano e cobrança",
+    description: "Pagamento, troca de plano e faturas da sua empresa.",
     icon: "Receipt",
     group: "organizacao",
     section: "Sua empresa",

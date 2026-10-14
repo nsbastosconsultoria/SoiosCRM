@@ -103,6 +103,48 @@ const REMOCOES_DELIBERADAS: Record<string, { valores: string[]; porque: string }
       "porque migration aplicada não se edita: o evento é história, a consequência foi " +
       "consertada.",
   },
+  // ── O encontro do fork (Soios) com o original 1.80.0, em 14/10/2026 ──────────────────
+  // A mesma classe da 0312: duas linhas de migrations que nunca se viram, cada uma
+  // reconstruindo a constraint a partir do estado que ENXERGAVA. Do lado do fork, a 0905 e a
+  // 0908 não conheciam os kinds do original posteriores à v1.64.1; do lado do original, a
+  // 0589, a 0601 e a 0614 não conheciam os três kinds do fork. A forward-fix é a 0909
+  // (`central_kinds_do_fork_apos_sync`), a ÚLTIMA reconstrução da cadeia, com a união dos
+  // dois lados — então nenhum clone fica sem valor nenhum. As cinco são migrations aplicadas.
+  "20261005120000_0905_central_avisos_de_protocolo.sql::agent_inbox_items_kind_check": {
+    valores: ["jev_parar_de_receber", "jev_pedido_de_humano", "org_reativada"],
+    porque:
+      "Encontro de branches (fork × original 1.80.0): a 0905 do fork acrescentou os kinds de " +
+      "protocolo a partir da lista da v1.64.1, sem os três kinds que o original criou depois. " +
+      "A 0909 reafirma a união dos dois lados no fim da cadeia.",
+  },
+  "20261006180000_0908_central_aviso_de_implantacao.sql::agent_inbox_items_kind_check": {
+    valores: ["jev_parar_de_receber", "jev_pedido_de_humano", "org_reativada"],
+    porque:
+      "Encontro de branches (fork × original 1.80.0): a 0908 do fork acrescentou " +
+      "`implantacao_atrasada` sobre a lista da 0905, que já não tinha os três kinds do " +
+      "original. A 0909 reafirma a união dos dois lados no fim da cadeia.",
+  },
+  "20261007180001_0589_canal_pausado_na_central.sql::agent_inbox_items_kind_check": {
+    valores: ["implantacao_atrasada", "protocolo_sem_dono", "protocolo_sla"],
+    porque:
+      "Encontro de branches (fork × original 1.80.0): a 0589 do original reconstruiu a " +
+      "constraint sem conhecer os três kinds dos módulos do fork (0905, 0908). Na `main` do " +
+      "original ela não remove nada. A 0909 reafirma a união no fim da cadeia.",
+  },
+  "20261008111858_0601_cobranca_webhook_e_avisos.sql::agent_inbox_items_kind_check": {
+    valores: ["implantacao_atrasada", "protocolo_sem_dono", "protocolo_sla"],
+    porque:
+      "Encontro de branches (fork × original 1.80.0): a 0601 do original reconstruiu a " +
+      "constraint sem conhecer os três kinds dos módulos do fork (0905, 0908). Na `main` do " +
+      "original ela não remove nada. A 0909 reafirma a união no fim da cadeia.",
+  },
+  "20261008212559_0614_gestao_de_tenants.sql::agent_inbox_items_kind_check": {
+    valores: ["implantacao_atrasada", "protocolo_sem_dono", "protocolo_sla"],
+    porque:
+      "Encontro de branches (fork × original 1.80.0): a 0614 do original reconstruiu a " +
+      "constraint sem conhecer os três kinds dos módulos do fork (0905, 0908). Na `main` do " +
+      "original ela não remove nada. A 0909 reafirma a união no fim da cadeia.",
+  },
 };
 
 /** Uma reconstrução de constraint encontrada na cadeia. */

@@ -301,8 +301,13 @@ export async function escolherDiaDesenhado(page: Page, dias: readonly string[]):
 
   // Até a consulta de horários responder, TODO dia nasce indisponível — uma
   // varredura feita antes disso leria "nenhum dia da semana desenhada" onde há.
-  // Mês visível sem dia nenhum (fim do último dia do mês) cai no salto abaixo.
-  let candidatos = (await mesVisivelAcendeDia(page)) ? await disponiveis() : [];
+  await expect(
+    page.locator('[data-testid^="dia-"][data-disponivel="true"]').first(),
+    "nenhum dia disponível no painel — o seed da agenda não deixou jornada publicada, ou o " +
+      "painel abriu num mês sem vaga (fim de mês: ver `agenda-painel-abre-no-mes-com-vaga.test.tsx`)",
+  ).toBeVisible({ timeout: 20_000 });
+
+  let candidatos = await disponiveis();
   if (candidatos.length === 0) {
     await page.getByTestId("mes-seguinte").click();
     // ⚠️ ESPERA PELOS DIAS DA SEMANA DESENHADA, não por "algum dia disponível".
@@ -395,8 +400,14 @@ async function diasCheios(page: Page): Promise<string[]> {
     return chaves.filter((k) => k > hoje).sort();
   };
 
-  // Mês visível sem dia nenhum (fim do último dia do mês) cai no salto abaixo.
-  const cheios = (await mesVisivelAcendeDia(page)) ? await varrer() : [];
+  await expect(
+    page.locator('[data-testid^="dia-"][data-disponivel="true"]').first(),
+    "nenhum dia disponível — o seed da agenda não deixou jornada publicada, ou o painel " +
+      "abriu num mês sem vaga (fim de mês: ver `agenda-painel-abre-no-mes-com-vaga.test.tsx`); " +
+      "sem dia clicável a coluna de horários nunca abre (o defeito ficaria invisível)",
+  ).toBeVisible({ timeout: 20_000 });
+
+  const cheios = await varrer();
   if (cheios.length > 0) return cheios;
 
   // Hoje é o último dia útil do mês visível: o próximo dia com jornada cai no
@@ -404,24 +415,19 @@ async function diasCheios(page: Page): Promise<string[]> {
   // mês em tela. Sem este passo as specs reprovariam nos dias 30/31 — a mesma
   // classe de vermelho-por-calendário que este módulo existe para fechar.
   await page.getByTestId("mes-seguinte").click();
-  // ⚠️ ESPERA PELO CRITÉRIO — algum dia FUTURO aceso —, não por "algum dia
-  // disponível". É a mesma corrida que `escolherDiaDesenhado`, logo acima, já
-  // documenta e fecha: o clique troca o mês na tela na hora, mas a consulta de
-  // horários só troca no efeito `onMesVisivel`, e nesse quadro de transição o
-  // `toBeVisible` passava com o DOM do mês velho e a varredura lia vazio.
-  // Medido no CI de 30/09/2026 (PR #15, run 36763434560): último dia do mês,
-  // `exigirDia` reprovou com "nenhum dia FUTURO disponível" / `Received:
-  // undefined` — o caminho da virada de mês nunca tinha rodado de verdade.
-  let cheiosNoMesSeguinte: string[] = [];
+  // ⚠️ ESPERA PELO PRÓPRIO CRITÉRIO, não por "algum dia disponível" — a mesma
+  // corrida que `escolherDiaDesenhado` já fechou: logo depois do clique há um
+  // quadro com o mês novo na tela e os horários do mês VELHO por baixo, e um
+  // `toBeVisible` passa nele antes de a varredura ler o mês novo vazio. Medido
+  // no último dia de setembro (30/09, ~01h43 e ~02h10 UTC, na `main` e no #1938):
+  // "nenhum dia FUTURO disponível" com a espera antiga verde.
   await expect
-    .poll(async () => (cheiosNoMesSeguinte = await varrer()).length, {
+    .poll(varrer, {
+      message: "nem o mês seguinte oferece dia futuro — a consulta deveria ter pedido o mês visível",
       timeout: 20_000,
-      message:
-        "nem o mês seguinte oferece dia — o seed não deixou jornada publicada, ou a consulta " +
-        "não pediu o mês visível",
     })
-    .toBeGreaterThan(0);
-  return cheiosNoMesSeguinte;
+    .not.toEqual([]);
+  return varrer();
 }
 
 function exigirDia(cheios: readonly string[], qual: string): string {

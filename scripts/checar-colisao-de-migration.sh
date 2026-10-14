@@ -380,6 +380,19 @@ while IFS= read -r nome; do
 
   colisao_n="$(grep -E "^[0-9]{14}_${nnnn}_.+\.sql$" <<<"$base_arvore" || true)"
   colisao_t="$(grep -E "^${ts}_[0-9]{4}_.+\.sql$" <<<"$base_arvore" || true)"
+  # Timestamp da base que ESTE PR tirou da árvore (renomeou para outro timestamp ou apagou):
+  # na árvore que vai ficar não há duplicata, então não reprova — mas AVISA, porque um banco
+  # que aplicou a cadeia pela CLI do Supabase já tem esse timestamp gravado como aplicado e
+  # pularia a migration nova. Caso medido: sincronização do fork Soios com o original 1.80.0,
+  # que renumerou as 0902/0903 do fork em +1s para dar lugar às 0538/0540 do original.
+  if [ -n "$colisao_t" ]; then
+    liberados="$(grep -vxF -f <(printf '%s\n' "$head_arvore") <<<"$colisao_t" || true)"
+    if [ -n "$liberados" ]; then
+      lista="$(tr '\n' ' ' <<<"$liberados" | sed 's/ *$//')"
+      echo "::warning file=$caminho::timestamp $ts era de '$lista' em '$BASE', que este PR tirou da árvore — banco que aplicou a cadeia pela CLI do Supabase já registra $ts como aplicado e PULARIA '$nome'. O kit self-host aplica o baseline.sql e não é afetado."
+      colisao_t="$(grep -xF -f <(printf '%s\n' "$head_arvore") <<<"$colisao_t" || true)"
+    fi
+  fi
   if [ -n "$colisao_n" ]; then
     lista="$(tr '\n' ' ' <<<"$colisao_n" | sed 's/ *$//')"
     echo "::error file=$caminho::NNNN=$nnnn já existe em '$BASE': $lista"
