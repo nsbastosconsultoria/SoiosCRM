@@ -37194,7 +37194,7 @@ begin
     add column if not exists instrucao_pagamento text;
   -- `drop if exists` + `add`, e não `if not exists` no catálogo: a guarda de
   -- tests/unit/reconstruir-constraint-derruba-antes.test.ts só reconhece o `if not exists`
-  -- dentro de `do $$`, e aqui o corpo é `$f$`. O efeito é o mesmo — a constraint fica.
+  -- dentro de um bloco DO, e aqui é o corpo da função. O efeito é o mesmo — a constraint fica.
   alter table public.honorarios_parcelas
     drop constraint if exists honorarios_parcelas_instrucao_pagamento_tamanho;
   alter table public.honorarios_parcelas
