@@ -111,7 +111,10 @@ const frasesQuePrometemRetorno = [
  * setor comercial" nomeiam o alvo humano colado ao verbo e casam com o padrão
  * antigo; as demais quebram o padrão com um objeto no meio ou dispensam o alvo.
  */
-const INDICES_QUE_O_LEXICO_PEGA = new Set([2, 6]);
+const INDICES_QUE_O_LEXICO_PEGA = new Set([0, 2, 5, 6]);
+// ↑ Fork Soios: (0) e (5) entraram no léxico com as regras (2d)/(2e) de
+// `human-promise.ts` — "encaminhar/levar … para análise/avaliação", achado em
+// produção em 30/09/2026. Sem a camada semântica, vazam as outras TRÊS.
 
 const falasInocentes = [
   "Bom dia! Como posso ajudar?",
@@ -186,7 +189,7 @@ describe("cerca prometer de ponta a ponta", () => {
     // o commit que os consertaria. A ausência do campo precisa continuar
     // significando "não há sinal semântico", exatamente o comportamento atual.
     const fraseQueOLexicoPega = frasesQuePrometemRetorno[2]!;
-    const fraseQueOLexicoNaoPega = frasesQuePrometemRetorno[0]!;
+    const fraseQueOLexicoNaoPega = frasesQuePrometemRetorno[3]!;
 
     const verdictVeta = casePromiseGate.evaluate(comCtx(fraseQueOLexicoPega));
     expect(verdictVeta.pass).toBe(false);

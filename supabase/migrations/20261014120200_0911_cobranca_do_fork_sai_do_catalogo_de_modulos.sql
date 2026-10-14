@@ -26,3 +26,9 @@
 delete from public.modulos_instalados where modulo = 'cobranca';
 
 drop function if exists public.fn_cobranca_provisionar();
+
+-- A única constraint NOMEADA da 0493 sai junto: a tabela não tem mais tela que grave nela, e
+-- a régua tests/unit/check-do-baseline-nao-diverge-da-cadeia.test.ts exige que o que a cadeia
+-- nomeia ou chegue ao baseline ou saia da cadeia. `if exists` nos dois níveis: onde o módulo
+-- nunca foi instalado, a tabela não existe.
+alter table if exists public.billing_invoices drop constraint if exists billing_invoices_paga_tem_data;

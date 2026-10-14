@@ -182,6 +182,7 @@ describe("hubSections", () => {
       "/app/companies",
       "/app/carteira",
       "/app/implantacoes",
+      "/app/protocolos",
       "/app/people",
       "/app/tasks",
       // #1752: os planos caem embaixo de Tarefas, NA MESMA seção — um plano é

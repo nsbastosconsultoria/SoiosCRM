@@ -215,24 +215,6 @@ export const NAV_CATALOG = [
     group: "atendimento",
     sidebar: true,
   },
-  {
-    // Módulo opcional (ADR-0002, spec 22), fonte `modulos_instalados`: a porta só existe depois
-    // que o administrador da instalação instala `protocolos`.
-    //
-    // SEM `sidebar`, e não por falta de importância: o menu lateral tem TETO de 15 itens (a dobra
-    // a 1280x900 — `tests/unit/interface-por-empresa.test.ts`), e um módulo não pode furá-lo para
-    // toda instalação que o liga. Mora no hub do CRM, ao lado da Carteira e da Implantação: desde
-    // a 1.80.0 do original toda porta de módulo vive em grupo COM hub
-    // (`tests/unit/porta-do-modulo-ligado.test.tsx`), e "atendimento" não tem.
-    href: "/app/protocolos",
-    label: "Protocolos",
-    description: "As demandas dos clientes com número, categoria, prioridade, fila por área e prazo de resposta.",
-    icon: "ClipboardText",
-    group: "crm",
-    section: "O dia a dia da venda",
-    minRole: "viewer",
-    modulo: "protocolos",
-  },
 
   // ---- CRM — o funil ----
   {
@@ -318,6 +300,24 @@ export const NAV_CATALOG = [
     section: "O dia a dia da venda",
     minRole: "viewer",
     modulo: "implantacao",
+  },
+  {
+    // Módulo opcional (ADR-0002, spec 22), fonte `modulos_instalados`: a porta só existe depois
+    // que o administrador da instalação instala `protocolos`.
+    //
+    // SEM `sidebar`, e não por falta de importância: o menu lateral tem TETO de 15 itens (a dobra
+    // a 1280x900 — `tests/unit/interface-por-empresa.test.ts`), e um módulo não pode furá-lo para
+    // toda instalação que o liga. Mora no hub do CRM, ao lado da Carteira e da Implantação: desde
+    // a 1.80.0 do original toda porta de módulo vive em grupo COM hub
+    // (`tests/unit/porta-do-modulo-ligado.test.tsx`), e "atendimento" não tem.
+    href: "/app/protocolos",
+    label: "Protocolos",
+    description: "As demandas dos clientes com número, categoria, prioridade, fila por área e prazo de resposta.",
+    icon: "ClipboardText",
+    group: "crm",
+    section: "O dia a dia da venda",
+    minRole: "viewer",
+    modulo: "protocolos",
   },
   {
     href: "/app/people",
