@@ -8,7 +8,13 @@ O fork foi sincronizado com o DeskcommCRM até a versão 1.80.0. Todas as novida
 
 As versões que o fork publicou com numeração própria (1.65.0 a 1.67.0) não são as do original com o mesmo número. As notas delas estão em `docs/soios/versoes-proprias-1.65-1.67.md`.
 
-A cobrança dos tenants do fork (módulo "Cobrança dos tenants", com faturas lançadas à mão) foi substituída pela cobrança do original (planos, assinaturas, teste grátis e pagamento pelo Asaas), na mesma tela Modo administrador › Cobrança.
+A cobrança dos tenants do fork (módulo "Cobrança dos tenants", com faturas lançadas à mão) foi substituída pela cobrança do original (planos, assinaturas, teste grátis e pagamento pelo Asaas), na mesma tela Modo administrador › Cobrança. O módulo antigo sai da lista de módulos instaláveis.
+
+Outras mudanças que vêm junto:
+
+- **Protocolos** passa a ficar em CRM › Ver tudo em CRM, ao lado de Carteira de empresas e Implantação de clientes. Antes ficava no grupo Atendimento.
+- **LGPD:** anonimizar um contato agora apaga também o antes e o depois dos eventos da carteira ligados a ele. O tipo do evento, quem fez e a data continuam na linha do tempo.
+- **Agente de IA:** as ferramentas de carteira e de protocolo seguem disponíveis durante a conversa, e cada uma só alcança registros do contato com quem o agente está falando.
 
 ## Requer atenção
 
