@@ -373,11 +373,23 @@ describe("o handler escolhe UM caminho", () => {
 
 const ETAPA = "44444444-4444-4444-8444-444444444444";
 const CHAVE_DA_ETAPA = `MetaEtapa:${ETAPA}`;
-// Relativa ao relógio, não fixa: a Meta recusa evento com mais de 7 dias
-// (`IDADE_MAXIMA_MS`, lib/plataformas-de-anuncio/meta/conversions.ts). Fixada em
-// 2026-10-06, a data venceu em 13/10 e o caso da conexão direta passou a sair
-// `recusado_pela_plataforma` — o teste quebrava pelo calendário, não pelo código.
-const ENTROU_NA_ETAPA = new Date(Math.floor((Date.now() - 60 * 60 * 1000) / 1000) * 1000).toISOString();
+/**
+ * ⚠️ RELATIVO, e não uma data fixa — e o porquê é uma bomba que já estourou.
+ *
+ * O transporte direto da Meta RECUSA evento com mais de 7 dias
+ * (`lib/plataformas-de-anuncio/meta/conversions.ts`, teto da plataforma). Este
+ * arquivo usava `"2026-10-06T16:32:50.000Z"`; em 13/10 a data cruzou o teto e o
+ * caso do caminho direto virou vermelho na `main` **sem ninguém tocar em
+ * nada** — verde no CI de 13/10 01:44Z (merge #2805) e vermelho no dia
+ * seguinte. Data fixa como instante de evento é a mesma classe do `[contact]`:
+ * envelhece sozinha.
+ *
+ * Uma hora atrás é recente para o teto, e todas as asserções que dependem do
+ * instante calculam a partir DESTA constante — nada aqui afirma o valor
+ * absoluto. O fixture de venda já usava data relativa (`closed_at`):
+ * `new Date(Date.now() - 60_000)`.
+ */
+const ENTROU_NA_ETAPA = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
 const regraDaEtapa = (metaEvent = "InitiateCheckout") => ({
   meta_ads_conversion_rules: {
