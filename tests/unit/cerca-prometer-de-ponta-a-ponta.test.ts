@@ -380,9 +380,19 @@ describe("cerca prometer — retorno do PRÓPRIO assistente pelo léxico (issue 
     // A promessa de retorno de CONTEÚDO é do classificador SEMÂNTICO — o léxico novo NÃO
     // a cobre. Sem o semântico, ela segue passando (é a fronteira congelada no caso 1B).
     "Te retorno com a proposta em breve.",
-    "Vou encaminhar as informações do site imobiliário para análise e te retorno com a proposta.",
   ])("CONTROLE — promessa de CONTEÚDO não é do léxico novo (segue com o semântico): %s", (frase) => {
     expect(casePromiseGate.evaluate(ctx(frase, SEM_AGENDAR)).pass).toBe(true);
+  });
+
+  it("Fork Soios: \"encaminhar … para análise\" é do léxico de humano (regra 2d), e o veto pede CASO", () => {
+    // No original esta frase é controle de CONTEÚDO e passa. No fork a regra (2d) de
+    // `human-promise.ts` a pega: "encaminhar para análise" sem nomear quem analisa foi
+    // achado em produção em 30/09/2026 como promessa de humano sem caso aberto.
+    const frase =
+      "Vou encaminhar as informações do site imobiliário para análise e te retorno com a proposta.";
+    const v = casePromiseGate.evaluate(ctx(frase, SEM_AGENDAR));
+    expect(v.pass).toBe(false);
+    if (!v.pass) expect(v.code).toBe("case_promise_without_case");
   });
 
   it("fronteira: alvo humano E retorno do assistente na MESMA frase → o veto pede CASO", () => {
