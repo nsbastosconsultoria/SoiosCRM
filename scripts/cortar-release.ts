@@ -13,14 +13,19 @@
  *
  *   pnpm release:conferir     # não escreve; diz que número sairia
  *   pnpm release:cortar       # escreve o CHANGELOG e apaga os fragmentos
- *   ... --major               # só quando o dono pede: nenhum fragmento produz major
+ *   ... --major               # recusado no fork: maior e menor vêm do original
+ *
+ * Fork Soios: o número NÃO sai do impacto dos fragmentos, e sim da faixa do
+ * fork (`lib/release/numeracao-do-fork.ts`): <maior>.<menor> do original +
+ * correção a partir de 100. Assim a tag do fork nunca colide com a do original.
  */
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import { calcularBump, type Fragmento, parseFragmento, proximaVersao } from "../lib/release/fragmento";
+import { calcularBump, type Fragmento, parseFragmento } from "../lib/release/fragmento";
 import { aplicarNoChangelog, montarSecao } from "../lib/release/montar-secao";
+import { ehVersaoDoFork, proximaVersaoDoFork, versoesDoChangelog } from "../lib/release/numeracao-do-fork";
 
 const RAIZ = path.resolve(__dirname, "..");
 const DIR_FRAGMENTOS = path.join(RAIZ, ".changes");
@@ -65,6 +70,23 @@ function versaoBase(changelog: string): string {
     if (m?.[1]) return m[1];
   }
   throw new Error("CHANGELOG.md sem nenhuma seção `## [X.Y.Z]`");
+}
+
+/**
+ * Tags do fork (faixa >= 100) que existem neste clone. Só elas: uma tag do
+ * original trazida por `git fetch upstream --tags` não diz que o código dela
+ * já foi sincronizado. O CI clona raso e não vê tag; ali vale o CHANGELOG.
+ */
+function tagsDoForkLocais(): string[] {
+  try {
+    const saida = execFileSync("git", ["tag", "--list", "v*.*.*"], { cwd: RAIZ, encoding: "utf8" });
+    return saida
+      .split("\n")
+      .map((t) => t.trim().replace(/^v/, ""))
+      .filter((t) => /^\d+\.\d+\.\d+$/.test(t) && ehVersaoDoFork(t));
+  } catch {
+    return [];
+  }
 }
 
 /** Só para conferência: um aviso, nunca uma recusa — o CI clona raso e não vê tag. */
@@ -132,11 +154,15 @@ function main(argv: readonly string[]): number {
     return 1;
   }
 
-  const bump = calcularBump(fragmentos.map((f) => f.impacto), pedidoMajor);
-  const versao = proximaVersao(base, bump);
+  if (pedidoMajor) {
+    process.stderr.write("--major não existe no fork: maior e menor vêm do original, na sincronização.\n");
+    return 2;
+  }
+  const bump = calcularBump(fragmentos.map((f) => f.impacto));
+  const { versao, anterior } = proximaVersaoDoFork([...versoesDoChangelog(changelog), ...tagsDoForkLocais()]);
   const secao = montarSecao(fragmentos, versao, hoje());
 
-  process.stdout.write(`${base} + ${bump} = ${versao}  (${fragmentos.length} fragmento(s))\n`);
+  process.stdout.write(`${anterior} → ${versao}  (fork; os fragmentos pedem ${bump}; ${fragmentos.length} fragmento(s))\n`);
   for (const f of fragmentos) {
     process.stdout.write(`  ${f.impacto.padEnd(16)} ${f.secao.padEnd(11)} ${f.titulo}\n`);
   }
@@ -146,7 +172,7 @@ function main(argv: readonly string[]): number {
     return 0;
   }
 
-  fs.writeFileSync(CHANGELOG, aplicarNoChangelog(changelog, secao, base, compararUrl));
+  fs.writeFileSync(CHANGELOG, aplicarNoChangelog(changelog, secao, anterior, compararUrl));
   for (const f of fragmentos) fs.rmSync(path.join(DIR_FRAGMENTOS, f.arquivo));
   process.stdout.write(`\nCHANGELOG.md atualizado; ${fragmentos.length} fragmento(s) consumido(s).\n`);
   process.stdout.write("A tag NÃO é criada aqui — ela nasce no CI, do merge do PR de release.\n");

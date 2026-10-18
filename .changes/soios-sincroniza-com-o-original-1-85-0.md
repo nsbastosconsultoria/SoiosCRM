@@ -8,6 +8,8 @@ O fork foi sincronizado com o DeskcommCRM até a versão 1.85.0. Todas as novida
 
 A 1.81.0 que o fork publicou em 14/10 não é a 1.81.0 do original: ela era o DeskcommCRM 1.80.0 com os módulos do Soios. A nota dela está em `docs/soios/versoes-proprias-1.65-1.67.md`.
 
+A partir desta versão o fork usa uma numeração que não colide com a do original: a versão do original em que o fork está, com a correção a partir de 100. Esta é a 1.85.100; as próximas em cima do 1.85 serão 1.85.101, 1.85.102, e depois de sincronizar com o 1.86.0, 1.86.100. Detalhes em `docs/soios/numeracao-de-versoes.md`.
+
 ## Requer atenção
 
 Leia as seções "Requer atenção" do original entre a 1.81.0 e a 1.85.0 antes de rodar `bash update.sh`. As que valem para mais gente:
