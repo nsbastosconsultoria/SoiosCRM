@@ -4058,7 +4058,7 @@ TMP_SMTP="$(mktemp -d)"
 (
   KIT_AQUI="$PWD"
   mkdir -p "$TMP_SMTP/kit" "$TMP_SMTP/supabase/templates" "$TMP_SMTP/bin"
-  cp "$KIT_AQUI/marca-emails.sh" "$KIT_AQUI/_common.sh" "$KIT_AQUI/_i18n.sh" "$TMP_SMTP/kit/"
+  cp "$KIT_AQUI/marca-emails.sh" "$KIT_AQUI/_common.sh" "$KIT_AQUI/_manifestos.sh" "$KIT_AQUI/_i18n.sh" "$TMP_SMTP/kit/"
   cp "$KIT_AQUI/../supabase/templates/confirmation.html" \
      "$KIT_AQUI/../supabase/templates/recovery.html" "$TMP_SMTP/supabase/templates/" || exit 1
   cat > "$TMP_SMTP/bin/curl" <<'STUB'
