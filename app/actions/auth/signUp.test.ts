@@ -105,6 +105,24 @@ describe("signUp — a tela precisa saber se a sessão já veio aberta", () => {
     expect(res).toEqual({ ok: true, sessao_ativa: false });
   });
 
+  it("CONTROLE — sem convite, o usuário ofuscado continua indistinguível de sucesso", async () => {
+    // A anti-enumeração do cabeçalho de `signUp`: quem não traz convite não
+    // pode descobrir que o e-mail tem conta. Só o ator do audit muda (null).
+    signUpDoProvedor.mockResolvedValue({
+      data: { user: { id: "ofuscado-2", identities: [] }, session: null },
+      error: null,
+    });
+    const { audit } = await import("@/lib/audit");
+
+    const { signUp } = await import("./signUp");
+    const res = await signUp(entrada());
+
+    expect(res).toEqual({ ok: true, sessao_ativa: false });
+    expect(vi.mocked(audit)).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "auth.signup_requested", actorUserId: null }),
+    );
+  });
+
   it("CONTROLE — o provedor recusar continua sendo erro, não sessão", async () => {
     signUpDoProvedor.mockResolvedValue({
       data: { user: null, session: null },
@@ -394,6 +412,43 @@ describe("signUp — convite com o cadastro público do GoTrue fechado (#1653)",
     expect(res).toEqual({ ok: false, error: "somente_convite" });
     expect(signUpDoProvedor).not.toHaveBeenCalled();
     expect(admin.createUser).not.toHaveBeenCalled();
+  });
+
+  it("⭐ GoTrue aberto, conta já confirmada: o usuário OFUSCADO vira `conta_ja_existe`", async () => {
+    // A forma que o GoTrue devolve com "Confirm email" ligado para e-mail que
+    // já tem conta confirmada: sucesso, id inventado, `identities: []`, e
+    // nenhum e-mail enviado. Antes, a tela mandava esperar a confirmação.
+    goTrueCom(false);
+    signUpDoProvedor.mockResolvedValue({
+      data: { user: { id: "ofuscado-1", identities: [] }, session: null },
+      error: null,
+    });
+    const { audit } = await import("@/lib/audit");
+    const { token, entrada: corpo } = await conviteValido();
+
+    const { signUp } = await import("./signUp");
+    const res = await signUp(corpo, token);
+
+    expect(res).toEqual({ ok: false, error: "conta_ja_existe" });
+    // O id ofuscado não existe em `auth.users`: nunca pode chegar ao audit
+    // como ator, senão a FK derruba a linha.
+    expect(vi.mocked(audit)).not.toHaveBeenCalledWith(
+      expect.objectContaining({ actorUserId: "ofuscado-1" }),
+    );
+  });
+
+  it("CONTROLE — usuário NOVO de verdade (identities preenchido) com convite segue no e-mail", async () => {
+    goTrueCom(false);
+    signUpDoProvedor.mockResolvedValue({
+      data: { user: { id: "u-11", identities: [{ id: "i-1" }] }, session: null },
+      error: null,
+    });
+    const { token, entrada: corpo } = await conviteValido();
+
+    const { signUp } = await import("./signUp");
+    const res = await signUp(corpo, token);
+
+    expect(res).toEqual({ ok: true, sessao_ativa: false });
   });
 
   it("conta já existe → `conta_ja_existe`, o mesmo código de antes", async () => {
