@@ -42,6 +42,7 @@ export interface CreateWebhookSourceInput {
   default_pipeline_id: string;
   default_stage_id: string;
   redirect_to?: string | null;
+  form_fields?: WebhookFormField[];
 }
 
 const SOURCES_KEY = ["webhook-sources"];

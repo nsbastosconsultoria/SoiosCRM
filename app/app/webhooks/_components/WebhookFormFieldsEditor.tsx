@@ -88,6 +88,7 @@ export function WebhookFormFieldsEditor({ fields, onChange }: Props) {
                   <SelectItem value="textarea">{t("Texto longo")}</SelectItem>
                   <SelectItem value="number">{t("Número")}</SelectItem>
                   <SelectItem value="currency">{t("Moeda (BRL)")}</SelectItem>
+                  <SelectItem value="date">{t("Data")}</SelectItem>
                   <SelectItem value="select">{t("Lista de opções")}</SelectItem>
                   <SelectItem value="checkbox">{t("Caixa de seleção")}</SelectItem>
                 </SelectContent>
