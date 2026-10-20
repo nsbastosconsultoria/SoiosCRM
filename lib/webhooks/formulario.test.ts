@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CAMPOS_PADRAO_DO_FORMULARIO,
   gerarHtmlDoFormulario,
+  normalizarCamposDeData,
   normalizarCamposNumericos,
+  normalizarDataDeFormulario,
   normalizarMoedaBRLDeFormulario,
   normalizarNumeroDeFormulario,
   webhookFormFieldsSchema,
@@ -82,6 +85,54 @@ describe("campos numéricos de formulário webhook", () => {
     expect(normalizarCamposNumericos({ quantidade: "12x" }, fields)).toEqual({
       values: {},
       invalidKeys: ["quantidade"],
+    });
+  });
+});
+
+describe("campos padrão de formulário webhook", () => {
+  const textos = { nome: "Nome", telefone: "WhatsApp", email: "E-mail", enviar: "Enviar", selecione: "Selecione" };
+
+  it("segmento, equipe e data passam no schema que a API aplica", () => {
+    expect(CAMPOS_PADRAO_DO_FORMULARIO.map((field) => field.key)).toEqual(["segmento", "equipe", "data"]);
+    expect(webhookFormFieldsSchema.safeParse(CAMPOS_PADRAO_DO_FORMULARIO).success).toBe(true);
+  });
+
+  it("o formulário gerado traz nome, WhatsApp e e-mail fixos e as três perguntas padrão", () => {
+    const html = gerarHtmlDoFormulario("https://crm.example/api/v1/webhooks/in/token", CAMPOS_PADRAO_DO_FORMULARIO, textos);
+    for (const nome of ["nome", "telefone", "email", "segmento", "equipe", "data"]) {
+      expect(html).toContain(`name="${nome}"`);
+    }
+    expect(html).toContain('<option value="Advocacia">Advocacia</option>');
+    expect(html).toContain('<option value="2 a 5 pessoas">2 a 5 pessoas</option>');
+    expect(html).toContain('<input id="webhook-form-data" name="data" type="date" />');
+  });
+});
+
+describe("campo de data de formulário webhook", () => {
+  it.each([
+    ["2026-11-03", "2026-11-03"],
+    ["03/11/2026", "2026-11-03"],
+    ["3/1/2026", "2026-01-03"],
+    [" 2026-11-03 ", "2026-11-03"],
+  ])("normaliza %s para %s", (valor, esperado) => {
+    expect(normalizarDataDeFormulario(valor)).toBe(esperado);
+  });
+
+  it.each([["2026-02-30"], ["31/04/2026"], ["amanhã"], [""], [20261103], [null]])(
+    "não inventa data a partir de %s",
+    (valor) => {
+      expect(normalizarDataDeFormulario(valor)).toBeNull();
+    },
+  );
+
+  it("só reescreve os campos declarados como data e mantém fora o que não é data", () => {
+    const fields = [
+      { key: "data", label: "Data", type: "date" as const, required: false },
+      { key: "retorno", label: "Retorno", type: "date" as const, required: false },
+      { key: "obs", label: "Obs", type: "text" as const, required: false },
+    ];
+    expect(normalizarCamposDeData({ Data: "03/11/2026", retorno: "logo", obs: "01/01/2026" }, fields)).toEqual({
+      data: "2026-11-03",
     });
   });
 });

@@ -12,7 +12,7 @@ export const webhookFormFieldSchema = z
       .max(CHAVE_MAX)
       .regex(/^[a-z][a-z0-9_]*$/, "Use uma chave iniciada por letra minúscula, sem espaços."),
     label: z.string().trim().min(1, "Escreva o texto da pergunta.").max(120),
-    type: z.enum(["text", "textarea", "number", "currency", "select", "checkbox"]),
+    type: z.enum(["text", "textarea", "number", "currency", "date", "select", "checkbox"]),
     required: z.boolean().default(false),
     options: z.array(z.string().trim().min(1).max(OPCAO_MAX)).max(30).optional(),
   })
@@ -51,6 +51,30 @@ export const webhookFormFieldsSchema = z
   });
 
 export type WebhookFormField = z.infer<typeof webhookFormFieldSchema>;
+
+/**
+ * As perguntas com que toda fonte criada pela tela nasce. Nome, WhatsApp e
+ * e-mail não estão aqui porque o formulário gerado já os traz fixos; estas são
+ * as extras, e quem cria a fonte pode editá-las ou removê-las depois. Fontes
+ * já existentes e as criadas pela API ou pelo MCP não recebem nada.
+ */
+export const CAMPOS_PADRAO_DO_FORMULARIO: readonly WebhookFormField[] = [
+  {
+    key: "segmento",
+    label: "Segmento",
+    type: "select",
+    required: false,
+    options: ["Advocacia", "Contabilidade", "Saúde", "Imobiliária", "Educação", "Varejo", "Serviços", "Outro"],
+  },
+  {
+    key: "equipe",
+    label: "Equipe",
+    type: "select",
+    required: false,
+    options: ["Só eu", "2 a 5 pessoas", "6 a 20 pessoas", "Mais de 20 pessoas"],
+  },
+  { key: "data", label: "Data", type: "date", required: false },
+];
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => {
@@ -96,6 +120,9 @@ export function gerarHtmlDoFormulario(
       }
       if (field.type === "currency") {
         return `  <label for="${id}">${label}</label>\n  <input id="${id}" name="${key}" type="text" inputmode="decimal" autocomplete="off" data-form-currency="brl" placeholder="R$ 0,00"${required(field.required)} />`;
+      }
+      if (field.type === "date") {
+        return `  <label for="${id}">${label}</label>\n  <input id="${id}" name="${key}" type="date"${required(field.required)} />`;
       }
       return `  <label for="${id}">${label}</label>\n  <input id="${id}" name="${key}" type="text"${required(field.required)} />`;
     })
@@ -143,6 +170,41 @@ export function normalizarMoedaBRLDeFormulario(value: unknown): ValorNumericoWeb
   if (!/^(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d{1,2})?$/.test(raw)) return { ok: false };
   const parsed = Number(raw.replace(/\./g, "").replace(",", "."));
   return Number.isFinite(parsed) && parsed >= 0 ? { ok: true, value: parsed } : { ok: false };
+}
+
+/**
+ * Leva a data ao formato do `<input type="date">` (AAAA-MM-DD). Aceita também
+ * DD/MM/AAAA, que é o que chega de formulário de terceiro apontado para a
+ * mesma fonte. O que não for data reconhecível segue como veio: recusar o lead
+ * inteiro por causa da data perderia o contato.
+ */
+export function normalizarDataDeFormulario(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const raw = value.trim();
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  const br = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(raw);
+  const [ano, mes, dia] = iso
+    ? [Number(iso[1]), Number(iso[2]), Number(iso[3])]
+    : br
+      ? [Number(br[3]), Number(br[2]), Number(br[1])]
+      : [NaN, NaN, NaN];
+  const data = new Date(Date.UTC(ano, mes - 1, dia));
+  if (Number.isNaN(data.getTime()) || data.getUTCMonth() !== mes - 1 || data.getUTCDate() !== dia) return null;
+  return data.toISOString().slice(0, 10);
+}
+
+/** As datas dos campos configurados, já em AAAA-MM-DD; o que não for data reconhecível fica de fora. */
+export function normalizarCamposDeData(
+  payload: Record<string, unknown>,
+  fields: readonly WebhookFormField[],
+): Record<string, string> {
+  const values: Record<string, string> = {};
+  for (const field of fields) {
+    if (field.type !== "date") continue;
+    const data = normalizarDataDeFormulario(valorDoPayload(payload, field.key));
+    if (data) values[field.key] = data;
+  }
+  return values;
 }
 
 /** Dá o valor de uma chave do payload sem diferenciar maiúsculas/minúsculas. */

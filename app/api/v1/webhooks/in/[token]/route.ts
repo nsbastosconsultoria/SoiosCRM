@@ -51,6 +51,7 @@ import { autorizarCaptacaoParaIA, camposDaCaptacao } from "@/lib/ai/elegibilidad
 import { autorizarContatoParaIA } from "@/lib/ai/elegibilidade/autorizacao";
 import { kickLocalPipeline } from "@/lib/dev/kick-local-pipeline";
 import {
+  normalizarCamposDeData,
   normalizarCamposNumericos,
   webhookFormFieldsSchema,
 } from "@/lib/webhooks/formulario";
@@ -440,6 +441,10 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
     });
   }
   Object.assign(mapped.custom_fields, tipagem.values);
+  Object.assign(
+    mapped.custom_fields,
+    normalizarCamposDeData(payload, camposConfigurados.success ? camposConfigurados.data : []),
+  );
 
   /** O que o formulário trouxe, do jeito que a tela de histórico mostra. */
   // O aceite é evidência de captação, não resposta comercial no card.

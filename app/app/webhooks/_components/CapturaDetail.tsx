@@ -131,7 +131,7 @@ export function CapturaDetail({ captura, onOpenChange }: Props) {
                       <CadastrarCampo
                         chave={chave}
                         valor={valor}
-                        tipoInicial={campoDaFonte?.type === "currency" || campoDaFonte?.type === "number" ? campoDaFonte.type : undefined}
+                        tipoInicial={campoDaFonte?.type === "currency" || campoDaFonte?.type === "number" || campoDaFonte?.type === "date" ? campoDaFonte.type : undefined}
                         cadastrar={funil.cadastrar}
                       />
                     ) : null}

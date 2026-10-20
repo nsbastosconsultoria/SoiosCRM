@@ -27,6 +27,7 @@ import {
   type WebhookSourceRow,
 } from "@/hooks/webhooks/useWebhookSources";
 import { useT } from "@/hooks/i18n/useT";
+import { CAMPOS_PADRAO_DO_FORMULARIO } from "@/lib/webhooks/formulario";
 
 interface Props {
   open: boolean;
@@ -73,6 +74,7 @@ export function CreateSourceDialog({ open, onOpenChange, onCreated }: Props) {
         default_pipeline_id: pipelineId,
         default_stage_id: stageId,
         redirect_to: redirectTo.trim() || undefined,
+        form_fields: [...CAMPOS_PADRAO_DO_FORMULARIO],
       });
       toast.success(t("Fonte criada. Agora é só conectar seu site."));
       onOpenChange(false);
