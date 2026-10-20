@@ -8,6 +8,25 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
 
 ## [Não lançado]
 
+## [1.85.101] — 2026-10-20
+
+### Adicionado
+
+- **Fonte de captação nova já nasce com segmento, equipe e data** Toda fonte de captação criada em Webhooks já vem com três perguntas além de
+  nome, WhatsApp e e-mail: **Segmento** (lista: Advocacia, Contabilidade, Saúde,
+  Imobiliária, Educação, Varejo, Serviços, Outro), **Equipe** (lista: Só eu, 2 a
+  5 pessoas, 6 a 20 pessoas, Mais de 20 pessoas) e **Data**. Dá para editar ou
+  remover cada uma na própria fonte. As fontes que já existiam não mudam.
+
+  As perguntas de formulário ganharam o tipo **Data**: o formulário gerado mostra
+  um calendário, e a resposta é gravada no lead como AAAA-MM-DD. Uma data enviada
+  como DD/MM/AAAA por outro formulário também é convertida; uma resposta que não
+  é data fica gravada como chegou, sem recusar o lead.
+
+### Corrigido
+
+- **Quem já tem conta e abre um convite não fica mais esperando um e-mail de confirmação que nunca chega** Com a confirmação de e-mail ligada no Supabase, cadastrar pelo link de convite um e-mail que já tinha conta confirmada mostrava "Enviamos um link de confirmação", mas nenhum e-mail era enviado: o provedor responde sucesso sem criar conta nem mandar nada. Agora a tela reconhece esse caso e leva a pessoa a entrar com a conta que já tem e aceitar o convite. O pedido de cadastro também volta a ficar registrado na auditoria, que antes era recusada pelo banco nesse caso. Sem convite, a resposta continua a mesma de um cadastro novo, para não revelar quais e-mails têm conta.
+
 ## [1.85.100] — 2026-10-18
 
 ### ⚠️ Requer atenção
@@ -12272,7 +12291,8 @@ Primeira versão marcada do DeskcommCRM. O projeto vinha sendo desenvolvido publ
 
 - **Node 22 é obrigatório para desenvolvimento.** A suíte de invariantes instancia o cliente do Supabase, que exige o `WebSocket` global — nativo apenas a partir do Node 22. Isso não afeta quem apenas hospeda: a VPS roda a imagem pronta.
 
-[Não lançado]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.85.100...HEAD
+[Não lançado]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.85.101...HEAD
+[1.85.101]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.85.100...v1.85.101
 [1.85.100]: https://github.com/nsbastosconsultoria/SoiosCRM/compare/v1.85.0...v1.85.100
 [1.85.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.84.0...v1.85.0
 [1.84.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.83.0...v1.84.0
