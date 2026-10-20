@@ -285,9 +285,42 @@ export async function signUp(
     return { ok: false, error: "signup_failed" };
   }
 
+  // ── A CONTA QUE JÁ EXISTE NÃO VOLTA COMO ERRO ───────────────────────────
+  //
+  // Com "Confirm email" ligado, o GoTrue NÃO devolve "User already registered"
+  // para e-mail já confirmado: devolve sucesso com um usuário ofuscado — id
+  // inventado, `identities: []` — e não manda e-mail nenhum. O ramo
+  // `conta_ja_existe` acima nunca dispara nesse estado, e quem tem convite fica
+  // na tela "confirme seu e-mail" esperando um link que não existe.
+  //
+  // Medido em produção (Supabase Cloud) em 2026-10-19: convite entregue às
+  // 19:17:36, signup com o mesmo e-mail às 19:18:10, nenhum usuário novo em
+  // `auth.users`, nenhum e-mail no provedor — e o `audit` abaixo falhando com
+  // `api_audit_log_actor_user_id_fkey`, porque o id ofuscado não existe.
+  //
+  // A mesma régua de anti-enumeração do ramo de erro: só COM convite assinado
+  // para este e-mail a resposta muda. Sem convite segue indistinguível.
+  const contaJaExistia = Array.isArray(data.user?.identities) && data.user.identities.length === 0;
+  if (contaJaExistia && convite !== null) {
+    await audit({
+      action: "auth.signup_failed",
+      metadata: {
+        email_hash: hashEmail(parsed.data.email),
+        reason: "conta_ja_existe_com_convite",
+        via: "usuario_ofuscado",
+      },
+      requestId,
+      ip,
+      userAgent,
+    });
+    return { ok: false, error: "conta_ja_existe" };
+  }
+
   await audit({
     action: "auth.signup_requested",
-    actorUserId: data.user?.id ?? null,
+    // O id ofuscado não está em `auth.users`: gravá-lo como ator derruba a
+    // linha inteira na FK, e a trilha perde justamente este cadastro.
+    actorUserId: contaJaExistia ? null : (data.user?.id ?? null),
     metadata: { email_hash: hashEmail(parsed.data.email) },
     requestId,
     ip,
